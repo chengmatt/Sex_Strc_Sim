@@ -1,0 +1,69 @@
+# Purpose: Utility functions 
+# Author: Matthew LH. Cheng (UAF-CFOS)
+# Date: 8/3/23
+
+#' Title Get Age-Length Transition Matrix for use in Age-Structured Models
+#' 
+#' @param age_bins vector of ages
+#' @param len_bins vector of lengths
+#' @param mean_length mean length at age 
+#' @param cv cv for LAA
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_al_trans_matrix = function(age_bins, len_bins, mean_length, cv) {
+  
+  # Get midpoint of length bins to make sure there are still probabilities left 
+  len_mids = len_bins[1:(length(len_bins) - 1)] + diff(len_bins) / 2
+  # Construct age length matrix
+  age_length = matrix(0.0, nrow = length(age_bins), ncol = length(len_mids))
+
+  for(a in 1:length(age_bins)) {
+    for(l in 2:length(len_bins)) {
+      
+      if (l == 2) { # Probability of being between 1st and 2nd length bin given age a
+        age_length[a, l - 1] = pnorm(len_bins[2], mean_length[a], mean_length[a] * cv)
+      } else if (l == length(len_bins)) { # Probability of being larger than the last length bin given age a
+        age_length[a, l - 1] = 1 - pnorm(len_bins[length(len_bins) - 1], mean_length[a], mean_length[a] * cv)
+      } else { # a of being in between length bins given age a
+        age_length[a, l - 1] = pnorm(len_bins[l], mean_length[a], mean_length[a] * cv) -  
+                                           pnorm(len_bins[l - 1], mean_length[a], mean_length[a] * cv)
+      }
+      
+    } # end l loop
+  } # end a loop
+  return(age_length)
+} # end function
+
+#' Title Generalized Logistic Function
+#'
+#' @param slope Slope of logistic function
+#' @param bins Number of bins
+#' @param midpoint Midpoint of logistic function
+#'
+#' @return
+#' @export
+#'
+#' @examples
+logist = function(slope, bins, midpoint) {
+  return(1 / (1 + exp(-slope * (bins - midpoint)) ))
+} # end function
+
+#' Title Von Bertalannfy Growth Function
+#'
+#' @param age_bins vector of ages
+#' @param k growth rate parameter
+#' @param L_inf Asymptotic size
+#' @param t0 Size at age0
+#' @param cv coefficient of variation for generating LAA samples
+#'
+#' @return
+#' @export
+#'
+#' @examples
+vonB = function(age_bins, k , L_inf, t0, cv) {
+  sd = sqrt(log(cv^2 + 1)) # turn cv to sd
+  return(L_inf * (1-exp(-k*(age_bins -t0)) ) + rnorm(1, 0, sd))
+} #end function
