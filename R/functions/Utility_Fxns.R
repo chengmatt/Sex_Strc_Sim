@@ -67,3 +67,25 @@ vonB = function(age_bins, k , L_inf, t0, cv) {
   sd = sqrt(log(cv^2 + 1)) # turn cv to sd
   return(L_inf * (1-exp(-k*(age_bins -t0)) ) + rnorm(1, 0, sd))
 } #end function
+
+
+#' Title Take additional newton steps with TMB model
+#'
+#' @param n.newton number of additional newton steps we want to take
+#' @param ad_model MakeADFUN model object
+#' @param mle_optim Optimized model object
+#'
+#' @return
+#' @export
+#'
+#' @examples
+add_newton <- function(n.newton, ad_model, mle_optim) {
+  
+  tryCatch(expr = for(i in 1:n.newton) {
+    g = as.numeric(ad_model$gr(mle_optim$par))
+    h = optimHess(mle_optim$par, fn = ad_model$fn, gr = ad_model$gr)
+    mle_optim$par = mle_optim$par - solve(h,g)
+    mle_optim$objective = ad_model$fn(mle_optim$par)
+  }, error = function(e){e})
+  
+}
