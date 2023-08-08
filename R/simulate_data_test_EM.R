@@ -383,8 +383,8 @@ parameters = list(
 # Mapping
 map = list(
   ln_sigmaRec = factor(NA),
-  RecPars = factor(c(1, NA)),
-  ln_M = factor(c(NA, NA))
+  RecPars = factor(c(1, NA))
+  # ln_M = factor(c(NA, NA))
 )
 
 library(TMB)
@@ -432,8 +432,13 @@ sum(Report$rec_nLL)
 sum(Report$fish_index_nLL)
 sum(Report$fish_age_comp_nLL)
 sum(Report$fish_len_comp_nLL)
+sum(Report$srv_age_comp_nLL)
+sum(Report$srv_len_comp_nLL)
 sum(Report$catch_nLL)
-
+Report$jnLL
 
 plot(Report$pred_fish_len_comps[30,,1,1])
 lines(Fish_LenComps[30,,1,1,1] / sum(Fish_LenComps[30,,1,1,1]))
+
+plot(Report$pred_srv_len_comps[30,,1,1])
+lines(Srv_LenComps[30,,1,1,1] / sum(Srv_LenComps[30,,1,1,1]))

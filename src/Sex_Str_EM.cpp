@@ -342,22 +342,26 @@ Type objective_function<Type>::operator() ()
   for(int y = 0; y < n_years; y++) {
     for(int sf = 0; sf < n_srv_fleets; sf++) {
       for(int s = 0; s < n_sexes; s++) {
+        
+        // Computing Age Compositions
         for(int a = 0; a < n_ages; a++) {
-          
           // Get predicted comps here prior to normalizing w/ catch at age
           pred_srv_age_comps(y,a,s,sf) = NAA(y,a,s) * Srv_Slx(y,a,s,sf);
           // Increment to get total numbers at age for a given fleet
           Total_Srv_Age_Numbers(y,s,sf) += pred_srv_age_comps(y,a,s,sf);
-          
           // Normalize to sum to 1
           if(a == n_ages - 1) {
             for(int a = 0; a < n_ages; a++) {
               pred_srv_age_comps(y,a,s,sf) /= Total_Srv_Age_Numbers(y,s,sf);
             } // a loop
-            
           } // if a = plus group
         } // a loop
         
+        // Computing Length Compositions
+        vector<Type> srv_lens_tmp = age_len_transition.col(s).transpose().matrix() * 
+                                    pred_srv_age_comps.col(sf).col(s).transpose().col(y).matrix(); 
+        for(int l = 0; l < n_lens; l++) pred_srv_len_comps(y,l,s,sf) = srv_lens_tmp(l); // Loop through to input
+
       } // s loop
     } // sf loop
   } // y loop
@@ -442,9 +446,13 @@ Type objective_function<Type>::operator() ()
         // Pre-processing - extract out quantities
         vector<Type> obs_srv_age = obs_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
         vector<Type> pred_srv_age = pred_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
+        vector<Type> obs_srv_len = obs_srv_len_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
+        vector<Type> pred_srv_len = pred_srv_len_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
+        
         // Get likelihood here
         srv_age_comp_nLL(y,s,sf) -= dmultinom(obs_srv_age, pred_srv_age, true);
-
+        srv_len_comp_nLL(y,s,sf) -= dmultinom(obs_srv_len, pred_srv_len, true);
+        
       } // s loop
     } // y loop
   } // sf loop
@@ -461,7 +469,8 @@ Type objective_function<Type>::operator() ()
   
   // Compute joint likelihood
   jnLL = rec_nLL + sum(catch_nLL) + sum(fish_index_nLL) + sum(fish_age_comp_nLL) +
-         sum(fish_len_comp_nLL) + sum(srv_index_nLL) + sum(srv_age_comp_nLL);
+         sum(fish_len_comp_nLL) + sum(srv_index_nLL) + sum(srv_age_comp_nLL) +
+         sum(srv_len_comp_nLL);
   
   // REPORT SECTION ------------------------
   REPORT(NAA);
@@ -474,6 +483,8 @@ Type objective_function<Type>::operator() ()
   REPORT(pred_fish_age_comps);
   REPORT(pred_fish_len_comps);
   REPORT(pred_srv_index);
+  REPORT(pred_srv_age_comps);
+  REPORT(pred_srv_len_comps);
   REPORT(Fish_Slx);
   REPORT(Srv_Slx);
 
@@ -485,6 +496,7 @@ Type objective_function<Type>::operator() ()
   REPORT(fish_len_comp_nLL);
   REPORT(srv_index_nLL);
   REPORT(srv_age_comp_nLL);
+  REPORT(srv_len_comp_nLL);
   
   // DERIVED QUANTITIES -------------------
   ADREPORT(SSB);
