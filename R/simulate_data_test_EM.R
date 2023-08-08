@@ -436,4 +436,5 @@ sum(Report$catch_nLL)
 plot(Fmort[,1,2])
 lines(matrix(exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "ln_Fy"]), ncol = 2)[,2])
 
-plot(Report$CAL[1,,1,2])
+plot(Report$CAL[1,,1,1])
+lines(CAL[2,,1,1,1])

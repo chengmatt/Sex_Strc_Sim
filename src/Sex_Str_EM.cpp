@@ -120,6 +120,7 @@ Type objective_function<Type>::operator() ()
   // Set containers to zeros
   SSB.setZero();
   NAA.setZero();
+  NAL.setZero();
   CAA.setZero();
   CAL.setZero();
   pred_catch.setZero();
@@ -170,16 +171,23 @@ Type objective_function<Type>::operator() ()
   } // end year loop
   
   // Initialize the population -------------
-  for(int a = 0; a < n_ages; a++) {
-    for(int s = 0; s < n_sexes; s++) {
+  for(int s = 0; s < n_sexes; s++) {
+    for(int a = 0; a < n_ages; a++) {
+      
       if(a < n_ages - 1) { // not plus-group
         NAA(0, a, s) = exp(RecPars(0)) * exp(-M(s) * Type(a)) * InitDevs(a) * sexRatio(s); 
       } else{ // plus group
         NAA(0,n_ages - 1,s) = (exp(RecPars(0)) * exp(-M(s) * Type(a))) / (1 - exp(-M(s))) * sexRatio(s); 
       } 
-      if(s == 0) SSB(0) += NAA(0, a, 0) * MatAA(a) * WAA(a,0); // Calculate starting SSB
-    } // end sex loop
-  } // end age loop
+      
+      // Calculate starting SSB
+      if(s == 0) SSB(0) += NAA(0, a, 0) * MatAA(a) * WAA(a,0); 
+      // Compute Numbers-at-length in year 1
+      vector<Type> NAL_tmp_vec = age_len_transition.col(s).transpose().matrix() * NAA.col(s).transpose().col(0).matrix(); 
+      for(int l = 0; l < n_lens; l++) NAL(0,l,s) = NAL_tmp_vec(l); // Loop through to input
+      
+    } // end age loop
+  } // end sex loop
 
   // SSB0 Calculations ---------------------
   // Loop through spawning biomass per recruit calculations
@@ -221,17 +229,16 @@ Type objective_function<Type>::operator() ()
           } // plus group
         
         if(s == 0) SSB(y) += NAA(y,a,0) * MatAA(a) * WAA(a,s); // Calculate SSB here (Indexing 0 for females)
-
       } // end age loop
       
-      // Compute Numbers-at-length with age-length transition matrix (needs to be matrix to do %*%)
-      NAL.col(s).transpose().col(y) = age_len_transition.col(s).transpose().matrix() *
-                                      NAA.col(s).transpose().col(y).matrix();
-      
-      std::cout<<NAA.col(s).transpose().col(y).matrix()<<"\n";
+      // Compute Numbers-at-length 
+      vector<Type> NAL_tmp_vec = age_len_transition.col(s).transpose().matrix() * NAA.col(s).transpose().col(y).matrix(); 
+      for(int l = 0; l < n_lens; l++) NAL(y,l,s) = NAL_tmp_vec(l); // Loop through to input
 
     } // end sex loop
   } // end year loop
+  
+  // std::cout<<NAL_vec<<"\n";
   
   // Calculate Catch Quantities -----------
   for(int f = 0; f < n_fish_fleets; f++) {
@@ -247,10 +254,10 @@ Type objective_function<Type>::operator() ()
           
         } // age loop
         
-        // Convert to Catch-at-Length
-        CAL.col(f).col(s).transpose().col(y) = age_len_transition.col(s).transpose().matrix() *
-                                               CAA.col(f).col(s).transpose().col(y).matrix();
-          
+        // Compute catch-at-length
+        vector<Type> CAL_tmp_vec = age_len_transition.col(s).transpose().matrix() * CAA.col(f).col(s).transpose().col(y).matrix(); 
+        for(int l = 0; l < n_lens; l++) CAL(y,l,s,f) = CAL_tmp_vec(l); // Loop through to input
+        
       } // sex loop
     } // year loop
   } // end fishery fleet
@@ -455,7 +462,7 @@ Type objective_function<Type>::operator() ()
   REPORT(pred_srv_index);
   REPORT(Fish_Slx);
   REPORT(Srv_Slx);
-  
+
   REPORT(jnLL);
   REPORT(rec_nLL);
   REPORT(catch_nLL);
