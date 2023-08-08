@@ -131,7 +131,7 @@ Fish_AgeComps = array(0, dim = c(n_years, length(age_bins), n_sexes, n_fish_flee
 Fish_Neff_Age = array(100, dim = c(n_years, n_fish_fleets)) # Age Effective Sample Size
 # Fishery Length Comps
 Fish_LenComps = array(0, dim = c(n_years, length(len_mids), n_sexes, n_fish_fleets, n_sims)) 
-Fish_Neff_Len= array(300, dim = c(n_years, n_fish_fleets)) # Length Effective Sample Size
+Fish_Neff_Len= array(100, dim = c(n_years, n_fish_fleets)) # Length Effective Sample Size
 # Fishery Length-at-age
 Fish_LAA = list()
 # Fishery Length-Weight
@@ -431,10 +431,9 @@ sum(Report$srv_index_nLL)
 sum(Report$rec_nLL)
 sum(Report$fish_index_nLL)
 sum(Report$fish_age_comp_nLL)
+sum(Report$fish_len_comp_nLL)
 sum(Report$catch_nLL)
 
-plot(Fmort[,1,2])
-lines(matrix(exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "ln_Fy"]), ncol = 2)[,2])
 
-plot(Report$CAL[1,,1,1])
-lines(CAL[2,,1,1,1])
+plot(Report$pred_fish_len_comps[30,,1,1])
+lines(Fish_LenComps[30,,1,1,1] / sum(Fish_LenComps[30,,1,1,1]))

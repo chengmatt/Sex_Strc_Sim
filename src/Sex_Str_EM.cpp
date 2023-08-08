@@ -100,8 +100,10 @@ Type objective_function<Type>::operator() ()
   vector<Type> SSB(n_years); // Spawning stock biomass
   array<Type> Fish_Slx(n_years, n_ages, n_sexes, n_fish_fleets); // Fishery Selectivities
   array<Type> Total_Fish_Age_Numbers(n_years, n_sexes, n_fish_fleets); // Store Total Fishery Numbers for Proportions
+  array<Type> Total_Fish_Len_Numbers(n_years, n_sexes, n_fish_fleets); // Store Total Survey Length Numbers for Proportions
   array<Type> Srv_Slx(n_years, n_ages, n_sexes, n_srv_fleets); // Survey Selectivities
-  array<Type> Total_Srv_Age_Numbers(n_years, n_sexes, n_srv_fleets); // Store Total Survey Numbers for Proportions
+  array<Type> Total_Srv_Age_Numbers(n_years, n_sexes, n_srv_fleets); // Store Total Survey Age Numbers for Proportions
+  array<Type> Total_Srv_Len_Numbers(n_years, n_sexes, n_srv_fleets); // Store Total Survey Length Numbers for Proportions
   vector<Type> SBPR_N(n_ages); // Numbers Per recruit container
   vector<Type> SBPR_SSB0(n_ages); // Spawning Biomass Per recruit container
   
@@ -238,8 +240,6 @@ Type objective_function<Type>::operator() ()
     } // end sex loop
   } // end year loop
   
-  // std::cout<<NAL_vec<<"\n";
-  
   // Calculate Catch Quantities -----------
   for(int f = 0; f < n_fish_fleets; f++) {
     for(int y = 0; y < n_years; y++) {
@@ -268,7 +268,8 @@ Type objective_function<Type>::operator() ()
       for(int s = 0; s < n_sexes; s++) {
         for(int a = 0; a < n_ages; a++) {
           // Increment to get total index, conditional on fishery selectivity
-          pred_fish_index(y,f) += NAA(y,a,s) * WAA(a,s) * Fish_Slx(y,a,s,f);
+          pred_fish_index(y,f) += NAA(y,a,s) * WAA(a,s) * 
+                                  Fish_Slx(y,a,s,f);
         } // a loop
         // Apply catchability
         pred_fish_index(y,f) *= exp(ln_q_fish(f)); 
@@ -304,24 +305,38 @@ Type objective_function<Type>::operator() ()
   for(int y = 0; y < n_years; y++) {
     for(int f = 0; f < n_fish_fleets; f++) {
       for(int s = 0; s < n_sexes; s++) {
+        
+        // Computing Age Compositions
         for(int a = 0; a < n_ages; a++) {
-          
           // Get predicted comps here prior to normalizing w/ catch at age
           pred_fish_age_comps(y,a,s,f) = CAA(y,a,s,f);
           // Increment to get total numbers at age for a given fleet
           Total_Fish_Age_Numbers(y,s,f) += pred_fish_age_comps(y,a,s,f);
-          
           // Normalize to sum to 1
           if(a == n_ages - 1) {
             for(int a = 0; a < n_ages; a++) {
               pred_fish_age_comps(y,a,s,f) /= Total_Fish_Age_Numbers(y,s,f);
             } // a loop
-            
           } // if a = plus group
         } // a loop
-      } // s loop
-    } // f loop
-  } // y loop
+        
+        // Computing Length Compositions
+        for(int l = 0; l < n_lens; l++) {
+          // Get predicted comps here for catch-at-length (prior to normalization)
+          pred_fish_len_comps(y,l,s,f) = CAL(y,l,s,f);
+          // Get total len numbers for normalizing
+          Total_Fish_Len_Numbers(y,s,f) += pred_fish_len_comps(y,l,s,f);
+          // Normalize to sum to 1
+          if(l == n_lens - 1) {
+            for(int l = 0; l < n_lens; l++) {
+              pred_fish_len_comps(y,l,s,f) /= Total_Fish_Len_Numbers(y,s,f);
+            } // l loop
+        } // if l = n_lens - 1
+      } // l loop
+        
+    } // s loop
+  } // f loop
+} // y loop
   
   // Survey Compositions 
   for(int y = 0; y < n_years; y++) {
@@ -342,6 +357,7 @@ Type objective_function<Type>::operator() ()
             
           } // if a = plus group
         } // a loop
+        
       } // s loop
     } // sf loop
   } // y loop
@@ -403,16 +419,16 @@ Type objective_function<Type>::operator() ()
   for(int f = 0; f < n_fish_fleets; f++) {
     for(int y = 0 ; y < n_years; y++) {
       for(int s = 0; s < n_sexes; s++) {
-        
-        // Re-initialize container vectors
-        vector<Type> obs_fish_age_vec(n_ages); // Obs fishery age vector to hold and pass values to nLL
-        vector<Type> pred_fish_age_vec(n_ages); // Pred fishery age vector to hold and pass values to nLL
 
         // Pre-processing - extract out quantities
         vector<Type> obs_fish_age = obs_fish_age_comps.col(f).col(s).transpose().col(y); // Pull out observed vector
         vector<Type> pred_fish_age = pred_fish_age_comps.col(f).col(s).transpose().col(y); // Pull out predicted vector 
+        vector<Type> obs_fish_len = obs_fish_len_comps.col(f).col(s).transpose().col(y); // Pull out observed vector
+        vector<Type> pred_fish_len = pred_fish_len_comps.col(f).col(s).transpose().col(y); // Pull out predicted vector
+        
         // Get likelihood here
         fish_age_comp_nLL(y,s,f) -= dmultinom(obs_fish_age, pred_fish_age, true);
+        fish_len_comp_nLL(y,s,f) -= dmultinom(obs_fish_len, pred_fish_len, true);
         
       } // s loop
     } // y loop
@@ -422,10 +438,6 @@ Type objective_function<Type>::operator() ()
   for(int sf = 0; sf < n_srv_fleets; sf++) {
     for(int y = 0 ; y < n_years; y++) {
       for(int s = 0; s < n_sexes; s++) {
-
-        // Re-initialize container vectors
-        vector<Type> obs_srv_age_vec(n_ages); // Obs survey age vector to hold and pass values to nLL
-        vector<Type> pred_srv_age_vec(n_ages); // Pred survey age vector to hold and pass values to nLL
 
         // Pre-processing - extract out quantities
         vector<Type> obs_srv_age = obs_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
@@ -449,7 +461,7 @@ Type objective_function<Type>::operator() ()
   
   // Compute joint likelihood
   jnLL = rec_nLL + sum(catch_nLL) + sum(fish_index_nLL) + sum(fish_age_comp_nLL) +
-         sum(srv_index_nLL) + sum(srv_age_comp_nLL);
+         sum(fish_len_comp_nLL) + sum(srv_index_nLL) + sum(srv_age_comp_nLL);
   
   // REPORT SECTION ------------------------
   REPORT(NAA);
@@ -459,6 +471,8 @@ Type objective_function<Type>::operator() ()
   REPORT(SSB);
   REPORT(pred_catch);
   REPORT(pred_fish_index);
+  REPORT(pred_fish_age_comps);
+  REPORT(pred_fish_len_comps);
   REPORT(pred_srv_index);
   REPORT(Fish_Slx);
   REPORT(Srv_Slx);
@@ -468,6 +482,7 @@ Type objective_function<Type>::operator() ()
   REPORT(catch_nLL);
   REPORT(fish_index_nLL);
   REPORT(fish_age_comp_nLL);
+  REPORT(fish_len_comp_nLL);
   REPORT(srv_index_nLL);
   REPORT(srv_age_comp_nLL);
   
