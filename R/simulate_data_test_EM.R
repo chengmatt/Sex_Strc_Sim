@@ -375,8 +375,8 @@ data = list(
   use_srv_len_comps = matrix(1, ncol = 2, nrow = 50),
   p_ow_sex_fish_age = 1,
   p_ow_sex_fish_len = 1,
-  p_ow_sex_srv_age = 0,
-  p_ow_sex_srv_len = 0
+  p_ow_sex_srv_age = 1,
+  p_ow_sex_srv_len = 1
 )
 
 Fish_AgeComps[1,,,1,1] / sum(Fish_AgeComps[1,,,1,1])
@@ -398,8 +398,8 @@ parameters = list(
 # Mapping
 map = list(
   ln_sigmaRec = factor(NA),
-  RecPars = factor(c(1, NA))
-  # ln_M = factor(c(NA, NA))
+  RecPars = factor(c(1, NA)),
+  ln_M = factor(c(NA, NA))
 )
 
 library(TMB)
@@ -414,7 +414,7 @@ model_fxn <- TMB::MakeADFun(data, parameters, map, random = NULL,
                             checkParameterOrder = TRUE, tracepar = TRUE)
 
 Opt = TMBhelper::fit_tmb( obj = model_fxn,
-                          newtonsteps = 3,
+                          newtonsteps = 5,
                           bias.correct = FALSE,
                           getsd = TRUE,
                           savedir = paste0(getwd(),"/") )
@@ -422,13 +422,15 @@ Opt = TMBhelper::fit_tmb( obj = model_fxn,
 Report = model_fxn$report(model_fxn$env$last.par.best)
 ParHat = model_fxn$env$parList()
 
-as.vector(Fish_AgeComps[1,,,1,1])
-
-par(mfrow = c(1,2))
+par(mfrow = c(2,2))
 plot(Report$pred_fish_age_comps[1,,1,1], type = "l", col = "red")
-lines((Fish_AgeComps[1,,,1,1] / sum(Fish_AgeComps[1,,,1,1]))[,1])
 lines(Report$pred_fish_age_comps[1,,2,1], type = "l", col = "blue")
-lines((Fish_AgeComps[1,,,1,1] / sum(Fish_AgeComps[1,,,1,1]))[,2])
+plot(Report$pred_srv_age_comps[1,,1,1], type = "l", col = "red")
+lines(Report$pred_srv_age_comps[1,,2,1], type = "l", col = "blue")
+plot(Report$pred_fish_len_comps[1,,1,1], type = "l", col = "red")
+lines(Report$pred_fish_len_comps[1,,2,1], type = "l", col = "blue")
+plot(Report$pred_srv_len_comps[1,,1,1], type = "l", col = "red")
+lines(Report$pred_srv_len_comps[1,,2,1], type = "l", col = "blue")
 dev.off()
 
 # Catch
@@ -461,8 +463,11 @@ sum(Report$srv_len_comp_nLL)
 sum(Report$catch_nLL)
 Report$jnLL
 
-plot(Report$pred_fish_len_comps[30,,1,1])
-lines(Fish_LenComps[30,,1,1,1] / sum(Fish_LenComps[30,,1,1,1]))
+sum(Report$pred_srv_len_comps[1,,,1])
+
+plot(Report$pred_fish_len_comps[5,,1,1], col = "red", type = "l")
+lines(Report$pred_fish_len_comps[5,,2,1], col = "blue")
 
 plot(Report$pred_srv_len_comps[30,,1,1])
 lines(Srv_LenComps[30,,1,1,1] / sum(Srv_LenComps[30,,1,1,1]))
+

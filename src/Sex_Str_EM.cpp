@@ -320,9 +320,7 @@ Type objective_function<Type>::operator() ()
           
           // Normalize to sum to 1 (Proportions within a given sex)
           if(a == n_ages - 1 && p_ow_sex_fish_age == 0) {
-            for(int a = 0; a < n_ages; a++) {
-              pred_fish_age_comps(y,a,s,f) /= Total_Fish_Age_Numbers(y,s,f);
-            } // a loop
+            for(int a = 0; a < n_ages; a++) pred_fish_age_comps(y,a,s,f) /= Total_Fish_Age_Numbers(y,s,f);
           } // if a = plus group and proportion within sexes
           
           // Normalize to sum to 1 (Proportions across sexes)
@@ -337,18 +335,21 @@ Type objective_function<Type>::operator() ()
           } // if a = plus group, s = n_sexes, and proportions across sexes
         } // a loop
         
+        
+        // Computing Length Compositions (Getting Expected Lengths * Age-Length Transition Matrix)
+        vector<Type> fish_lens_tmp = age_len_transition.col(s).transpose().matrix() * 
+                                     CAA.col(f).col(s).transpose().col(y).matrix();
+
         // Computing Length Compositions
         for(int l = 0; l < n_lens; l++) {
           // Get predicted comps here for catch-at-length (prior to normalization)
-          pred_fish_len_comps(y,l,s,f) = CAL(y,l,s,f);
+          pred_fish_len_comps(y,l,s,f) = fish_lens_tmp(l);
           // Get total len numbers for normalizing
           Total_Fish_Len_Numbers(y,s,f) += pred_fish_len_comps(y,l,s,f);
           
           // Normalize to sum to 1 (Proportions within sexes)
-          if(l == n_lens - 1 && p_ow_sex_fish_len == 1) {
-            for(int l = 0; l < n_lens; l++) {
-              pred_fish_len_comps(y,l,s,f) /= Total_Fish_Len_Numbers(y,s,f);
-            } // l loop
+          if(l == n_lens - 1 && p_ow_sex_fish_len == 0) {
+            for(int l = 0; l < n_lens; l++) pred_fish_len_comps(y,l,s,f) /= Total_Fish_Len_Numbers(y,s,f);
           } // if l = n_lens - 1 and proportions within sexes
           
           // Normalize to sum to 1 (Proportions across sexes)
@@ -379,19 +380,51 @@ Type objective_function<Type>::operator() ()
           pred_srv_age_comps(y,a,s,sf) = NAA(y,a,s) * Srv_Slx(y,a,s,sf);
           // Increment to get total numbers at age for a given fleet
           Total_Srv_Age_Numbers(y,s,sf) += pred_srv_age_comps(y,a,s,sf);
-          // Normalize to sum to 1
-          if(a == n_ages - 1) {
-            for(int a = 0; a < n_ages; a++) {
-              pred_srv_age_comps(y,a,s,sf) /= Total_Srv_Age_Numbers(y,s,sf);
-            } // a loop
-          } // if a = plus group
+          
+          // Normalize to sum to 1 (Proportions within sexes)
+          if(a == n_ages - 1 && p_ow_sex_srv_age == 0) {
+            for(int a = 0; a < n_ages; a++) pred_srv_age_comps(y,a,s,sf) /= Total_Srv_Age_Numbers(y,s,sf);
+          } // if a = plus group, and proportions within sexes
+          
+          // Normalize to sum to 1 (Proportions across sexes)
+          if(a == n_ages - 1 && s == n_sexes - 1 && p_ow_sex_srv_age == 1) {
+            // Extract survey ages to sum across sexes
+            Type Total_srvAge_across_sex_tmp = sum(Total_Srv_Age_Numbers.col(sf).transpose().col(y));
+            for(int s = 0; s < n_sexes; s++) {
+              for(int a = 0; a < n_ages; a ++) {
+                pred_srv_age_comps(y,a,s,sf) /= Total_srvAge_across_sex_tmp;
+              } // l loop
+            } // s loop
+          } // if a == plus group, sex == n_sexes - 1, and proportions across sexes
         } // a loop
         
-        // Computing Length Compositions
+        // Computing Length Compositions (Getting Expected Lengths * Age-Length Transition Matrix)
         vector<Type> srv_lens_tmp = age_len_transition.col(s).transpose().matrix() * 
-          pred_srv_age_comps.col(sf).col(s).transpose().col(y).matrix(); 
-        for(int l = 0; l < n_lens; l++) pred_srv_len_comps(y,l,s,sf) = srv_lens_tmp(l); // Loop through to input
+                                    (NAA.col(s).transpose().col(y).vec() *
+                                    Srv_Slx.col(sf).col(s).transpose().col(y).vec()).matrix();
         
+        for(int l = 0; l < n_lens; l++) {
+          // Input temporary vector here
+          pred_srv_len_comps(y,l,s,sf) = srv_lens_tmp(l);
+          Total_Srv_Len_Numbers(y,s,sf) += pred_srv_len_comps(y,l,s,sf); // Sum up total survey lengths
+            
+          // Proportions within sexes (Normalize to 1)
+          if(l == n_lens - 1 && p_ow_sex_srv_age == 0) {
+            for(int l = 0; l < n_lens; l++) pred_srv_len_comps(y,l,s,sf) /= Total_Srv_Len_Numbers(y,s,sf);
+          } // if l == n_lens - 1 and proportions within sexes
+          
+          // Normalize to sum to 1 (Proportions across sexes)
+          if(l == n_lens - 1 && s == n_sexes - 1 && p_ow_sex_srv_len == 1) {
+            // Extract total fishery lengths across exes
+            Type Total_srvLen_across_sex_tmp = sum(Total_Srv_Len_Numbers.col(sf).transpose().col(y));
+            for(int s = 0; s < n_sexes; s++) {
+              for(int l = 0; l < n_lens; l ++) {
+                pred_srv_len_comps(y,l,s,sf) /= Total_srvLen_across_sex_tmp;
+              } // l loop
+            } // s loop
+          } // if l == n_lens - 1, s == n_sexes - 1, and proportions across sexes
+        } // l loop
+
       } // s loop
     } // sf loop
   } // y loop
@@ -452,10 +485,10 @@ Type objective_function<Type>::operator() ()
       } // if proportions across sex for fishery ages
       
       // Length-Compositions
-      if(p_ow_sex_fish_age == 1) {
+      if(p_ow_sex_fish_len == 1) {
         vector<Type> obs_fish_len_as = obs_fish_len_comps.col(f).transpose().col(y).transpose().vec(); // Pull out observed vector
         vector<Type> pred_fish_len_as = pred_fish_len_comps.col(f).transpose().col(y).transpose().vec(); // Pull out observed vector
-        fish_age_comp_nLL(y,0,f) -= use_fish_len_comps(y,f) * dmultinom(obs_fish_len_as, pred_fish_len_as, true); // Get likelihood here
+        fish_len_comp_nLL(y,0,f) -= use_fish_len_comps(y,f) * dmultinom(obs_fish_len_as, pred_fish_len_as, true); // Get likelihood here
       } // if proportions across sex for fishery lengths
         
     } // if either fishery age or fishery lengths are proportions across sexes
@@ -485,23 +518,54 @@ Type objective_function<Type>::operator() ()
   } // f loop
   
   // Survey Composition Likelihoods ------
+  
   for(int sf = 0; sf < n_srv_fleets; sf++) {
     for(int y = 0 ; y < n_years; y++) {
-      for(int s = 0; s < n_sexes; s++) {
+      
+      // Proportions across sexes for survey ages or lengths
+      if(p_ow_sex_srv_age == 1 || p_ow_sex_srv_len == 1) {
+
+        // Age-Compositions
+        if(p_ow_sex_srv_age == 1) {
+          vector<Type> obs_srv_age_as = obs_srv_age_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
+          vector<Type> pred_srv_age_as = pred_srv_age_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
+          srv_age_comp_nLL(y,0,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_as, pred_srv_age_as, true); // Get likelihood here
+        } // if proportions across sex for fishery ages
+
+        // Length-Compositions
+        if(p_ow_sex_srv_len == 1) {
+          vector<Type> obs_srv_len_as = obs_srv_len_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
+          vector<Type> pred_srv_len_as = pred_srv_len_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
+          srv_len_comp_nLL(y,0,sf) -= use_srv_len_comps(y,sf) * dmultinom(obs_srv_len_as, pred_srv_len_as, true); // Get likelihood here
+        } // if proportions across sex for fishery lengths
+
+      } // if either survey age or survey lengths are proportions across sexes
+      
+      // Proportions within sexes for survey ages or lengths
+      if(p_ow_sex_srv_age == 0 || p_ow_sex_srv_len == 0) {
         
-        // Pre-processing - extract out quantities
-        vector<Type> obs_srv_age = obs_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
-        vector<Type> pred_srv_age = pred_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
-        vector<Type> obs_srv_len = obs_srv_len_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
-        vector<Type> pred_srv_len = pred_srv_len_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
-        
-        // Get likelihood here
-        srv_age_comp_nLL(y,s,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age, pred_srv_age, true);
-        srv_len_comp_nLL(y,s,sf) -= use_srv_len_comps(y,sf) * dmultinom(obs_srv_len, pred_srv_len, true);
-        
-      } // s loop
+        for(int s = 0; s < n_sexes; s++) {
+          // Age-Compositions
+          if(p_ow_sex_srv_age == 0) {
+            vector<Type> obs_srv_age_ws = obs_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
+            vector<Type> pred_srv_age_ws = pred_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
+            srv_age_comp_nLL(y,s,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_ws, pred_srv_age_ws, true); // Get likelihood here
+          } // if proportions within sex for fishery ages
+          
+          // Length-Compositions
+          if(p_ow_sex_srv_len == 0) {
+            vector<Type> obs_srv_len_ws = obs_srv_len_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
+            vector<Type> pred_srv_len_ws = pred_srv_len_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
+            srv_len_comp_nLL(y,s,sf) -= use_srv_len_comps(y,sf) * dmultinom(obs_srv_len_ws, pred_srv_len_ws, true);
+          } // if proportions within sex for fishery lengths
+          
+        } // s loop
+      } // if either fishery age or fishery lengths are proportions within sexes
+      
     } // y loop
   } // sf loop
+  
+  
   
   // Penalty for Population Initialization
   for(int a = 0; a < ln_InitDevs.size(); a ++) {
@@ -550,3 +614,7 @@ Type objective_function<Type>::operator() ()
   return(jnLL);
   
 } // end objective function
+
+
+
+
