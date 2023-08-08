@@ -341,7 +341,7 @@ data = list(
   n_srv_fleets = n_srv_fleets,
 
   # Fishery
-  obs_catch = array(Total_Catch[-51,,1], dim = c(50, 2)),
+  obs_catch = as.matrix(Total_Catch[-51,,1], dim = c(50, 2)),
   catch_cv = c(0.001, 0.001),
   obs_fish_index = array(Fish_Index[-51,,1], dim = c(50, 2)),
   fish_index_cv = cv_Fish_Index,
@@ -363,8 +363,23 @@ data = list(
   WAA = matrix(wt_at_age[1,,,1], ncol = 2, nrow = 30),
   MatAA = as.vector(mat_at_age[1,,1,1]),
   age_len_transition = al_matrix,
-  age_len_transition_unsexed = al_matrix_unsexed
+  age_len_transition_unsexed = al_matrix_unsexed,
+  
+  # Data Indicators
+  use_catch = matrix(1, ncol = 2, nrow = 50),
+  use_fish_index = matrix(1, ncol = 2, nrow = 50),
+  use_srv_index = matrix(1, ncol = 2, nrow = 50),
+  use_fish_age_comps = matrix(1, ncol = 2, nrow = 50),
+  use_fish_len_comps = matrix(1, ncol = 2, nrow = 50),
+  use_srv_age_comps = matrix(1, ncol = 2, nrow = 50),
+  use_srv_len_comps = matrix(1, ncol = 2, nrow = 50),
+  p_ow_sex_fish_age = 1,
+  p_ow_sex_fish_len = 1,
+  p_ow_sex_srv_age = 0,
+  p_ow_sex_srv_len = 0
 )
+
+Fish_AgeComps[1,,,1,1] / sum(Fish_AgeComps[1,,,1,1])
 
 # Parameters
 parameters = list(
@@ -406,6 +421,15 @@ Opt = TMBhelper::fit_tmb( obj = model_fxn,
 
 Report = model_fxn$report(model_fxn$env$last.par.best)
 ParHat = model_fxn$env$parList()
+
+as.vector(Fish_AgeComps[1,,,1,1])
+
+par(mfrow = c(1,2))
+plot(Report$pred_fish_age_comps[1,,1,1], type = "l", col = "red")
+lines((Fish_AgeComps[1,,,1,1] / sum(Fish_AgeComps[1,,,1,1]))[,1])
+lines(Report$pred_fish_age_comps[1,,2,1], type = "l", col = "blue")
+lines((Fish_AgeComps[1,,,1,1] / sum(Fish_AgeComps[1,,,1,1]))[,2])
+dev.off()
 
 # Catch
 plot(Report$pred_catch[,2])
