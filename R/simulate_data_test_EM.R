@@ -399,17 +399,13 @@ data = list(
   use_fish_len_comps = matrix(1, ncol = 2, nrow = 50),
   use_srv_age_comps = matrix(1, ncol = 2, nrow = 50),
   use_srv_len_comps = matrix(1, ncol = 2, nrow = 50),
-  p_ow_sex_fish_age = 0,
+  p_ow_sex_fish_age = 1,
   p_ow_sex_fish_len = 0,
-  p_ow_sex_srv_age = 0,
+  p_ow_sex_srv_age = 1,
   p_ow_sex_srv_len = 0,
-  agg_sex_fish_age = 1,
-  agg_sex_fish_len = 0,
-  agg_sex_srv_age = 1,
-  agg_sex_srv_len = 0
+  agg_sex_fish_age = 0,
+  agg_sex_srv_age = 0
 )
-
-Fish_AgeComps[1,,,1,1] / sum(Fish_AgeComps[1,,,1,1])
 
 # Parameters
 parameters = list(
@@ -458,9 +454,6 @@ Opt = TMBhelper::fit_tmb( obj = model_fxn,
 Report = model_fxn$report(model_fxn$env$last.par.best)
 ParHat = model_fxn$env$parList()
 
-plot(rowSums(Report$obs_srv_age_mat))
-lines(Report$obs_srv_age_agg)
-
 plot(rowSums(Report$pred_srv_age_mat)/2)
 lines(Report$pred_srv_age_agg)
 
@@ -499,10 +492,10 @@ sum(Report$pred_fish_age_comps[1,,,1])
 plot(Report$pred_catch[,2])
 lines(data$obs_catch[,2])
 
-plot(Report$Fish_Slx[1,,2,2], type = "l", col = "blue")
-lines(FishAge_Selex[,2,2])
-plot(Report$Srv_Slx[1,,2,1], type = "l", col = "blue")
-lines(SrvAge_Selex[,2,1])
+lines(Report$Fish_Slx[1,,1,2], type = "l", col = "blue")
+lines(FishAge_Selex[,1,2])
+plot(Report$Srv_Slx[1,,1,2], type = "l", col = "blue")
+lines(SrvAge_Selex[,1,2])
 
 plot(Report$pred_fish_index[,1])
 lines(Fish_Index[-51,1,1])
