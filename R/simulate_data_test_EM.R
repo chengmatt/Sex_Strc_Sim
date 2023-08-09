@@ -35,11 +35,11 @@ beta = c(3, 3)
 lw_cv = 0.15
 
 # Recruitment
-sigmaRec = 0.01
+sigmaRec = 0.5
 # Sex ratio
 sexRatio = c(0.5, 0.5)
 # Mortality
-M = c(0.15, 0.15)
+M = c(0.35, 0.15)
 
 # Load in all functions from the functions folder
 fxn_path <- here("R", "functions")
@@ -98,14 +98,18 @@ plot(len_mids, fish_len_selex)
 lines(len_mids, srv_len_selex, col = "blue")
 
 # Age-based selectivity converted from length-based selectivity (fishery)
-fish_age_selex_Female = al_matrix[,,1] %*% fish_len_selex
-fish_age_selex_Male = al_matrix[,,2] %*% fish_len_selex
+# fish_age_selex_Female = al_matrix[,,1] %*% fish_len_selex
+# fish_age_selex_Male = al_matrix[,,2] %*% fish_len_selex
+fish_age_selex_Female = logist(slope = 0.7, bins = age_bins, midpoint = 7)
+fish_age_selex_Male = logist(slope = 0.7, bins = age_bins, midpoint = 7)
 plot(age_bins, fish_age_selex_Female, type = "l", col = "red", ylim = c(0,1))
 lines(age_bins, fish_age_selex_Male, type = "l", col = "blue")
 
 # Age-based selectivity converted from length-based selectivity (survey)
-srv_age_selex_Female = al_matrix[,,1] %*% srv_len_selex
-srv_age_selex_Male = al_matrix[,,2] %*% srv_len_selex
+# srv_age_selex_Female = al_matrix[,,1] %*% srv_len_selex
+# srv_age_selex_Male = al_matrix[,,2] %*% srv_len_selex
+srv_age_selex_Female = logist(slope = 0.7, bins = age_bins, midpoint = 3)
+srv_age_selex_Male = logist(slope = 0.7, bins = age_bins, midpoint = 5)
 plot(age_bins, srv_age_selex_Female, type = "l", col = "red", ylim = c(0,1))
 lines(age_bins, srv_age_selex_Male, type = "l", col = "blue")
 
@@ -125,7 +129,7 @@ Fmort = array(seq(0.1, 0.001, length.out = n_years), dim = c(n_years, n_fish_fle
 # Fishery Age Selectivity
 FishAge_Selex = array(c(fish_age_selex_Female, fish_age_selex_Male),dim = c(length(age_bins), n_sexes, n_fish_fleets))
 # Fishery Length Selectivity
-FishLen_Selex = array(c(fish_len_selex, fish_len_selex),dim = c(length(len_mids), n_sexes, n_fish_fleets))
+# FishLen_Selex = array(c(fish_len_selex, fish_len_selex),dim = c(length(len_mids), n_sexes, n_fish_fleets))
 # Fishery Age Comps
 Fish_AgeComps = array(0, dim = c(n_years, length(age_bins), n_sexes, n_fish_fleets, n_sims)) 
 Fish_Neff_Age = array(100, dim = c(n_years, n_fish_fleets)) # Age Effective Sample Size
@@ -142,7 +146,7 @@ q_Fish = c(0.03, 0.05)
 cv_Fish_Index = c(0.1, 0.1)
 
 # Survey Selex
-SrvLen_Selex = array(c(srv_len_selex, srv_len_selex),dim = c(length(len_mids), n_sexes, n_srv_fleets))
+# SrvLen_Selex = array(c(srv_len_selex, srv_len_selex),dim = c(length(len_mids), n_sexes, n_srv_fleets))
 SrvAge_Selex = array(c(srv_age_selex_Female, srv_age_selex_Male),dim = c(length(age_bins), n_sexes, n_srv_fleets))
 # Survey Age Comps
 Srv_AgeComps = array(0, dim = c(n_years, length(age_bins), n_sexes, n_srv_fleets, n_sims)) 
@@ -165,8 +169,8 @@ fish_counter_len = 1
 srv_counter_age = 1
 srv_counter_len = 1
 
-RecDevs = array(0, dim = c(n_years-1, sim))
-InitDevs = array(0, dim = c(length(age_bins)-1, sim))
+RecDevs = array(0, dim = c(n_years-1, 2))
+InitDevs = array(0, dim = c(length(age_bins)-1, 2))
 
 # Start simulation
 for(sim in 1:2) {
@@ -225,7 +229,6 @@ for(sim in 1:2) {
 # Observation Model (Fishery) -------------------------------------------------------
     for(f in 1:n_fish_fleets) {
       for(s in 1:n_sexes) {
-        
         # Get catch at age
         CAA[y-1,,s,f,sim] = (FAA[y-1,,s,f,sim] / ZAA[y - 1,,s,sim]) * 
                              (NAA[y-1,,s,sim] * (1 - exp(-ZAA[y - 1,,s,sim])))
@@ -233,17 +236,23 @@ for(sim in 1:2) {
         CAL[y-1,,s,f,sim] = t(al_matrix[,,s]) %*% CAA[y-1,,s,f,sim]
         # Get Total Catch by Sex
         Total_Catch_Sex[y-1,s,f,sim] = CAA[y-1,,s,f,sim] %*% wt_at_age[y-1,,s,sim]
-        
-        ### Simulate Fishery Compositions ---------------------------------------
-        # Fishery Age Compositions
-        Fish_AgeComps[y-1,,s,f,sim] = rmultinom(1, size = Fish_Neff_Age[y,f], 
-                                                prob = CAA[y-1,,s,f,sim]/sum(CAA[y-1,,s,f,sim]))
-        # Fishery Length Compositions
-        Fish_LenComps[y-1,,s,f,sim] = rmultinom(1, size = Fish_Neff_Len[y,f], 
-                                                prob = CAL[y-1,,s,f,sim]/sum(CAL[y-1,,s,f,sim]))
-        
       } # end third sex loop
-        
+      
+      ### Simulate Fishery Compositions ---------------------------------------
+      # Getting numbers at age as probability across sexes (this is more reflective
+      # of a real world scenario; doing it as probabilities within sexes assumes equal
+      # probability of selecting a particular sex, which is likely not true)
+      # Get Probability of sampling age classes
+      Prob_FishAge = as.vector(CAA[y-1,,,f,sim]/sum(CAA[y-1,,,f,sim]))
+      Fish_AgeComps[y-1,,,f,sim] = matrix(rmultinom(1, size = Fish_Neff_Age[y,f] * n_sexes, 
+                                                    prob = Prob_FishAge), nrow = n_ages, ncol = n_sexes)
+      
+      # Fishery Length Compositions
+      # Get Probability of sampling length bins
+      Prob_FishLen = as.vector(CAL[y-1,,,f,sim]/sum(CAL[y-1,,,f,sim]))
+      Fish_LenComps[y-1,,,f,sim] = matrix(rmultinom(1, size = Fish_Neff_Len[y,f] * n_sexes, 
+                                                    Prob_FishLen), nrow = n_lens, ncol = n_sexes)
+      
       ### Simulate Fishery Index --------------------------------------------------
       # Calculate sd for deviations
       Fish_Index_sd = sqrt(log(cv_Fish_Index[f]^2+1))
@@ -253,28 +262,13 @@ for(sim in 1:2) {
 
       # Get Total Catch
       Total_Catch[y-1,f,sim] = sum(Total_Catch_Sex[y-1,,f,sim])
-      
     } # end fish fleet loop
     
 # Observation Model (Survey) ----------------------------------------------
     for(sf in 1:n_srv_fleets) {
       for(s in 1:n_sexes) {
         
-        ### Simulate Survey Compositions ---------------------------------------
-        # Compute probability of age-selection
-        Prob_Age = (NAA[y-1,,s,sim] * SrvAge_Selex[,s,sf]) / sum(NAA[y-1,,s,sim] * SrvAge_Selex[,s,sf])
-        Prob_Len = (t(al_matrix[,,s]) %*% (NAA[y-1,,s,sim] * SrvAge_Selex[,s,sf]) ) / 
-                   sum(t(al_matrix[,,s]) %*% (NAA[y-1,,s,sim] * SrvAge_Selex[,s,sf]) )
-          
-        # Survey Age Compositions
-        Srv_AgeComps[y-1,,s,sf,sim] = rmultinom(1, size = Srv_Neff_Age[y,sf], 
-                                                prob = Prob_Age)
-        # Survey Length Compositions
-        Srv_LenComps[y-1,,s,sf,sim] = rmultinom(1, size = Srv_Neff_Len[y,sf], 
-                                                prob = Prob_Len)
-        
         ### Simulate Growth from Survey Age and Length Compositions ---------------------------
-        
         # Assuming random sampling here
         # Get length-at-age samples
         # for (a in 1:n_ages) {
@@ -299,6 +293,34 @@ for(sim in 1:2) {
         # } # end second length loop
          
       } # end fourth sex loop
+      
+      ### Simulate Survey Compositions ---------------------------------------
+      # Again, we are sampling from a multinomial as proportions across sexes, given
+      # that the probabilities of selecting a given age and sex are influenced by
+      # the underlying sex-ratio of the population (i.e., if there are more females than males,
+      # we should techicnally be sampling more females just by random chance).
+      
+      # Survey Age Compositions
+      Prob_SrvAge = (NAA[y-1,,,sim] * SrvAge_Selex[,,sf]) / sum(NAA[y-1,,,sim] * SrvAge_Selex[,,sf]) # Get probability of sampling ages
+      Srv_AgeComps[y-1,,,sf,sim] = matrix(rmultinom(1, size = Srv_Neff_Age[y,sf] * n_sexes,  # sampling 
+                                                   as.vector(Prob_SrvAge)), nrow = n_ages, ncol = n_sexes)
+      
+      plot(Prob_SrvAge[,1], type = "l", col = "red")
+      lines(Prob_SrvAge[,2], type = "l", col = "blue")
+      plot(NAA[1,,1,1], type = "l", col = "red")
+      lines(NAA[1,,2,1], type = "l", col = "blue")
+      
+      # Survey Length Compositions
+      # Get probability of sampling lengths
+      Prob_SrvLen = vector() # re-initialize vector
+      for(s in 1:n_sexes) {
+        Prob_SrvLen_s = (t(al_matrix[,,s]) %*% Prob_SrvAge[,s]) 
+        Prob_SrvLen = rbind(Prob_SrvLen, Prob_SrvLen_s)
+      } # end fifth sex loop
+      
+      Prob_Len = Prob_SrvLen / sum(Prob_SrvLen) # compute prob of len sampling
+      Srv_LenComps[y-1,,,sf,sim] = matrix(rmultinom(1, size = Srv_Neff_Len[y,sf] * n_sexes, # sampling
+                                                    Prob_SrvLen), nrow = n_lens, ncol = n_sexes)
       
       ### Simulate Survey Index --------------------------------------------------
       # Calculate sd for deviations
@@ -380,7 +402,11 @@ data = list(
   p_ow_sex_fish_age = 0,
   p_ow_sex_fish_len = 0,
   p_ow_sex_srv_age = 0,
-  p_ow_sex_srv_len = 0
+  p_ow_sex_srv_len = 0,
+  agg_sex_fish_age = 1,
+  agg_sex_fish_len = 0,
+  agg_sex_srv_age = 1,
+  agg_sex_srv_len = 0
 )
 
 Fish_AgeComps[1,,,1,1] / sum(Fish_AgeComps[1,,,1,1])
@@ -401,14 +427,14 @@ parameters = list(
 
 # Mapping
 map = list(
-  ln_InitDevs = factor(rep(NA, length(InitDevs[,1]))),
-  ln_RecDevs = factor(rep(NA, length(RecDevs[-50,1]))),
+  # ln_InitDevs = factor(rep(NA, length(InitDevs[,1]))),
+  # ln_RecDevs = factor(rep(NA, length(RecDevs[-50,1]))),
   ln_sigmaRec = factor(NA),
-  RecPars = factor(c(NA, NA)),
-  ln_q_fish = factor(c(NA, NA)),
-  ln_q_srv = factor(c(NA, NA)),
+  RecPars = factor(c(1, NA))
+  # ln_q_fish = factor(c(NA, NA)),
+  # ln_q_srv = factor(c(NA, NA)),
   # ln_Fy = factor(rep(NA, 100)),
-  ln_M = factor(c(NA, NA))
+  # ln_M = factor(c(NA, NA))
   # ln_srv_selpars = factor(rep(NA, 8))
 )
 
@@ -419,7 +445,7 @@ dyn.unload(dynlib('Sex_Str_EM'))
 dyn.load(dynlib('Sex_Str_EM'))
 
 # Make AD Function here
-model_fxn <- TMB::MakeADFun(data, parameters, map, random = NULL,
+model_fxn = TMB::MakeADFun(data, parameters, map, random = NULL,
                             DLL= "Sex_Str_EM", silent = FALSE,  
                             checkParameterOrder = TRUE, tracepar = TRUE)
 
@@ -430,24 +456,32 @@ Opt = TMBhelper::fit_tmb( obj = model_fxn,
                           savedir = paste0(getwd(),"/") )
 
 Report = model_fxn$report(model_fxn$env$last.par.best)
-Report$rec_nLL
 ParHat = model_fxn$env$parList()
+
+plot(rowSums(Report$obs_srv_age_mat))
+lines(Report$obs_srv_age_agg)
+
+plot(rowSums(Report$pred_srv_age_mat)/2)
+lines(Report$pred_srv_age_agg)
 
 exp(Opt$SD$par.fixed[names(Opt$SD$par.fixed) == "ln_q_fish"])
 exp(Opt$SD$par.fixed[names(Opt$SD$par.fixed) == "ln_q_srv"])
 exp(Opt$SD$par.fixed[names(Opt$SD$par.fixed) == "ln_M"])
 plot(exp(Opt$SD$par.fixed[names(Opt$SD$par.fixed) == "ln_RecDevs"]), type = "l")
 lines(RecDevs[,1], col = "red")
-M
 
-plot(Report$NAA[4,,1], type = "l", col = "black")
+plot(Report$NAA[1,,1], type = "l", col = "black")
 # lines(Report$NAA[2,,1], type = "l", col = "black")
-lines(NAA[4,,1,1])
+lines(NAA[1,,1,1])
 
-plot(SSB[,1])
-lines(Report$SSB, type = "l", col = "red")
+sum(Report$NAA[1,,1] * wt_at_age[1,,1,1] * mat_at_age[1,,1,1])
+
+plot(SSB[-51,1])
+lines(Report$SSB, type = "l", col = "blue")
 
 par(mfrow = c(2,2))
+plot(Report$NAA[1,,1], type = "l", col = "red")
+lines(Report$NAA[1,,2], type = "l", col = "blue")
 plot(Report$pred_fish_age_comps[1,,1,1], type = "l", col = "red")
 lines(Report$pred_fish_age_comps[1,,2,1], type = "l", col = "blue")
 plot(Report$pred_srv_age_comps[1,,1,1], type = "l", col = "red")
@@ -460,7 +494,6 @@ dev.off()
 
 Report$pred_fish_age_comps[1,,1,1]
 sum(Report$pred_fish_age_comps[1,,,1])
-round(Report$pred_fish_age_comps[1,,1,1], 5) == round(Report$CAA[1,,1,1] / sum(Report$CAA[1,,1,1]), 5)
 
 # Catch
 plot(Report$pred_catch[,2])
