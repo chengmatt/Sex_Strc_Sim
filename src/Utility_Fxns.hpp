@@ -54,3 +54,26 @@ Type cv_to_sd(Type cv) {
   return sd;
 } // end function
 
+// Go from age to length using age-transition matrix for NAA/CAA/SurveyAA
+template<class Type>
+vector<Type> Convert_AL(array<Type> age_len_trans_mat, // age length transition matrix, dim = age, length, sex
+                              array<Type> numbers, // numbers at age, CAA or SurveyAA, dim = years, age, sex, fleet
+                              int sex, // sex
+                              int year, // year
+                              int fleet, // optional input if we are doing CAA/survey
+                              int n_lens, // nmber of length bins
+                              int type // indicator for numbers at age or CAA/survey (0 = NAA, 1 = CAA/Survey)
+                              ) {
+  vector<Type> lens(n_lens); // initialize vector
+  if(type == 0) { // for just numbers at age
+    // matrix multiplication to convert age to len
+    lens = age_len_trans_mat.col(sex).transpose().matrix() * 
+      numbers.col(sex).transpose().col(year).matrix(); 
+  } // if this is numbers at age
+  if(type == 1) { // for CAA or survey
+    lens = age_len_trans_mat.col(sex).transpose().matrix() *
+      numbers.col(fleet).col(sex).transpose().col(year).matrix();
+  } // if this is CAA or for a survey
+  return lens;
+} // end function
+

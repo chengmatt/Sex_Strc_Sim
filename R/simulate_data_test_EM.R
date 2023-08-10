@@ -39,7 +39,7 @@ sigmaRec = 0.5
 # Sex ratio
 sexRatio = c(0.5, 0.5)
 # Mortality
-M = c(0.35, 0.15)
+M = c(0.15, 0.15)
 
 # Load in all functions from the functions folder
 fxn_path <- here("R", "functions")
@@ -98,18 +98,18 @@ plot(len_mids, fish_len_selex)
 lines(len_mids, srv_len_selex, col = "blue")
 
 # Age-based selectivity converted from length-based selectivity (fishery)
-# fish_age_selex_Female = al_matrix[,,1] %*% fish_len_selex
-# fish_age_selex_Male = al_matrix[,,2] %*% fish_len_selex
-fish_age_selex_Female = logist(slope = 0.7, bins = age_bins, midpoint = 7)
-fish_age_selex_Male = logist(slope = 0.7, bins = age_bins, midpoint = 7)
+fish_age_selex_Female = al_matrix[,,1] %*% fish_len_selex
+fish_age_selex_Male = al_matrix[,,2] %*% fish_len_selex
+# fish_age_selex_Female = logist(slope = 0.7, bins = age_bins, midpoint = 4)
+# fish_age_selex_Male = logist(slope = 0.3, bins = age_bins, midpoint = 8)
 plot(age_bins, fish_age_selex_Female, type = "l", col = "red", ylim = c(0,1))
 lines(age_bins, fish_age_selex_Male, type = "l", col = "blue")
 
 # Age-based selectivity converted from length-based selectivity (survey)
-# srv_age_selex_Female = al_matrix[,,1] %*% srv_len_selex
-# srv_age_selex_Male = al_matrix[,,2] %*% srv_len_selex
-srv_age_selex_Female = logist(slope = 0.7, bins = age_bins, midpoint = 3)
-srv_age_selex_Male = logist(slope = 0.7, bins = age_bins, midpoint = 5)
+srv_age_selex_Female = al_matrix[,,1] %*% srv_len_selex
+srv_age_selex_Male = al_matrix[,,2] %*% srv_len_selex
+# srv_age_selex_Female = logist(slope = 3, bins = age_bins, midpoint = 2)
+# srv_age_selex_Male = logist(slope = 0.5, bins = age_bins, midpoint = 5)
 plot(age_bins, srv_age_selex_Female, type = "l", col = "red", ylim = c(0,1))
 lines(age_bins, srv_age_selex_Male, type = "l", col = "blue")
 
@@ -143,7 +143,7 @@ Fish_LW = list()
 # Fishery Index
 Fish_Index = array(0, dim = c(n_years, n_fish_fleets, n_sims))
 q_Fish = c(0.03, 0.05)
-cv_Fish_Index = c(0.1, 0.1)
+cv_Fish_Index = c(0.25, 0.25)
 
 # Survey Selex
 # SrvLen_Selex = array(c(srv_len_selex, srv_len_selex),dim = c(length(len_mids), n_sexes, n_srv_fleets))
@@ -161,7 +161,7 @@ Srv_LW = list()
 # Survey Index
 Srv_Index = array(0, dim = c(n_years, n_srv_fleets, n_sims))
 q_Srv = c(0.03, 0.05)
-cv_Srv_Index = c(0.1, 0.1)
+cv_Srv_Index = c(0.25, 0.25)
 
 # Counters
 fish_counter_age = 1
@@ -170,7 +170,7 @@ srv_counter_age = 1
 srv_counter_len = 1
 
 RecDevs = array(0, dim = c(n_years-1, 2))
-InitDevs = array(0, dim = c(length(age_bins)-1, 2))
+InitDevs = array(0, dim = c(length(age_bins), 2))
 
 # Start simulation
 for(sim in 1:2) {
@@ -178,13 +178,11 @@ for(sim in 1:2) {
   # Initialize Population --------------------------------------------------
   # Generate recruitment deviates and deviations from equilibrium
   RecDevs[,sim] = exp(rnorm(n_years-1, mean = -sigma_rec^2/2, sd = sigma_rec))
-  InitDevs[,sim] = exp(rnorm(length(age_bins)-1, mean = -sigma_rec^2/2, sd = sigma_rec))
+  InitDevs[,sim] = exp(rnorm(length(age_bins), mean = -sigma_rec^2/2, sd = sigma_rec))
   
   for(s in 1:n_sexes) {
     # Get numbers at age - not plus group
-    NAA[1,1:(length(age_bins)-1),s,sim] = r0 * exp(-M[s] * 0:(length(age_bins)-2)) * InitDevs[,sim] * sexRatio[s]
-    # Get numbers at age - plus group
-    NAA[1,length(age_bins),s,sim] = ((r0 * exp(-M[s] * (length(age_bins)-1))) / (1 - exp(-M[s]))) * sexRatio[s]
+    NAA[1,1:length(age_bins),s,sim] = r0 * exp(-M[s] * 0:(length(age_bins)-1)) * InitDevs[,sim] * sexRatio[s]
     # Convert NAA to numbers at length
     NAL[1,,s,sim] = t(al_matrix[,,s]) %*% NAA[1,,s,1]
   } # end first sex loop
@@ -304,12 +302,7 @@ for(sim in 1:2) {
       Prob_SrvAge = (NAA[y-1,,,sim] * SrvAge_Selex[,,sf]) / sum(NAA[y-1,,,sim] * SrvAge_Selex[,,sf]) # Get probability of sampling ages
       Srv_AgeComps[y-1,,,sf,sim] = matrix(rmultinom(1, size = Srv_Neff_Age[y,sf] * n_sexes,  # sampling 
                                                    as.vector(Prob_SrvAge)), nrow = n_ages, ncol = n_sexes)
-      
-      plot(Prob_SrvAge[,1], type = "l", col = "red")
-      lines(Prob_SrvAge[,2], type = "l", col = "blue")
-      plot(NAA[1,,1,1], type = "l", col = "red")
-      lines(NAA[1,,2,1], type = "l", col = "blue")
-      
+
       # Survey Length Compositions
       # Get probability of sampling lengths
       Prob_SrvLen = vector() # re-initialize vector
@@ -334,11 +327,11 @@ for(sim in 1:2) {
   print(sim)
 } # end sim loop
 
-plot(SSB[,8], type = "l")
-plot(CAL[50,,1,1,1], type = 'l')
-plot(Total_Catch[-51,2,1])
-plot(Fish_Index[-51,1,1], type = "l")
-plot(Srv_Index[-51,1,1], type = "l")
+plot(SSB[,1], type = "l")
+plot(CAL[n_years-1,,1,1,1], type = 'l')
+plot(Total_Catch[-n_years,2,1])
+plot(Fish_Index[-n_years,1,1], type = "l")
+plot(Srv_Index[-n_years,1,1], type = "l")
 plot(Fish_AgeComps[3,,1,1,1], type = "l")
 plot(Srv_LenComps[20,,1,1,1], type = "l")
 
@@ -367,22 +360,22 @@ data = list(
   n_srv_fleets = n_srv_fleets,
 
   # Fishery
-  obs_catch = as.matrix(Total_Catch[-51,,1], dim = c(50, 2)),
+  obs_catch = as.matrix(Total_Catch[-n_years,,1], dim = c(50, 2)),
   catch_cv = c(1e-3, 1e-3),
-  obs_fish_index = array(Fish_Index[-51,,1], dim = c(50, 2)),
+  obs_fish_index = array(Fish_Index[-n_years,,1], dim = c(50, 2)),
   fish_index_cv = cv_Fish_Index,
-  obs_fish_age_comps = array(Fish_AgeComps[-51,,,,1], dim = c(50, 30, 2, 2)),
-  fish_age_comps_inputN = array(Fish_Neff_Age[-51,], dim = c(50, 2)),
-  obs_fish_len_comps = array(Fish_LenComps[-51,,,,1], dim = c(50, 65, 2, 2)),
-  fish_len_comps_inputN = array(Fish_Neff_Len[-51,], dim = c(50, 2)),
+  obs_fish_age_comps = array(Fish_AgeComps[-n_years,,,,1], dim = c(50, 30, 2, 2)),
+  fish_age_comps_inputN = array(Fish_Neff_Age[-n_years,], dim = c(50, 2)),
+  obs_fish_len_comps = array(Fish_LenComps[-n_years,,,,1], dim = c(50, 65, 2, 2)),
+  fish_len_comps_inputN = array(Fish_Neff_Len[-n_years,], dim = c(50, 2)),
   
   # Survey
-  obs_srv_index = array(Srv_Index[-51,,1], dim = c(50, 2)),
+  obs_srv_index = array(Srv_Index[-n_years,,1], dim = c(50, 2)),
   srv_index_cv = cv_Srv_Index,
-  obs_srv_age_comps = array(Srv_AgeComps[-51,,,,1], dim = c(50, 30, 2, 2)),
-  srv_age_comps_inputN = array(Srv_Neff_Age[-51,], dim = c(50, 2)),
-  obs_srv_len_comps = array(Srv_LenComps[-51,,,,1], dim = c(50, 65, 2, 2)),
-  srv_len_comps_inputN = array(Srv_Neff_Len[-51,], dim = c(50, 2)),
+  obs_srv_age_comps = array(Srv_AgeComps[-n_years,,,,1], dim = c(50, 30, 2, 2)),
+  srv_age_comps_inputN = array(Srv_Neff_Age[-n_years,], dim = c(50, 2)),
+  obs_srv_len_comps = array(Srv_LenComps[-n_years,,,,1], dim = c(50, 65, 2, 2)),
+  srv_len_comps_inputN = array(Srv_Neff_Len[-n_years,], dim = c(50, 2)),
   
   # Biologicals
   sexRatio = sexRatio,
@@ -400,23 +393,23 @@ data = list(
   use_srv_age_comps = matrix(1, ncol = 2, nrow = 50),
   use_srv_len_comps = matrix(1, ncol = 2, nrow = 50),
   p_ow_sex_fish_age = 1,
-  p_ow_sex_fish_len = 0,
+  p_ow_sex_fish_len = 1,
   p_ow_sex_srv_age = 1,
-  p_ow_sex_srv_len = 0,
+  p_ow_sex_srv_len = 1,
   agg_sex_fish_age = 0,
   agg_sex_srv_age = 0
 )
 
 # Parameters
 parameters = list(
-  ln_M = log(M),
+  ln_M = log(M) * 0.5,
   ln_InitDevs = log(InitDevs[,1]),
   ln_RecDevs = log(RecDevs[-50,1]),
-  RecPars = c(log(r0), h),
+  RecPars = c(log(r0) * 0.5, h),
   ln_sigmaRec = log(sigma_rec),
   ln_q_fish = log(q_Fish),
   ln_q_srv = log(q_Srv),
-  ln_Fy = matrix(log(Fmort[-51,,1]), ncol = 2),
+  ln_Fy = matrix(log(Fmort[-n_years,,1]), ncol = 2),
   ln_fish_selpars = array(log(3), dim = c(2, 2, 2)),
   ln_srv_selpars = array(log(3), dim = c(2, 2, 2))
 )
@@ -452,10 +445,9 @@ Opt = TMBhelper::fit_tmb( obj = model_fxn,
                           savedir = paste0(getwd(),"/") )
 
 Report = model_fxn$report(model_fxn$env$last.par.best)
-ParHat = model_fxn$env$parList()
+sum(Report$pred_srv_len_comps[1,,,1])
 
-plot(rowSums(Report$pred_srv_age_mat)/2)
-lines(Report$pred_srv_age_agg)
+ParHat = model_fxn$env$parList()
 
 exp(Opt$SD$par.fixed[names(Opt$SD$par.fixed) == "ln_q_fish"])
 exp(Opt$SD$par.fixed[names(Opt$SD$par.fixed) == "ln_q_srv"])
@@ -463,13 +455,11 @@ exp(Opt$SD$par.fixed[names(Opt$SD$par.fixed) == "ln_M"])
 plot(exp(Opt$SD$par.fixed[names(Opt$SD$par.fixed) == "ln_RecDevs"]), type = "l")
 lines(RecDevs[,1], col = "red")
 
-plot(Report$NAA[1,,1], type = "l", col = "black")
+plot(Report$NAA[3,,1], type = "l", col = "black")
 # lines(Report$NAA[2,,1], type = "l", col = "black")
-lines(NAA[1,,1,1])
+lines(NAA[3,,1,1])
 
-sum(Report$NAA[1,,1] * wt_at_age[1,,1,1] * mat_at_age[1,,1,1])
-
-plot(SSB[-51,1])
+plot(SSB[-n_years,1])
 lines(Report$SSB, type = "l", col = "blue")
 
 par(mfrow = c(2,2))
@@ -492,15 +482,18 @@ sum(Report$pred_fish_age_comps[1,,,1])
 plot(Report$pred_catch[,2])
 lines(data$obs_catch[,2])
 
-lines(Report$Fish_Slx[1,,1,2], type = "l", col = "blue")
-lines(FishAge_Selex[,1,2])
+plot(Report$Fish_Slx[1,,1,1], type = "l", col = "blue")
+lines(FishAge_Selex[,1,1])
+plot(Report$Fish_Slx[1,,2,2], type = "l", col = "blue")
+lines(FishAge_Selex[,2,2])
+
 plot(Report$Srv_Slx[1,,1,2], type = "l", col = "blue")
 lines(SrvAge_Selex[,1,2])
 
 plot(Report$pred_fish_index[,1])
-lines(Fish_Index[-51,1,1])
+lines(Fish_Index[-n_years,1,1])
 plot(Report$pred_srv_index[,1])
-lines(Srv_Index[-51,1,1])
+lines(Srv_Index[-n_years,1,1])
 
 # Likelihoods
 sum(Report$srv_age_comp_nLL)
@@ -514,11 +507,4 @@ sum(Report$srv_len_comp_nLL)
 sum(Report$catch_nLL)
 Report$jnLL
 
-sum(Report$pred_srv_len_comps[1,,,1])
-
-plot(Report$pred_fish_len_comps[5,,1,1], col = "red", type = "l")
-lines(Report$pred_fish_len_comps[5,,2,1], col = "blue")
-
-plot(Report$pred_srv_len_comps[30,,1,1])
-lines(Srv_LenComps[30,,1,1,1] / sum(Srv_LenComps[30,,1,1,1]))
 
