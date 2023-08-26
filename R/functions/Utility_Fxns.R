@@ -13,7 +13,7 @@
 #' @export
 #'
 #' @examples
-get_al_trans_matrix = function(age_bins, len_bins, mean_length, cv) {
+get_al_trans_matrix = function(age_bins, len_bins, mean_length, sd) {
   
   # Get midpoint of length bins to make sure there are still probabilities left 
   len_mids = len_bins[1:(length(len_bins) - 1)] + diff(len_bins) / 2
@@ -24,12 +24,12 @@ get_al_trans_matrix = function(age_bins, len_bins, mean_length, cv) {
     for(l in 2:length(len_bins)) {
       
       if (l == 2) { # Probability of being between 1st and 2nd length bin given age a
-        age_length[a, l - 1] = pnorm(len_bins[2], mean_length[a], mean_length[a] * cv)
+        age_length[a, l - 1] = pnorm(len_bins[2], mean_length[a], sd)
       } else if (l == length(len_bins)) { # Probability of being larger than the last length bin given age a
-        age_length[a, l - 1] = 1 - pnorm(len_bins[length(len_bins) - 1], mean_length[a], mean_length[a] * cv)
+        age_length[a, l - 1] = 1 - pnorm(len_bins[length(len_bins) - 1], mean_length[a], sd)
       } else { # a of being in between length bins given age a
-        age_length[a, l - 1] = pnorm(len_bins[l], mean_length[a], mean_length[a] * cv) -  
-                                           pnorm(len_bins[l - 1], mean_length[a], mean_length[a] * cv)
+        age_length[a, l - 1] = pnorm(len_bins[l], mean_length[a], sd) -  
+                               pnorm(len_bins[l - 1], mean_length[a], sd)
       }
       
     } # end l loop
@@ -63,8 +63,7 @@ logist = function(slope, bins, midpoint) {
 #' @export
 #'
 #' @examples
-vonB = function(age_bins, k , L_inf, t0, cv) {
-  sd = sqrt(log(cv^2 + 1)) # turn cv to sd
+vonB = function(age_bins, k , L_inf, t0, sd) {
   return(L_inf * (1-exp(-k*(age_bins -t0)) ) + rnorm(1, 0, sd))
 } #end function
 
@@ -79,7 +78,7 @@ vonB = function(age_bins, k , L_inf, t0, cv) {
 #' @export
 #'
 #' @examples
-add_newton <- function(n.newton, ad_model, mle_optim) {
+add_newton = function(n.newton, ad_model, mle_optim) {
   
   tryCatch(expr = for(i in 1:n.newton) {
     g = as.numeric(ad_model$gr(mle_optim$par))

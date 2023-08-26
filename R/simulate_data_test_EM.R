@@ -9,7 +9,7 @@ library(tidyverse)
 n_sims = 5
 n_years = 51
 age_bins = 1:30
-len_bins = seq(20, 85, by = 1)
+len_bins = seq(35, 70, by = 1)
 len_mids = len_bins[1:(length(len_bins) - 1)] + diff(len_bins) / 2 # Get midpoint of lengths
 n_sexes = 2
 n_ages = length(age_bins)
@@ -18,21 +18,21 @@ n_fish_fleets = 2
 n_srv_fleets = 2
 
 # Selex
-fish_len_slope = 0.7
-fish_len_midpoint = 30.5
-srv_len_slope = 0.8
-srv_len_midpoint = 25.5
+fish_len_slope = 0.3
+fish_len_midpoint = 55
+srv_len_slope = 0.5
+srv_len_midpoint = 45
 
 # Von B (F, M)
 k = c(0.15, 0.125) 
 L_inf = c(80, 75)
 t0 = c(-1.31, -1.31)
-vonB_cv = 0.15
+vonB_sd = 1
 
 # Length-weight
-alpha = c(0.00002, 0.00001)
+alpha = c(3e-05, 1e-05)
 beta = c(3, 3)
-lw_cv = 0.15
+lw_sd = 1
 
 # Recruitment
 sigmaRec = 0.5
@@ -51,23 +51,23 @@ read_params_create_OM_objects(spreadsheet_path = here("input", "Sablefish_Inputs
 
 # Construct vonB LAA 
 # Females
-vonB_Female = vonB(age_bins = age_bins, k = k[1], L_inf = L_inf[1], t0 = t0[1], cv = 0)
+vonB_Female = vonB(age_bins = age_bins, k = k[1], L_inf = L_inf[1], t0 = t0[1], sd = 0)
 # Males
-vonB_Male = vonB(age_bins = age_bins, k = k[2], L_inf = L_inf[2], t0 = t0[2], cv = 0)
+vonB_Male = vonB(age_bins = age_bins, k = k[1], L_inf = L_inf[1], t0 = t0[1], sd = 0)
 vonB = matrix(c(vonB_Female, vonB_Male), ncol = 2)
 plot(age_bins, vonB_Female, col = "red", type = "l")
 lines(age_bins, vonB_Male, col = "blue", type = "l")
 
 # Construct LW 
 lw_female = alpha[1] * len_bins^beta[1]
-lw_male = alpha[2] * len_bins^beta[2]
+lw_male = alpha[1] * len_bins^beta[1]
 lw = matrix(c(lw_female, lw_male), ncol = 2)
 plot(len_bins, lw_female, col = "red", type = "l")
 lines(len_bins, lw_male, col = "blue", type = "l")
 
 # Construct WAA relationship
 waa_female = alpha[1] * vonB_Female^beta[1]
-waa_male = alpha[2] * vonB_Female^beta[2]
+waa_male = alpha[1] * vonB_Female^beta[1]
 waa = matrix(c(waa_female, waa_male), ncol = 2)
 plot(age_bins, waa_female, col = "red", type = "l")
 lines(age_bins, waa_male, col = "blue", type = "l")
@@ -76,19 +76,21 @@ lines(age_bins, waa_male, col = "blue", type = "l")
 # Get age-length transition matrix
 # Female
 al_matrix_Female = get_al_trans_matrix(age_bins = age_bins, len_bins = len_bins,
-                          mean_length = vonB_Female, cv = vonB_cv)
+                          mean_length = vonB_Female, sd = vonB_sd)
 # Male
 al_matrix_Male = get_al_trans_matrix(age_bins = age_bins, len_bins = len_bins,
-                                       mean_length = vonB_Male, cv = vonB_cv)
+                                       mean_length = vonB_Male, sd = vonB_sd)
 
 # Combine matrices
 al_matrix = array(c(al_matrix_Female, al_matrix_Male), 
                   dim = c(length(age_bins), length(len_mids), n_sexes))
 
 # Age-Lenght matrix unsexed
-al_matrix_unsexed = get_al_trans_matrix(age_bins = age_bins, len_bins = len_bins,
-                                        mean_length = rowMeans(matrix(c(vonB_Female, vonB_Male), ncol = 2)), 
-                                        cv = vonB_cv)
+al_matrix_unsexed = array(
+  get_al_trans_matrix(age_bins = age_bins, len_bins = len_bins,
+                      mean_length = rowMeans(matrix(c(vonB_Female, vonB_Male), ncol = 2)), 
+                      sd = vonB_sd), dim = c(length(age_bins), length(len_mids), 1)
+)
 
 # Construct selectivity
 # Length-based selectivity - Fishery
@@ -98,18 +100,18 @@ plot(len_mids, fish_len_selex)
 lines(len_mids, srv_len_selex, col = "blue")
 
 # Age-based selectivity converted from length-based selectivity (fishery)
-fish_age_selex_Female = al_matrix[,,1] %*% fish_len_selex
-fish_age_selex_Male = al_matrix[,,2] %*% fish_len_selex
-# fish_age_selex_Female = logist(slope = 0.7, bins = age_bins, midpoint = 4)
-# fish_age_selex_Male = logist(slope = 0.3, bins = age_bins, midpoint = 8)
+# fish_age_selex_Female = al_matrix[,,1] %*% fish_len_selex
+# fish_age_selex_Male = al_matrix[,,2] %*% fish_len_selex
+fish_age_selex_Female = logist(slope = 0.7, bins = age_bins, midpoint = 4)
+fish_age_selex_Male = logist(slope = 0.7, bins = age_bins, midpoint = 4)
 plot(age_bins, fish_age_selex_Female, type = "l", col = "red", ylim = c(0,1))
 lines(age_bins, fish_age_selex_Male, type = "l", col = "blue")
 
 # Age-based selectivity converted from length-based selectivity (survey)
-srv_age_selex_Female = al_matrix[,,1] %*% srv_len_selex
-srv_age_selex_Male = al_matrix[,,2] %*% srv_len_selex
-# srv_age_selex_Female = logist(slope = 3, bins = age_bins, midpoint = 2)
-# srv_age_selex_Male = logist(slope = 0.5, bins = age_bins, midpoint = 5)
+# srv_age_selex_Female = al_matrix[,,1] %*% srv_len_selex
+# srv_age_selex_Male = al_matrix[,,2] %*% srv_len_selex
+srv_age_selex_Female = logist(slope = 3, bins = age_bins, midpoint = 2)
+srv_age_selex_Male = logist(slope = 3, bins = age_bins, midpoint = 2)
 plot(age_bins, srv_age_selex_Female, type = "l", col = "red", ylim = c(0,1))
 lines(age_bins, srv_age_selex_Male, type = "l", col = "blue")
 
@@ -164,10 +166,9 @@ q_Srv = c(0.03, 0.05)
 cv_Srv_Index = c(0.25, 0.25)
 
 # Counters
-fish_counter_age = 1
-fish_counter_len = 1
 srv_counter_age = 1
 srv_counter_len = 1
+comp_across_sex = 0 # 0 = simulate across sexes, 1 = simulate within sexes
 
 RecDevs = array(0, dim = c(n_years-1, 2))
 InitDevs = array(0, dim = c(length(age_bins), 2))
@@ -188,7 +189,7 @@ for(sim in 1:2) {
   } # end first sex loop
   
   # Calculate SSB at time t = 1
-  SSB[1,sim] = sum(NAA[1,,1,sim] * wt_at_age[1,,1,sim] * mat_at_age[1,,1,sim])
+  SSB[1,sim] = sum(NAA[1,,1,sim] * waa[,1] * mat_at_age[1,,1,sim])
   
   for(y in 2:n_years) {
     # Calculate Deaths from Fishery
@@ -203,7 +204,8 @@ for(sim in 1:2) {
         # Recruitment
         if(a == 1) {
           NAA[y,1,s,sim] = beverton_holt_recruit(ssb = SSB[y - 1, sim], 
-                                                 h = h,  r0 = r0, M = M[1]) * RecDevs[y - 1,sim] * sexRatio[s]
+                                                 h = h,  r0 = r0, M = M[1]) * 
+                                                 RecDevs[y - 1,sim] * sexRatio[s]
         } # end if recruitment age
         
         if(a > 1 & a < n_ages) {
@@ -222,7 +224,7 @@ for(sim in 1:2) {
     } # end age loop
     
     # Calculate SSB here
-    SSB[y,sim] = sum(NAA[y,,1,sim] * wt_at_age[y,,1,sim] * mat_at_age[y,,1,sim])
+    SSB[y,sim] = sum(NAA[y,,1,sim] * waa[,1] * mat_at_age[y,,1,sim])
     
 # Observation Model (Fishery) -------------------------------------------------------
     for(f in 1:n_fish_fleets) {
@@ -233,29 +235,37 @@ for(sim in 1:2) {
         # Get Catch at Length
         CAL[y-1,,s,f,sim] = t(al_matrix[,,s]) %*% CAA[y-1,,s,f,sim]
         # Get Total Catch by Sex
-        Total_Catch_Sex[y-1,s,f,sim] = CAA[y-1,,s,f,sim] %*% wt_at_age[y-1,,s,sim]
+        Total_Catch_Sex[y-1,s,f,sim] = CAA[y-1,,s,f,sim] %*% waa[,s]
+        
+        ### Simulate Fishery Compositions (Within sexes) ---------------------------------------
+        if(comp_across_sex == 1) {
+          Fish_AgeComps[y-1,,s,f,sim] = rmultinom(1, size = Fish_Neff_Age[y,f], 
+                                                        prob = CAA[y-1,,s,f,sim]/sum(CAA[y-1,,s,f,sim]))
+          
+          # Fishery Length Compositions
+          Fish_LenComps[y-1,,s,f,sim] = rmultinom(1, size = Fish_Neff_Len[y,f] * n_sexes, 
+                                                        CAL[y-1,,s,f,sim]/sum(CAL[y-1,,s,f,sim]))
+        } # if fishery comps are simulated within sexes
       } # end third sex loop
       
-      ### Simulate Fishery Compositions ---------------------------------------
-      # Getting numbers at age as probability across sexes (this is more reflective
-      # of a real world scenario; doing it as probabilities within sexes assumes equal
-      # probability of selecting a particular sex, which is likely not true)
-      # Get Probability of sampling age classes
-      Prob_FishAge = as.vector(CAA[y-1,,,f,sim]/sum(CAA[y-1,,,f,sim]))
-      Fish_AgeComps[y-1,,,f,sim] = matrix(rmultinom(1, size = Fish_Neff_Age[y,f] * n_sexes, 
-                                                    prob = Prob_FishAge), nrow = n_ages, ncol = n_sexes)
-      
-      # Fishery Length Compositions
-      # Get Probability of sampling length bins
-      Prob_FishLen = as.vector(CAL[y-1,,,f,sim]/sum(CAL[y-1,,,f,sim]))
-      Fish_LenComps[y-1,,,f,sim] = matrix(rmultinom(1, size = Fish_Neff_Len[y,f] * n_sexes, 
-                                                    Prob_FishLen), nrow = n_lens, ncol = n_sexes)
+      ### Simulate Fishery Compositions (Across sexes) ---------------------------------------
+      if(comp_across_sex == 0) {
+        Prob_FishAge = as.vector(CAA[y-1,,,f,sim]/sum(CAA[y-1,,,f,sim]))
+        Fish_AgeComps[y-1,,,f,sim] = matrix(rmultinom(1, size = Fish_Neff_Age[y,f] * n_sexes, 
+                                                      prob = Prob_FishAge), nrow = n_ages, ncol = n_sexes)
+        
+        # Fishery Length Compositions
+        # Get Probability of sampling length bins
+        Prob_FishLen = as.vector(CAL[y-1,,,f,sim]/sum(CAL[y-1,,,f,sim]))
+        Fish_LenComps[y-1,,,f,sim] = matrix(rmultinom(1, size = Fish_Neff_Len[y,f] * n_sexes, 
+                                                      Prob_FishLen), nrow = n_lens, ncol = n_sexes)
+      } # if fishery comps are simulated across sexes
       
       ### Simulate Fishery Index --------------------------------------------------
       # Calculate sd for deviations
       Fish_Index_sd = sqrt(log(cv_Fish_Index[f]^2+1))
       # Sample Fishery Index with lognormal error
-      Fish_Index[y-1,f,sim] = q_Fish[f] * sum(FishAge_Selex[,,f] * NAA[y-1,,,sim] * wt_at_age[y,,,sim]) * 
+      Fish_Index[y-1,f,sim] = q_Fish[f] * sum(FishAge_Selex[,,f] * NAA[y-1,,,sim] * waa) * 
                               exp(rnorm(1, -Fish_Index_sd^2/2, Fish_Index_sd))
 
       # Get Total Catch
@@ -266,38 +276,21 @@ for(sim in 1:2) {
     for(sf in 1:n_srv_fleets) {
       for(s in 1:n_sexes) {
         
-        ### Simulate Growth from Survey Age and Length Compositions ---------------------------
-        # Assuming random sampling here
-        # Get length-at-age samples
-        # for (a in 1:n_ages) {
-        #   if (Srv_AgeComps[y-1,a,s,sf,sim] != 0) {
-        #     n_age_samples = Srv_AgeComps[y-1,a,s,sf,sim]
-        #     sampled_srv_lens = rnorm(n = n_age_samples, mean = vonB[a,s], sd = vonB_cv)
-        #     Srv_LAA[[srv_counter_age]] = data.frame(lens = sampled_srv_lens, ages = a, 
-        #                                          sex = s, srv_fleet = sf, sim = sim)
-        #     srv_counter_age = srv_counter_age + 1
-        #   } # end if statement
-        # } # end third age loop
-        # 
-        # # Get length-weight samples
-        # for(l in 1:n_lens) {
-        #   if (Srv_LenComps[y-1,l,s,f,sim] != 0) {
-        #     n_len_samples = Srv_LenComps[y-1,l,s,sf,sim]
-        #     sampled_srv_wts = rnorm(n = n_len_samples, mean = lw[l,s], sd = lw_cv)
-        #     Srv_LW[[srv_counter_len]] = data.frame(wts = sampled_srv_wts, lens = l, 
-        #                                         sex = s, srv_fleet = sf, sim = sim)
-        #     srv_counter_len = srv_counter_len + 1
-        #   } # end if statement
-        # } # end second length loop
-         
+        ### Simulate Survey Compositions (Within Sexes) ---------------------------------------
+        if(comp_across_sex == 1) {
+          # Survey Age Compositions
+          Prob_SrvAge = (NAA[y-1,,s,sim] * SrvAge_Selex[,s,sf]) / sum((NAA[y-1,,s,sim] * SrvAge_Selex[,s,sf])) # Get probability of sampling ages
+          Srv_AgeComps[y-1,,s,sf,sim] = rmultinom(1, size = Srv_Neff_Age[y,sf], Prob_SrvAge)
+          
+          # Survey Length Compositions
+          # Get probability of sampling lengths
+          Prob_SrvLen = (t(al_matrix[,,s]) %*% Prob_SrvAge) 
+          Srv_LenComps[y-1,,s,sf,sim] = rmultinom(1, size = Srv_Neff_Len[y,sf], Prob_SrvLen)
+        } # if survey comps are simulated within sexes
       } # end fourth sex loop
       
-      ### Simulate Survey Compositions ---------------------------------------
-      # Again, we are sampling from a multinomial as proportions across sexes, given
-      # that the probabilities of selecting a given age and sex are influenced by
-      # the underlying sex-ratio of the population (i.e., if there are more females than males,
-      # we should techicnally be sampling more females just by random chance).
-      
+      ### Simulate Survey Compositions (Across Sexes) ---------------------------------------
+      if(comp_across_sex == 0) {
       # Survey Age Compositions
       Prob_SrvAge = (NAA[y-1,,,sim] * SrvAge_Selex[,,sf]) / sum(NAA[y-1,,,sim] * SrvAge_Selex[,,sf]) # Get probability of sampling ages
       Srv_AgeComps[y-1,,,sf,sim] = matrix(rmultinom(1, size = Srv_Neff_Age[y,sf] * n_sexes,  # sampling 
@@ -314,6 +307,7 @@ for(sim in 1:2) {
       Prob_Len = Prob_SrvLen / sum(Prob_SrvLen) # compute prob of len sampling
       Srv_LenComps[y-1,,,sf,sim] = matrix(rmultinom(1, size = Srv_Neff_Len[y,sf] * n_sexes, # sampling
                                                     Prob_SrvLen), nrow = n_lens, ncol = n_sexes)
+      } # if survey comps are simulated across sexes
       
       ### Simulate Survey Index --------------------------------------------------
       # Calculate sd for deviations
@@ -322,10 +316,35 @@ for(sim in 1:2) {
       Srv_Index[y-1,sf,sim] = q_Srv[sf] * sum(SrvAge_Selex[,,sf] * NAA[y-1,,,sim]) * 
                               exp(rnorm(1, -Srv_Index_sd^2/2, Srv_Index_sd))
       
-    } # end survey fleet loop
+      ### Simulate Growth from Survey Age and Length Compositions ---------------------------
+      for(s in 1:n_sexes) {
+        for (a in 1:n_ages) {
+          if (Srv_AgeComps[y-1,a,s,sf,sim] != 0) {
+            n_age_samples = Srv_AgeComps[y-1,a,s,sf,sim]
+            sampled_srv_lens = rnorm(n = n_age_samples, mean = vonB[a,s], sd = vonB_sd)
+            Srv_LAA[[srv_counter_age]] = data.frame(lens = sampled_srv_lens, ages = age_bins[a],
+                                                  sex = s, srv_fleet = sf, sim = sim)
+            srv_counter_age = srv_counter_age + 1
+          } # end if statement
+        } # end third age loop
+      
+      # Get length-weight samples
+      for(l in 1:n_lens) {
+        if (Srv_LenComps[y-1,l,s,f,sim] != 0) {
+          n_len_samples = Srv_LenComps[y-1,l,s,sf,sim]
+          sampled_srv_wts = rnorm(n = n_len_samples, mean = lw[l,s], sd = lw_sd)
+          Srv_LW[[srv_counter_len]] = data.frame(wts = sampled_srv_wts, lens = len_bins[l],
+                                                 sex = s, srv_fleet = sf, sim = sim)
+          srv_counter_len = srv_counter_len + 1
+          } # end if statement
+        } # end second length loop
+      } # end fifth sex loop
+   } # end survey fleet loop
+  
   } # end year loop
   print(sim)
 } # end sim loop
+
 
 plot(SSB[,1], type = "l")
 plot(CAL[n_years-1,,1,1,1], type = 'l')
@@ -335,117 +354,64 @@ plot(Srv_Index[-n_years,1,1], type = "l")
 plot(Fish_AgeComps[3,,1,1,1], type = "l")
 plot(Srv_LenComps[20,,1,1,1], type = "l")
 
-
 # Get Length weight samples
-# Srv_LAA = data.table::rbindlist(Srv_LAA)
-# Srv_LW = data.table::rbindlist(Srv_LW)
-# 
-# # Plot data
-# ggplot(Srv_LAA %>% filter(sim == 2), aes(x = ages, y = lens, color = sex)) +
-#   geom_point() 
-# ggplot(Srv_LW %>% filter(sim == 1), aes(x = lens, y = wts, color = sex)) +
-#   geom_point() 
+Srv_LAA = data.table::rbindlist(Srv_LAA)
+Srv_LW = data.table::rbindlist(Srv_LW)
 
+ggplot(Srv_LAA %>% filter(sim == 1), aes(x = ages, y = lens, color = factor(sex))) +
+  geom_point() 
+ggplot(Srv_LW %>% filter(sim == 1), aes(x = lens, y = wts, color = factor(sex))) +
+  geom_point() 
+
+plot(get_WAA(LAA_obs_age = Srv_LAA$ages[Srv_LAA$sim == 1], 
+             LAA_obs_len = Srv_LAA$lens[Srv_LAA$sim == 1],
+             WL_obs_len = Srv_LW$lens[Srv_LW$sim == 1],
+             WL_obs_wt = Srv_LW$wts[Srv_LW$sim == 1],
+             ages = age_bins)[[1]])
+lines(waa[,1])
 
 # TMB Testing -------------------------------------------------------------
 
-data = list(
-  
-  # Controls
-  years = 1:(n_years-1),
-  ages = 1:n_ages,
-  lens = 1:n_lens,
-  n_sexes = n_sexes,
-  n_fish_fleets = n_fish_fleets,
-  n_srv_fleets = n_srv_fleets,
-
-  # Fishery
-  obs_catch = as.matrix(Total_Catch[-n_years,,1], dim = c(50, 2)),
-  catch_cv = c(1e-3, 1e-3),
-  obs_fish_index = array(Fish_Index[-n_years,,1], dim = c(50, 2)),
-  fish_index_cv = cv_Fish_Index,
-  obs_fish_age_comps = array(Fish_AgeComps[-n_years,,,,1], dim = c(50, 30, 2, 2)),
-  fish_age_comps_inputN = array(Fish_Neff_Age[-n_years,], dim = c(50, 2)),
-  obs_fish_len_comps = array(Fish_LenComps[-n_years,,,,1], dim = c(50, 65, 2, 2)),
-  fish_len_comps_inputN = array(Fish_Neff_Len[-n_years,], dim = c(50, 2)),
-  
-  # Survey
-  obs_srv_index = array(Srv_Index[-n_years,,1], dim = c(50, 2)),
-  srv_index_cv = cv_Srv_Index,
-  obs_srv_age_comps = array(Srv_AgeComps[-n_years,,,,1], dim = c(50, 30, 2, 2)),
-  srv_age_comps_inputN = array(Srv_Neff_Age[-n_years,], dim = c(50, 2)),
-  obs_srv_len_comps = array(Srv_LenComps[-n_years,,,,1], dim = c(50, 65, 2, 2)),
-  srv_len_comps_inputN = array(Srv_Neff_Len[-n_years,], dim = c(50, 2)),
-  
-  # Biologicals
-  sexRatio = sexRatio,
-  WAA = matrix(wt_at_age[1,,,1], ncol = 2, nrow = 30),
-  MatAA = as.vector(mat_at_age[1,,1,1]),
-  age_len_transition = al_matrix,
-  age_len_transition_unsexed = al_matrix_unsexed,
-  
-  # Data Indicators
-  use_catch = matrix(1, ncol = 2, nrow = 50),
-  use_fish_index = matrix(1, ncol = 2, nrow = 50),
-  use_srv_index = matrix(1, ncol = 2, nrow = 50),
-  use_fish_age_comps = matrix(1, ncol = 2, nrow = 50),
-  use_fish_len_comps = matrix(1, ncol = 2, nrow = 50),
-  use_srv_age_comps = matrix(1, ncol = 2, nrow = 50),
-  use_srv_len_comps = matrix(1, ncol = 2, nrow = 50),
-  p_ow_sex_fish_age = 1,
-  p_ow_sex_fish_len = 1,
-  p_ow_sex_srv_age = 1,
-  p_ow_sex_srv_len = 1,
-  agg_sex_fish_age = 0,
-  agg_sex_srv_age = 0
-)
-
-# Parameters
-parameters = list(
-  ln_M = log(M) * 0.5,
-  ln_InitDevs = log(InitDevs[,1]),
-  ln_RecDevs = log(RecDevs[-50,1]),
-  RecPars = c(log(r0) * 0.5, h),
-  ln_sigmaRec = log(sigma_rec),
-  ln_q_fish = log(q_Fish),
-  ln_q_srv = log(q_Srv),
-  ln_Fy = matrix(log(Fmort[-n_years,,1]), ncol = 2),
-  ln_fish_selpars = array(log(3), dim = c(2, 2, 2)),
-  ln_srv_selpars = array(log(3), dim = c(2, 2, 2))
-)
-
-# Mapping
-map = list(
-  # ln_InitDevs = factor(rep(NA, length(InitDevs[,1]))),
-  # ln_RecDevs = factor(rep(NA, length(RecDevs[-50,1]))),
-  ln_sigmaRec = factor(NA),
-  RecPars = factor(c(1, NA))
-  # ln_q_fish = factor(c(NA, NA)),
-  # ln_q_srv = factor(c(NA, NA)),
-  # ln_Fy = factor(rep(NA, 100)),
-  # ln_M = factor(c(NA, NA))
-  # ln_srv_selpars = factor(rep(NA, 8))
-)
-
 library(TMB)
-# setwd("src")
+setwd("src")
 TMB::compile("Sex_Str_EM.cpp")
 dyn.unload(dynlib('Sex_Str_EM'))
 dyn.load(dynlib('Sex_Str_EM'))
 
-# Make AD Function here
-model_fxn = TMB::MakeADFun(data, parameters, map, random = NULL,
-                            DLL= "Sex_Str_EM", silent = FALSE,  
-                            checkParameterOrder = TRUE, tracepar = TRUE)
+em_inputs = prepare_EM_inputs(sim = 1,
+                              sexRatio = c(0.5, 0.5),
+                              catch_cv = c(1e-3, 1e-3), 
+                              WAA = matrix(waa[,], ncol = 2, nrow = 30),
+                              age_len_transition = al_matrix,
+                              # age_len_transition_unsexed = al_matrix_unsexed, 
+                              n_sexes = 2, 
+                              fish_age_prop = "within",
+                              srv_age_prop = "within",
+                              fish_len_prop = "within",
+                              srv_len_prop = "within", 
+                              # use_fish_len_comps = FALSE,
+                              # use_srv_len_comps = FALSE,
+                              agg_fish_age = FALSE, 
+                              agg_srv_age = FALSE, 
+                              share_M_sex = FALSE, 
+                              sex_specific = TRUE, 
+                              fix_pars = c("h", "ln_sigmaRec"))
+
+model_fxn = TMB::MakeADFun(em_inputs$data, em_inputs$parameters, em_inputs$map, random = NULL,
+                           DLL= "Sex_Str_EM", silent = FALSE,  
+                           checkParameterOrder = TRUE, tracepar = TRUE)
 
 Opt = TMBhelper::fit_tmb( obj = model_fxn,
                           newtonsteps = 3,
                           bias.correct = FALSE,
                           getsd = TRUE,
-                          savedir = paste0(getwd(),"/") )
+                          savedir = NULL)
 
 Report = model_fxn$report(model_fxn$env$last.par.best)
 sum(Report$pred_srv_len_comps[1,,,1])
+
+lines(Report$SSB, type = "l", col = "blue")
+lines(SSB[-n_years,1])
 
 ParHat = model_fxn$env$parList()
 
@@ -455,12 +421,10 @@ exp(Opt$SD$par.fixed[names(Opt$SD$par.fixed) == "ln_M"])
 plot(exp(Opt$SD$par.fixed[names(Opt$SD$par.fixed) == "ln_RecDevs"]), type = "l")
 lines(RecDevs[,1], col = "red")
 
-plot(Report$NAA[3,,1], type = "l", col = "black")
+plot(Report$NAA[50,,1], type = "l", col = "black")
 # lines(Report$NAA[2,,1], type = "l", col = "black")
-lines(NAA[3,,1,1])
+lines(NAA[50,,1,1])
 
-plot(SSB[-n_years,1])
-lines(Report$SSB, type = "l", col = "blue")
 
 par(mfrow = c(2,2))
 plot(Report$NAA[1,,1], type = "l", col = "red")
@@ -479,15 +443,15 @@ Report$pred_fish_age_comps[1,,1,1]
 sum(Report$pred_fish_age_comps[1,,,1])
 
 # Catch
-plot(Report$pred_catch[,2])
-lines(data$obs_catch[,2])
+plot(Report$pred_catch[,1])
+lines(em_inputs$data$obs_catch[,2])
 
 plot(Report$Fish_Slx[1,,1,1], type = "l", col = "blue")
 lines(FishAge_Selex[,1,1])
-plot(Report$Fish_Slx[1,,2,2], type = "l", col = "blue")
-lines(FishAge_Selex[,2,2])
+plot(Report$Fish_Slx[1,,1,2], type = "l", col = "blue")
+lines(FishAge_Selex[,1,2])
 
-plot(Report$Srv_Slx[1,,1,2], type = "l", col = "blue")
+plot(Report$Srv_Slx[1,,1,1], type = "l", col = "blue")
 lines(SrvAge_Selex[,1,2])
 
 plot(Report$pred_fish_index[,1])

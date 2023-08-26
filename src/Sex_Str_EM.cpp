@@ -50,8 +50,7 @@ Type objective_function<Type>::operator() ()
   DATA_MATRIX(WAA); // Array for weight-at-age relationship (n_ages, n_sexes)
   DATA_VECTOR(MatAA); // Vector of maturity-at-age
   DATA_ARRAY(age_len_transition); // Array for age length transition matrix (n_ages, n_lens, n_sexes)
-  DATA_MATRIX(age_len_transition_unsexed); // Matrix for age length transition matrix (n_ages, n_lens)
-  
+
   // Data Indicators -------------------------------
   // Indicator 0 == not fitting, 1 == fit
   DATA_IMATRIX(use_catch); // Using catch data; n_years, n_fish_fleets
@@ -85,10 +84,14 @@ Type objective_function<Type>::operator() ()
   PARAMETER_ARRAY(ln_fish_selpars); // Fishery Selectivity Parameters; n_sexes x n_fish_fleets x n_fish_selpars (2; ln_a50 and ln_k)
   PARAMETER_ARRAY(ln_srv_selpars); // Fishery Selectivity Parameters; n_sexes x n_fish_fleets x n_srv_selpars (2; ln_a50 and ln_k)
   
+  // Reference Point Parameters --------------
+  // PARAMETER(ln_Fmsy); // Fmsy parameter in log space
+
   // PARAMETER TRANSFORMATIONS --------------------
   vector<Type> M = exp(ln_M); // Natural Mortality in normal Space
   Type sigmaRec = exp(ln_sigmaRec); // Recruiment sd in normal space
   Type sigmaRec2 = pow(sigmaRec, 2); // Recruitment Variability in normal Space
+  // Type Fmsy = exp(ln_Fmsy); // Fmsy in normal space
   vector<Type> q_fish = exp(ln_q_fish); // Fishery catchability in normal space
   vector<Type> q_srv = exp(ln_q_srv); // Survey catchability in normal space
   
@@ -126,7 +129,7 @@ Type objective_function<Type>::operator() ()
   vector<Type> catch_sd(n_fish_fleets); // Empty container to store sd calculation
   vector<Type> fish_index_sd(n_fish_fleets); // Empty container to store sd calculation
   vector<Type> srv_index_sd(n_srv_fleets); // Empty container to store sd calculation
-  
+
   // INITIALIZE LIKELIHOODS ---------------------
   matrix<Type> catch_nLL(n_years, n_fish_fleets); // Catch likelihood
   matrix<Type> fish_index_nLL(n_years, n_fish_fleets); // Fishery index likelihood
@@ -196,10 +199,14 @@ Type objective_function<Type>::operator() ()
       // Get starting NAA
       NAA(0, a, s) = exp(RecPars(0)) * exp(-M(s) * Type(a)) * 
                           exp(ln_InitDevs(a)) * sexRatio(s); 
+      
       // Calculate starting SSB
-      if(s == 0) SSB(0) += NAA(0, a, 0) * MatAA(a) * WAA(a,0); 
+      if(s == 0 && n_sexes > 1) SSB(0) += NAA(0, a, 0) * MatAA(a) * WAA(a,0); // sex-specific assessment
+      if(s == 0 && n_sexes == 1) SSB(0) += NAA(0, a, 0) * 0.5* MatAA(a) * WAA(a,0); // sex-aggregated assessment
+      
       // Compute Numbers-at-length in year 1
-      vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, 0, 0, n_lens, 0);
+      vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, 0, 0, n_lens, 0); 
+      
       for(int l = 0; l < n_lens; l++) NAL(0,l,s) = NAL_tmp_vec(l); // Loop through to input
     } // end age loop
   } // end sex loop
@@ -228,17 +235,20 @@ Type objective_function<Type>::operator() ()
                               (NAA(y-1,n_ages-2,s) * SAA(y-1,n_ages-2,s)); // increment into plus-group
         } // plus group
         
-        if(s == 0) SSB(y) += NAA(y,a,0) * MatAA(a) * WAA(a,0); // Calculate SSB here (Indexing 0 for females)
+        if(s == 0 && n_sexes > 1) SSB(y) += NAA(y,a,0) * MatAA(a) * WAA(a,0); // Calculate SSB here (Indexing 0 for females) (sex-specific assessment)
+        if(s == 0 && n_sexes == 1) SSB(y) += NAA(y, a, 0) * 0.5 * MatAA(a) * WAA(a,0); // sex-aggregated assessment
+        
       } // end age loop
       
       // Compute Numbers-at-length 
-      vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, y, 0, n_lens, 0);
+      vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, y, 0, n_lens, 0); // sex-specific assessment
       for(int l = 0; l < n_lens; l++) NAL(y,l,s) = NAL_tmp_vec(l); // Loop through to input
       
     } // end sex loop
   } // end year loop
   
   // Calculate Catch Quantities -----------
+  // vector<Type> CAL_tmp_vec(n_lens);
   for(int f = 0; f < n_fish_fleets; f++) {
     for(int y = 0; y < n_years; y++) {
       for(int s = 0; s < n_sexes; s++) {
@@ -250,7 +260,7 @@ Type objective_function<Type>::operator() ()
           pred_catch(y,f) += CAA(y,a,s,f) * WAA(a,s);
         } // age loop
         // Compute catch-at-length
-        vector<Type> CAL_tmp_vec = Convert_AL(age_len_transition, CAA, s, y, f, n_lens, 1);
+        vector<Type> CAL_tmp_vec = Convert_AL(age_len_transition, CAA, s, y, f, n_lens, 1); // sex-specific assessment
         for(int l = 0; l < n_lens; l++) CAL(y,l,s,f) = CAL_tmp_vec(l); // Loop through to input
       } // sex loop
     } // year loop
@@ -587,13 +597,11 @@ Type objective_function<Type>::operator() ()
       
     } // y loop
   } // sf loop
-  
-  
+
   // Penalty for Population Initialization
   for(int a = 0; a < ln_InitDevs.size(); a ++) {
     rec_nLL -= dnorm(ln_InitDevs(a), -sigmaRec2/Type(2), sigmaRec, true);
   } 
-  
   // Penalty for recruitment deviates
   for(int a = 0; a < ln_RecDevs.size(); a ++) {
     rec_nLL -= dnorm(ln_RecDevs(a), -sigmaRec2/Type(2), sigmaRec, true);
