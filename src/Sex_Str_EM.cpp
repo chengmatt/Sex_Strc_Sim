@@ -17,14 +17,14 @@ Type objective_function<Type>::operator() ()
   // Model Dimensions ------------------------
   DATA_VECTOR(years); // Vector of years
   DATA_VECTOR(ages); // Vector of age bins
-  DATA_VECTOR(lens); // Vector of length bins
+  DATA_VECTOR(len_mids); // Vector of length bins
   DATA_INTEGER(n_sexes); // Number of sexes
   DATA_INTEGER(n_fish_fleets); // Number of fishery fleets
   DATA_INTEGER(n_srv_fleets); // Number of survey fleets
   
   int n_years = years.size(); // Number of years
   int n_ages = ages.size(); // Number of age bins
-  int n_lens = lens.size(); // Number of length bins
+  int n_lens = len_mids.size(); // Number of length bins
   
   // Observations ----------------------------
   // Fishery Observations --------------------

@@ -65,7 +65,7 @@ prepare_EM_inputs = function(sim,
 # Controls ----------------------------------------------------------------
   data$years = 1:(n_years-1)  
   data$ages = 1:n_ages
-  data$lens = 1:n_lens
+  data$len_mids = len_mids
   data$n_sexes = n_sexes
   data$n_fish_fleets = n_fish_fleets
   data$n_srv_fleets = n_srv_fleets
@@ -80,13 +80,13 @@ prepare_EM_inputs = function(sim,
   
   # Sex-specific Assessment with sex-specific comps
   if(sex_specific == TRUE & n_sexes > 1) data$obs_fish_age_comps = array(Fish_AgeComps[-n_years,,,,sim], dim = c(n_years-1, n_ages, n_sexes, n_fish_fleets))
-  if(sex_specific == TRUE & n_sexes > 1) data$obs_fish_len_comps = array(Fish_LenComps[-n_years,,,,sim], dim = c(n_years-1, n_lens, n_sexes, n_fish_fleets))
+  if(sex_specific == TRUE & n_sexes > 1) data$obs_fish_len_comps = array(Fish_LenComps[-n_years,,,,sim], dim = c(n_years-1, length(len_mids), n_sexes, n_fish_fleets))
   
   # Sex-aggregated assessment with sex-aggregated comps
   if(sex_specific == FALSE & n_sexes == 1) data$obs_fish_age_comps = array(apply(Fish_AgeComps[-n_years,,,,sim], c(1, 2, 4), sum), 
                                                                            dim = c(n_years-1, n_ages, n_sexes, n_fish_fleets))
   if(sex_specific == FALSE & n_sexes == 1) data$obs_fish_len_comps = array(apply(Fish_LenComps[-n_years,,,,sim], c(1, 2, 4), sum), 
-                                                                           dim = c(n_years-1, n_lens, n_sexes, n_fish_fleets))
+                                                                           dim = c(n_years-1, length(len_mids), n_sexes, n_fish_fleets))
 
 # Survey Data Inputs ------------------------------------------------------
   data$obs_srv_index = array(Srv_Index[-n_years,,sim], dim = c(n_years-1, n_srv_fleets))
@@ -96,17 +96,17 @@ prepare_EM_inputs = function(sim,
   
   # Sex-Specific Asessment with sex-specific comps
   if(sex_specific == TRUE & n_sexes > 1) data$obs_srv_age_comps = array(Srv_AgeComps[-n_years,,,,sim], dim = c(n_years-1, n_ages, n_sexes, n_srv_fleets))
-  if(sex_specific == TRUE & n_sexes > 1) data$obs_srv_len_comps = array(Srv_LenComps[-n_years,,,,sim], dim = c(n_years-1, n_lens, n_sexes, n_fish_fleets))
+  if(sex_specific == TRUE & n_sexes > 1) data$obs_srv_len_comps = array(Srv_LenComps[-n_years,,,,sim], dim = c(n_years-1, length(len_mids), n_sexes, n_fish_fleets))
   
   # Sex-aggregated assessment with sex-aggregated comps
   if(sex_specific == FALSE & n_sexes == 1) data$obs_srv_age_comps = array(apply(Srv_AgeComps[-n_years,,,,sim], c(1, 2, 4), sum), 
                                                                            dim = c(n_years-1, n_ages, n_sexes, n_srv_fleets))
   if(sex_specific == FALSE & n_sexes == 1) data$obs_srv_len_comps = array(apply(Srv_LenComps[-n_years,,,,sim], c(1, 2, 4), sum), 
-                                                                           dim = c(n_years-1, n_lens, n_sexes, n_srv_fleets))
+                                                                           dim = c(n_years-1, length(len_mids), n_sexes, n_srv_fleets))
 
 # Biological Inputs -------------------------------------------------------
   data$sexRatio = sexRatio
-  data$MatAA = as.vector(mat_at_age[1,,1,1])
+  data$MatAA = as.vector(mat_at_age[,1])
   data$WAA = WAA
   data$age_len_transition = age_len_transition
 

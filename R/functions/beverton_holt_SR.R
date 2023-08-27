@@ -14,11 +14,11 @@ beverton_holt_recruit <- function(ssb, h, r0, M) {
   SPR_N <- vector()
   SPR_SSB0 <- vector()
   
-  for(a in 1:length(ages)) {
+  for(a in 1:n_ages) {
     if(a == 1) SPR_N[a] = 1
-    if(a > 1 & a < length(ages)) SPR_N[a] = SPR_N[a-1] * exp(-M) 
-    if(a == length(ages)) SPR_N[a] = (SPR_N[a-1] * exp(-M)) / (1 - exp(-M))
-    SPR_SSB0[a] = SPR_N[a] * wt_at_age[1, a, 1, 1] * mat_at_age[1, a, 1, 1]
+    if(a > 1 & a < n_ages) SPR_N[a] = SPR_N[a-1] * exp(-M) 
+    if(a == n_ages) SPR_N[a] = (SPR_N[a-1] * exp(-M)) / (1 - exp(-M))
+    SPR_SSB0[a] = SPR_N[a] * waa[a,1] * mat_at_age[a,1]
   }
   
   # Now, get SPR rate

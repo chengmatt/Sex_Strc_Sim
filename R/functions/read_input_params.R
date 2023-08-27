@@ -4,9 +4,8 @@
 # Date: 10/30/22
 
 #' @param spreadsheet_path Path to input spreadsheet
-#' @param n_years Number of years we want our OM to run for
 
-read_params_create_OM_objects <- function(spreadsheet_path, n_years) {
+read_params <- function(spreadsheet_path) {
   
   require(readxl)
   require(tidyverse)
@@ -15,130 +14,56 @@ read_params_create_OM_objects <- function(spreadsheet_path, n_years) {
   source(here("R", "functions", "create_OM_objects.R")) # Create OM objects 
 
 # Controls ----------------------------------------------------------------
-
   ctl <- read_xlsx(spreadsheet_path, sheet = "Controls")
   
   # Read in and save objects in our environment
+  n_years <<- ctl$Value[ctl$Par == "n_years"] # Number of years
   n_sims <<- ctl$Value[ctl$Par == "n_sims"] # Number of simulations
-  N_1 <<- ctl$Value[ctl$Par == "N_1"] # Numbers at year 1 in first age of recruitment
-  n_sex <<- ctl$Value[ctl$Par == "n_sex"] # Numbers of sexes
+  n_sexes <<- ctl$Value[ctl$Par == "n_sexes"] # Numbers of sexes
   n_fish_fleets <<- ctl$Value[ctl$Par == "n_fish_fleets"] # Numbers of fishery fleets
   n_srv_fleets <<- ctl$Value[ctl$Par == "n_srv_fleets"] # Numbers of survey fleets
 
-# Age Bins ----------------------------------------------------------------
-
-  age_pars <- read_xlsx(spreadsheet_path, sheet = "Age_Bins")
-  
+# Age and length Bins ----------------------------------------------------------------
+  bins <- read_xlsx(spreadsheet_path, sheet = "Bins")
   # Read in ages
-  ages <<- age_pars$ages
+  age_bins <<- bins$ages[!is.na(bins$ages)]
+  n_ages <<- length(age_bins)
+  # Read in lens
+  len_bins <<- bins$lens[!is.na(bins$lens)]
+  n_lens <<- length(len_bins)
+  len_mids <<- len_bins[1:(length(len_bins) - 1)] + diff(len_bins) / 2 # Get midpoint of lengths
   
-  # Create OM objects here
-  create_OM_objects(n_years = n_years, n_sims = n_sims, ages = ages, n_sex = n_sex,
-                    n_fish_fleets = n_fish_fleets)
-
 # Maturity at age ---------------------------------------------------------
-
   maturity <- read_xlsx(spreadsheet_path, sheet = "Maturity_At_Age")
+  mat_at_age <<- as.matrix(maturity, ncol = age_bins, nrow = n_sexes)
   
-  # Munge maturity at age - pivot longer
-  maturity_long <- maturity %>% 
-    pivot_longer(!c(Year, Time, Sex), names_to = "Ages", values_to = "Maturity")
-  
-  # If this is time-invariant 
-  if(unique(maturity_long$Time) == "Time_Inv") {
-    
-    # Fill this in
-    for(s in 1:length(unique(maturity_long$Sex))) {
-      
-      for(y in 1:nrow(mat_at_age)) {
-        
-        mat_at_age[y,,s,] <-  maturity_long$Maturity[maturity_long$Sex == s]
-        
-      } # end s sex loop
-
-    } # end i
-    
-  } # end time invariant
-  
-  # If maturity is time-varying
-  if(unique(maturity_long$Time) == "Time_Var") {
-    
-    if(length(unique(maturity_long$Year)) != nrow(mat_at_age)) {
-      stop("Years of Maturity At Age in Excel Sheet != the number of rows in the array")
-    } 
-    
-    # Fill this in
-    for(s in 1:length(unique(maturity_long$Sex))) {
-      
-      for(y in 1:nrow(mat_at_age)) {
-        
-        mat_at_age[y,,s,] <-  maturity_long$Maturity[maturity_long$Sex == s & maturity_long$Year == y]
-        
-      } # end s sex loop
-      
-    } # end i
-    
-  } # end time varying
-  
-  mat_at_age <<- mat_at_age # Output this to environment
-  
-# Weight at Age -----------------------------------------------------------
-
-  weight <- read_xlsx(spreadsheet_path, sheet = "Weight_At_Age")
-  
-  # Munge maturity at age - pivot longer
-  weight_long <- weight %>% 
-    pivot_longer(!c(Year, Time, Sex), names_to = "Ages", values_to = "Weight")
-  
-  # If this is time-invariant 
-  if(unique(weight_long$Time) == "Time_Inv") {
-    
-    # Fill this in
-    for(s in 1:length(unique(weight_long$Sex))) {
-      
-      for(y in 1:nrow(wt_at_age)) {
-        
-        wt_at_age[y,,s,] <-  weight_long$Weight[weight_long$Sex == s]
-        
-      } # end s sex loop
-      
-    } # end i
-    
-  } # end time invariant
-  
-  # If maturity is time-varying
-  if(unique(weight_long$Time) == "Time_Var") {
-    
-    if(length(unique(weight_long$Year)) != nrow(wt_at_age)) {
-      stop("Years of Weight At Age in Excel Sheet != the number of rows in the array")
-    } 
-    
-    # Fill this in
-    for(s in 1:length(unique(weight_long$Sex))) {
-      
-      for(y in 1:nrow(wt_at_age)) {
-        
-        wt_at_age[y,,s,] <-  weight_long$Weight[weight_long$Sex == s & weight_long$Year == y]
-        
-      } # end s sex loop
-      
-    } # end i
-    
-  } # end time varying
-  
-  wt_at_age <<- wt_at_age # Output to environment
-  
+# Growth Parameters -----------------------------------------------------------
+  grwth <- read_xlsx(spreadsheet_path, sheet = "Growth_Param") # females then males
+  k <<- as.vector(grwth[1,1:2]) # brody coefficient
+  L_inf <<- as.vector(grwth[2,1:2]) # Linf parameter
+  t0 <<- as.vector(grwth[3,1:2]) # t0 parameter
+  beta_wl <<- as.vector(grwth[4,1:2]) # beta parameter
+  alpha_wl <<- as.vector(grwth[5,1:2]) # alpha parameter
+  vonB_sd <<- as.vector(grwth[6,1:2]) # vonbert sd
+  wl_sd <<- as.vector(grwth[7,1:2]) # weight length sd
   
 # Recruitment + Mortality-------------------------------------------------------------
-  
   recruitment_pars <- read_xlsx(spreadsheet_path, sheet = "Recruitment_Mortality")
   h <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "h"]) # Steepness (Recruitment at 20% of SSB0)
   r0 <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "r0"] ) # Virgin Recruitment
   sigma_rec <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "sigma_rec"]) # Recruitment variability
-  mu_rec <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "mu_rec"]) # Mean recruitment
-  Mean_M <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "M"]) # Mortality
+  sexRatio <<- rep(as.numeric(recruitment_pars$Value[recruitment_pars$Par == "sexRatio"]), n_sexes) # sexRatio
+  M_Female <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "M_Female"]) # Female natural mortality
+  M_Male <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "M_Male"]) # Male natural mortality
+  M <<- c(M_Female, M_Male) # combined male and female natural mortality
+
+
+# Selectivity -------------------------------------------------------------
+  selex_pars <- read_xlsx(spreadsheet_path, sheet = "Selex") # length-based selectivity
+  fish_len_slope <<- as.numeric(selex_pars$Value[selex_pars$Par == "fish_len_slope"])
+  fish_len_midpoint <<- as.numeric(selex_pars$Value[selex_pars$Par == "fish_len_midpoint"])
+  srv_len_slope <<- as.numeric(selex_pars$Value[selex_pars$Par == "srv_len_slope"])
+  srv_len_midpoint <<- as.numeric(selex_pars$Value[selex_pars$Par == "srv_len_midpoint"])
   
-
   print("### Input parameters have been read in and OM objects have been created ###")
-
 } # end function
