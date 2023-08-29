@@ -17,7 +17,7 @@ Type objective_function<Type>::operator() ()
   // Model Dimensions ------------------------
   DATA_VECTOR(years); // Vector of years
   DATA_VECTOR(ages); // Vector of age bins
-  DATA_VECTOR(len_mids); // Vector of length bins
+  DATA_VECTOR(len_mids); // Vector of length bins (using midpoints)
   DATA_INTEGER(n_sexes); // Number of sexes
   DATA_INTEGER(n_fish_fleets); // Number of fishery fleets
   DATA_INTEGER(n_srv_fleets); // Number of survey fleets
@@ -66,7 +66,8 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(p_ow_sex_srv_len); // Survey Proportions over sexes, or within lengths; 0 = within sex; 1 = over sex
   DATA_INTEGER(agg_sex_fish_age); // Aggregating sexes for fishery ages; 0 == no aggregation, 1 == aggregate
   DATA_INTEGER(agg_sex_srv_age); // Aggregating sexes for survey ages; 0 == no aggregation, 1 == aggregate
-
+  DATA_INTEGER(selex_type); // Selectivity type == 0 (length-based selectivity), == 1 (age-based selectivity)
+  
   // PARAMETER SECTION ---------------------
   // Biological Parameters -----------------
   PARAMETER_VECTOR(ln_M); // Log Natural Mortality; n_sexes
@@ -170,15 +171,32 @@ Type objective_function<Type>::operator() ()
   // MODEL SECTION -------------------------
   
   // Compute Deaths and Removals -----------
+  if(selex_type == 0) {
+    vector <Type> tmp_fishlens_slx(n_lens); // temporary container for fishery length selectivity
+    vector <Type> tmp_fishage_slx(n_ages); // temporary container for fishery age selectivity
+    for(int y = 0; y < n_years; y++) {
+      for(int f = 0; f < n_fish_fleets; f++) {
+        vector <Type> tmp_fish_selpars = ln_fish_selpars.transpose().col(f);
+        for(int l = 0; l < n_lens; l++) tmp_fishlens_slx(l) = Logist(len_mids(l), tmp_fish_selpars);
+        for(int s = 0; s < n_sexes; s++) {
+          tmp_fishage_slx = age_len_transition.col(s).matrix() * tmp_fishlens_slx.matrix();
+          for(int a = 0; a < n_ages; a++) Fish_Slx(y,a,s,f) = tmp_fishage_slx(a);
+        } // end s loop
+      } // end f loop
+    } // end y loop
+  } // end if for length-based selectivity
+  
   for(int y = 0; y < n_years; y++) {
     for(int a = 0; a < n_ages; a++) {
       for(int s = 0; s < n_sexes; s++) {
         for(int f = 0; f < n_fish_fleets; f++) {
           
-          // Compute Fishery Selectivity 
-          vector <Type> tmp_fish_selpars = ln_fish_selpars.transpose().col(s).col(f);
-          Fish_Slx(y,a,s,f) = Logist(ages(a), tmp_fish_selpars);
-            
+          // Compute Fishery Selectivity (age-based)
+          if(selex_type == 1) {
+            vector <Type> tmp_fish_selpars = ln_fish_selpars.transpose().col(s).col(f);
+            Fish_Slx(y,a,s,f) = Logist(ages(a), tmp_fish_selpars);
+          } // age-based selectivity
+          
           // Calculate fishing mortality-at-age
           FAA(y,a,s,f) = exp(ln_Fy(y,f)) * Fish_Slx(y,a,s,f);
           Total_FAA(y,a,s) += FAA(y,a,s,f);
@@ -200,13 +218,15 @@ Type objective_function<Type>::operator() ()
       NAA(0, a, s) = exp(RecPars(0)) * exp(-M(s) * Type(a)) * 
                           exp(ln_InitDevs(a)) * sexRatio(s); 
       
+      if(a == 0) Total_Rec(0) += NAA(0, 0, s); // Get total recruitment - increment to get total recruitment
+      Total_Biom(0) += NAA(0, a, s) * WAA(a,s); // Get total biomass
+
       // Calculate starting SSB
       if(s == 0 && n_sexes > 1) SSB(0) += NAA(0, a, 0) * MatAA(a) * WAA(a,0); // sex-specific assessment
-      if(s == 0 && n_sexes == 1) SSB(0) += NAA(0, a, 0) * 0.5* MatAA(a) * WAA(a,0); // sex-aggregated assessment
+      if(s == 0 && n_sexes == 1) SSB(0) += (NAA(0, a, 0) * MatAA(a) * WAA(a,0)) * 0.5; // sex-aggregated assessment
       
       // Compute Numbers-at-length in year 1
       vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, 0, 0, n_lens, 0); 
-      
       for(int l = 0; l < n_lens; l++) NAL(0,l,s) = NAL_tmp_vec(l); // Loop through to input
     } // end age loop
   } // end sex loop
@@ -234,15 +254,18 @@ Type objective_function<Type>::operator() ()
           NAA(y,n_ages-1,s) = (NAA(y-1,n_ages-1,s) * SAA(y-1,n_ages-1,s)) + // plus group decrement
                               (NAA(y-1,n_ages-2,s) * SAA(y-1,n_ages-2,s)); // increment into plus-group
         } // plus group
-        
-        if(s == 0 && n_sexes > 1) SSB(y) += NAA(y,a,0) * MatAA(a) * WAA(a,0); // Calculate SSB here (Indexing 0 for females) (sex-specific assessment)
-        if(s == 0 && n_sexes == 1) SSB(y) += NAA(y, a, 0) * 0.5 * MatAA(a) * WAA(a,0); // sex-aggregated assessment
-        
       } // end age loop
       
       // Compute Numbers-at-length 
       vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, y, 0, n_lens, 0); // sex-specific assessment
       for(int l = 0; l < n_lens; l++) NAL(y,l,s) = NAL_tmp_vec(l); // Loop through to input
+      
+      // Do residual calculations (total biomass and SSB)
+      for(int a = 0; a < n_ages; a++) {
+        Total_Biom(y) += NAA(y, a, s) * WAA(a,s);
+        if(s == 0 && n_sexes > 1) SSB(y) += NAA(y,a,0) * MatAA(a) * WAA(a,0); // Calculate SSB here (Indexing 0 for females) (sex-specific assessment)
+        if(s == 0 && n_sexes == 1) SSB(y) += (NAA(y, a, 0) * MatAA(a) * WAA(a,0)) * 0.5; // sex-aggregated assessment
+      } // end a loop
       
     } // end sex loop
   } // end year loop
@@ -280,21 +303,40 @@ Type objective_function<Type>::operator() ()
   } // f loop 
   
   // Calculate Survey Index ----------------------------
+  if(selex_type == 0) { // length-based survey selectivity
+    vector <Type> tmp_srvlens_slx(n_lens); // temporary container for fishery length selectivity
+    vector <Type> tmp_srvage_slx(n_ages); // temporary container for fishery age selectivity
+    for(int y = 0; y < n_years; y++) {
+      for(int sf = 0; sf < n_srv_fleets; sf++) {
+        vector <Type> tmp_srv_selpars = ln_srv_selpars.transpose().col(sf);
+        for(int l = 0; l < n_lens; l++) tmp_srvlens_slx(l) = Logist(len_mids(l), tmp_srv_selpars);
+        for(int s = 0; s < n_sexes; s++) {
+          tmp_srvage_slx = age_len_transition.col(s).matrix() * tmp_srvlens_slx.matrix();
+          for(int a = 0; a < n_ages; a++) Srv_Slx(y,a,s,sf) = tmp_srvage_slx(a);
+        } // end s loop
+      } // end sf loop
+    } // end y loop
+  } // end if for length-based selectivity
+  
   for(int sf = 0; sf < n_srv_fleets; sf++) {
     for(int s = 0; s < n_sexes; s++) {
-      // Extract parameters for survey selectivity
-      vector <Type> tmp_srv_selpars = ln_srv_selpars.transpose().col(s).col(sf);
       for(int y = 0; y < n_years; y++) {
         for(int a = 0; a < n_ages; a++) {
-          // Calculate Survey Selectivity
-          Srv_Slx(y,a,s,sf) = Logist(ages(a), tmp_srv_selpars);
+          
+          // Calculate Survey Selectivity (age-based selectivity)
+          if(selex_type == 1) {
+            vector <Type> tmp_srv_selpars = ln_srv_selpars.transpose().col(s).col(sf);
+            Srv_Slx(y,a,s,sf) = Logist(ages(a), tmp_srv_selpars); 
+          } // if age-based survey selectivity
+          
           // Increment to get total index, conditional on survey selectivity
           Srv_AA(y,a,s,sf) = NAA(y,a,s) * Srv_Slx(y,a,s,sf);
           pred_srv_index(y,sf) += exp(ln_q_srv(sf)) * Srv_AA(y,a,s,sf);
-        } // a loop
+          
+        } // a loop 
       } // y loop
     } // s loop
-  } // sf loop
+  } // sf loop  
   
   
   // Calculate Compositions and Related Quantities ------
@@ -629,6 +671,7 @@ Type objective_function<Type>::operator() ()
   REPORT(Srv_Slx);
   REPORT(ssb0);
   REPORT(Total_Rec);
+  REPORT(Total_Biom);
   
   REPORT(jnLL);
   REPORT(rec_nLL);

@@ -26,7 +26,7 @@
 #' @param n_sexes Number of sexes to model
 #' @param sim simulation index
 #' @param sexRatio Sex Ratio
-#'
+#' @param selex_type Selex type for "length" or "age" based
 #' @return
 #' @export
 #'
@@ -52,6 +52,7 @@ prepare_EM_inputs = function(sim,
                              use_srv_len_comps = TRUE,
                              fix_pars,
                              share_M_sex,
+                             selex_type,
                              sex_specific){
   
   if(sex_specific == TRUE & n_sexes == 1) stop("Sex-specific assessment, but n_sexes = 1")
@@ -73,8 +74,8 @@ prepare_EM_inputs = function(sim,
 # Fishery Data Inputs -----------------------------------------------------
   data$obs_catch = as.matrix(Total_Catch[-n_years,,sim], dim = c(n_years-1, n_fish_fleets))
   data$obs_fish_index = array(Fish_Index[-n_years,,sim], dim = c(n_years-1, n_fish_fleets))
-  data$fish_age_comps_inputN = array(Fish_Neff_Age[-n_years,sim], dim = c(n_years-1, n_fish_fleets))
-  data$fish_len_comps_inputN = array(Fish_Neff_Len[-n_years,sim], dim = c(n_years-1, n_fish_fleets))
+  data$fish_age_comps_inputN = array(Fish_Neff_Age[-n_years,], dim = c(n_years-1, n_fish_fleets))
+  data$fish_len_comps_inputN = array(Fish_Neff_Len[-n_years,], dim = c(n_years-1, n_fish_fleets))
   data$catch_cv = catch_cv
   data$fish_index_cv = cv_Fish_Index
   
@@ -83,15 +84,15 @@ prepare_EM_inputs = function(sim,
   if(sex_specific == TRUE & n_sexes > 1) data$obs_fish_len_comps = array(Fish_LenComps[-n_years,,,,sim], dim = c(n_years-1, length(len_mids), n_sexes, n_fish_fleets))
   
   # Sex-aggregated assessment with sex-aggregated comps
-  if(sex_specific == FALSE & n_sexes == 1) data$obs_fish_age_comps = array(apply(Fish_AgeComps[-n_years,,,,sim], c(1, 2, 4), sum), 
+  if(sex_specific == FALSE & n_sexes == 1) data$obs_fish_age_comps = array(apply(Fish_AgeComps[-n_years,,,,sim, drop = FALSE], c(1, 2, 4, 5), sum), 
                                                                            dim = c(n_years-1, n_ages, n_sexes, n_fish_fleets))
-  if(sex_specific == FALSE & n_sexes == 1) data$obs_fish_len_comps = array(apply(Fish_LenComps[-n_years,,,,sim], c(1, 2, 4), sum), 
+  if(sex_specific == FALSE & n_sexes == 1) data$obs_fish_len_comps = array(apply(Fish_LenComps[-n_years,,,,sim, drop = FALSE], c(1, 2, 4, 5), sum), 
                                                                            dim = c(n_years-1, length(len_mids), n_sexes, n_fish_fleets))
 
 # Survey Data Inputs ------------------------------------------------------
   data$obs_srv_index = array(Srv_Index[-n_years,,sim], dim = c(n_years-1, n_srv_fleets))
-  data$srv_age_comps_inputN = array(Srv_Neff_Age[-n_years,sim], dim = c(n_years-1, n_srv_fleets))
-  data$srv_len_comps_inputN = array(Srv_Neff_Len[-n_years,sim], dim = c(n_years-1, n_srv_fleets))
+  data$srv_age_comps_inputN = array(Srv_Neff_Age[-n_years,], dim = c(n_years-1, n_srv_fleets))
+  data$srv_len_comps_inputN = array(Srv_Neff_Len[-n_years,], dim = c(n_years-1, n_srv_fleets))
   data$srv_index_cv = cv_Srv_Index
   
   # Sex-Specific Asessment with sex-specific comps
@@ -99,9 +100,9 @@ prepare_EM_inputs = function(sim,
   if(sex_specific == TRUE & n_sexes > 1) data$obs_srv_len_comps = array(Srv_LenComps[-n_years,,,,sim], dim = c(n_years-1, length(len_mids), n_sexes, n_fish_fleets))
   
   # Sex-aggregated assessment with sex-aggregated comps
-  if(sex_specific == FALSE & n_sexes == 1) data$obs_srv_age_comps = array(apply(Srv_AgeComps[-n_years,,,,sim], c(1, 2, 4), sum), 
+  if(sex_specific == FALSE & n_sexes == 1) data$obs_srv_age_comps = array(apply(Srv_AgeComps[-n_years,,,,sim, drop = FALSE], c(1, 2, 4, 5), sum), 
                                                                            dim = c(n_years-1, n_ages, n_sexes, n_srv_fleets))
-  if(sex_specific == FALSE & n_sexes == 1) data$obs_srv_len_comps = array(apply(Srv_LenComps[-n_years,,,,sim], c(1, 2, 4), sum), 
+  if(sex_specific == FALSE & n_sexes == 1) data$obs_srv_len_comps = array(apply(Srv_LenComps[-n_years,,,,sim, drop = FALSE], c(1, 2, 4, 5), sum), 
                                                                            dim = c(n_years-1, length(len_mids), n_sexes, n_srv_fleets))
 
 # Biological Inputs -------------------------------------------------------
@@ -150,6 +151,8 @@ prepare_EM_inputs = function(sim,
   if(srv_len_prop == "across") data$p_ow_sex_srv_len = 1 # across sexes
   if(agg_srv_age == FALSE) data$agg_sex_srv_age = 0 # don't aggregate survey age comps
   if(agg_srv_age == TRUE) data$agg_sex_srv_age = 1 # aggregate survey age comps
+  if(selex_type == "length") data$selex_type = 0 # length-based selectivity
+  if(selex_type == "age") data$selex_type = 1 # age-based selectivity
   
 # Parameters --------------------------------------------------------------
   parameters$ln_M = vector(length = n_sexes)
@@ -161,9 +164,17 @@ prepare_EM_inputs = function(sim,
   parameters$ln_q_fish = log(q_Fish)
   parameters$ln_q_srv = log(q_Srv)
   parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
-  parameters$ln_fish_selpars = array(log(3), dim = c(n_sexes, n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
-  parameters$ln_srv_selpars = array(log(3), dim = c(n_sexes, n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
+  if(selex_type == "length") {
+    parameters$ln_fish_selpars = array(log(c(1.5, 63)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
+    parameters$ln_srv_selpars = array(log(c(0.25, 55)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
+    # parameters$ln_srv_selpars = array(log(3), dim = c(n_sexes, n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
+    } # length-based selectivity
+  if(selex_type == "age") {
+    parameters$ln_fish_selpars = array(log(3), dim = c(n_sexes, n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
+    parameters$ln_srv_selpars = array(log(3), dim = c(n_sexes, n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
+  } # age-based selectivity
   
+
 # Mapping -----------------------------------------------------------------
   # fixing steepness
   if(sum(fix_pars %in% c("h")) == 1) {
@@ -174,7 +185,7 @@ prepare_EM_inputs = function(sim,
   
   # if we want to share a single M between sexes
   if(share_M_sex == TRUE & sex_specific == TRUE & n_sexes > 1) {
-    map$ln_M = factor(1, 1)
+    map$ln_M = factor(c(1,1))
   } # end if for sharing M between sexes
   
   # Loop through to map parameters

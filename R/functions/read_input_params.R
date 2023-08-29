@@ -64,6 +64,14 @@ read_params <- function(spreadsheet_path) {
   fish_len_midpoint <<- as.numeric(selex_pars$Value[selex_pars$Par == "fish_len_midpoint"])
   srv_len_slope <<- as.numeric(selex_pars$Value[selex_pars$Par == "srv_len_slope"])
   srv_len_midpoint <<- as.numeric(selex_pars$Value[selex_pars$Par == "srv_len_midpoint"])
+  fish_age_slope_f <<- as.numeric(selex_pars$Value[selex_pars$Par == "fish_age_slope_f"])
+  fish_age_slope_m <<- as.numeric(selex_pars$Value[selex_pars$Par == "fish_age_slope_m"])
+  fish_age_midpoint_f <<- as.numeric(selex_pars$Value[selex_pars$Par == "fish_age_midpoint_f"])
+  fish_age_midpoint_m <<- as.numeric(selex_pars$Value[selex_pars$Par == "fish_age_midpoint_m"])
+  srv_age_slope_f <<- as.numeric(selex_pars$Value[selex_pars$Par == "srv_age_slope_f"])
+  srv_age_slope_m <<- as.numeric(selex_pars$Value[selex_pars$Par == "srv_age_slope_m"])
+  srv_age_midpoint_f <<- as.numeric(selex_pars$Value[selex_pars$Par == "srv_age_midpoint_f"])
+  srv_age_midpoint_m <<- as.numeric(selex_pars$Value[selex_pars$Par == "srv_age_midpoint_m"])
   
   print("### Input parameters have been read in and OM objects have been created ###")
 } # end function

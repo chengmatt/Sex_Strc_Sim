@@ -12,6 +12,7 @@ simulate_data = function(spreadsheet_path,
                          q_Fish = 0.025,
                          cv_Fish_Index = 0.25,
                          q_Srv = 0.05,
+                         selex_type,
                          cv_Srv_Index = 0.25
                          ) {
   
@@ -33,6 +34,7 @@ simulate_data = function(spreadsheet_path,
   Total_Catch_Sex = array(0, dim = c(n_years, n_sexes, n_fish_fleets, n_sims)) # Sex-Specific Catch
   Total_Catch = array(0, dim = c(n_years, n_fish_fleets, n_sims)) # Aggregated Catch
   SSB = array(0, dim = c(n_years, n_sims)) # Spawning stock biomass
+  Total_Biom = array(0, dim = c(n_years, n_sims)) # Total Biomass
   RecDevs = array(0, dim = c(n_years-1, n_sims)) # recruitment deviates
   InitDevs = array(0, dim = c(n_ages, n_sims)) # initial deviates
   
@@ -92,28 +94,38 @@ simulate_data = function(spreadsheet_path,
 # Selectivity Parameterization --------------------------------------------
 
   # Construct selectivity age-based and length-based
-  # fishery selex
-  fish_len_selex = matrix(logist(slope = fish_len_slope,
-                                 bins = rep(len_mids,n_fish_fleets), midpoint = fish_len_midpoint),
-                                 nrow = length(len_mids), ncol = n_fish_fleets)
-  for(f in 1:n_fish_fleets) { # convert length to age
-    for(s in 1:n_sexes) {
-      FishAge_Selex[,s,f] = al_matrix[,,s] %*% fish_len_selex[,f]
-    } # end s loop for sexes
-  } # end f loop for fishery fleets
-
-  # survey selex
-  srv_len_selex = matrix(logist(slope = srv_len_slope,
-                            bins = rep(len_mids,n_fish_fleets), midpoint = srv_len_midpoint),
-                            nrow = length(len_mids), ncol = n_srv_fleets)
-  for(sf in 1:n_srv_fleets) { # convert length to age
-    for(s in 1:n_sexes) {
-      SrvAge_Selex[,s,sf] = al_matrix[,,s] %*% srv_len_selex[,sf]
-    } # end s loop for sexes
-  } # end f loop for survey fleets
+  if(selex_type == "length") {
+    # fishery selex
+    fish_len_selex = matrix(logist(slope = fish_len_slope,
+                                   bins = rep(len_mids,n_fish_fleets), midpoint = fish_len_midpoint),
+                            nrow = length(len_mids), ncol = n_fish_fleets)
+    for(f in 1:n_fish_fleets) { # convert length to age
+      for(s in 1:n_sexes) { # standardize to 1
+        FishAge_Selex[,s,f] = al_matrix[,,s] %*% fish_len_selex[,f] 
+      } # end s loop for sexes
+    } # end f loop for fishery fleets
+    
+    # survey selex
+    srv_len_selex = matrix(logist(slope = srv_len_slope,
+                                  bins = rep(len_mids,n_fish_fleets), midpoint = srv_len_midpoint),
+                           nrow = length(len_mids), ncol = n_srv_fleets)
+    for(sf in 1:n_srv_fleets) { # convert length to age
+      for(s in 1:n_sexes) { # standardize to 1
+        SrvAge_Selex[,s,sf] = al_matrix[,,s] %*% srv_len_selex[,sf]
+      } # end s loop for sexes
+    } # end f loop for survey fleets
+  } # end length based selectivity
+  
+  if(selex_type == "age") { # age-based selectivity
+    fish_age_selex_Female = logist(slope = fish_age_slope_f, bins = age_bins, midpoint = fish_age_midpoint_f)
+    fish_age_selex_Male = logist(slope = fish_age_slope_m, bins = age_bins, midpoint = fish_age_midpoint_m)
+    srv_age_selex_Female = logist(slope = srv_age_slope_f, bins = age_bins, midpoint = srv_age_midpoint_f)
+    srv_age_selex_Male = logist(slope = srv_age_slope_m, bins = age_bins, midpoint = srv_age_midpoint_m)
+    FishAge_Selex = array(c(fish_age_selex_Female, fish_age_selex_Male),dim = c(length(age_bins), n_sexes, n_fish_fleets))
+    SrvAge_Selex = array(c(srv_age_selex_Female, srv_age_selex_Male),dim = c(length(age_bins), n_sexes, n_srv_fleets))
+  } # end if for age-based selectivity 
   
   Fmort = array(seq(0.1, 0.001, length.out = n_years), dim = c(n_years, n_fish_fleets, n_sims))
-  
 
 # Start Simulation --------------------------------------------------------
 
@@ -133,6 +145,7 @@ simulate_data = function(spreadsheet_path,
     
     # Calculate SSB at time t = 1
     SSB[1,sim] = sum(NAA[1,,1,sim] * waa[,1] * mat_at_age[,1])
+    Total_Biom[1, sim] = sum(NAA[1,,,sim] * waa[,]) # get total biomass at time t1
     
     for(y in 2:n_years) {
       # Calculate Deaths from Fishery
@@ -168,6 +181,7 @@ simulate_data = function(spreadsheet_path,
       
       # Calculate SSB here
       SSB[y,sim] = sum(NAA[y,,1,sim] * waa[,1] * mat_at_age[,1])
+      Total_Biom[y,sim] = sum(NAA[y,,,sim] * waa[,]) # get total biomass here
       
       # Observation Model (Fishery) -------------------------------------------------------
       for(f in 1:n_fish_fleets) {
@@ -298,6 +312,7 @@ simulate_data = function(spreadsheet_path,
   Total_Catch_Sex <<- Total_Catch_Sex
   Total_Catch <<- Total_Catch
   SSB <<- SSB
+  Total_Biom <<- Total_Biom
   RecDevs <<- RecDevs
   InitDevs <<- InitDevs
   

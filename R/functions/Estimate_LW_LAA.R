@@ -136,5 +136,6 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
   # Get weight at age now
   winf = (alpha * linf^beta)
   waa = winf * (1 - exp(-k * (ages - t0)))^beta
-  return(list(waa, linf, k, t0, laa_sd, alpha, beta))
+  laa = linf * (1 - exp(-k * (ages - t0)))
+  return(list(waa, laa, linf, k, t0, laa_sd, alpha, beta))
 } # end function

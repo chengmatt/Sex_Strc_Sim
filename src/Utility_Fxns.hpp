@@ -14,6 +14,18 @@ Type Logist(Type age, // age integer
   return Selex;
 } // end fxn
 
+// Function to compute logistic function using the a50 and a95 parameterization
+template <class Type> 
+Type Logist_19(Type age, // age integer
+            vector<Type> ln_pars // vector of parameters n = 2
+) {
+  // Transform parameters
+  Type a50 = exp(ln_pars(0));
+  Type a95 = exp(ln_pars(1));
+  Type Selex = Type(1.0) / (Type(1.0) + pow(Type(19.0), (a50 - age) / a95));
+  return Selex;
+} // end fxn
+
 // Get SBPR in numbers
 template <class Type> 
 vector<Type> Get_SBPR_N(int n_ages, // integer of max age

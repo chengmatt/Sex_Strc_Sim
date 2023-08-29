@@ -51,6 +51,21 @@ logist = function(slope, bins, midpoint) {
   return(1 / (1 + exp(-slope * (bins - midpoint)) ))
 } # end function
 
+#' Title Logistic Function with a95 parameterization
+#'
+#' @param a95 age at 95% selex
+#' @param bins Number of bins
+#' @param a50 Midpoint of logistic function
+#'
+#' @return
+#' @export
+#'
+#' @examples
+
+logist_19 = function(a50, bins, a95) {
+  return(1 / (1 + 19 ^ ((a50 - bins) / a95) ))
+} # end function
+
 #' Title Von Bertalannfy Growth Function
 #'
 #' @param age_bins vector of ages
@@ -79,6 +94,80 @@ vonB = function(age_bins, k , L_inf, t0, sd) {
 #'
 #' @examples
 add_newton = function(n.newton, ad_model, mle_optim) {
+  
+  tryCatch(expr = for(i in 1:n.newton) {
+    g = as.numeric(ad_model$gr(mle_optim$par))
+    h = optimHess(mle_optim$par, fn = ad_model$fn, gr = ad_model$gr)
+    mle_optim$par = mle_optim$par - solve(h,g)
+    mle_optim$objective = ad_model$fn(mle_optim$par)
+  }, error = function(e){e})
+  
+}
+
+
+
+#' Title Get biological information for sex-aggregated and sex-specific WAA, LAA, and age-length transition matrix
+#'
+#' @param n_sexes Number of sexes
+#' @param n_ages Number of ages
+#' @param age_bins Vector of ages
+#' @param len_mids Vector of length midpoints
+#' @param LAA Dataframe with length-at-age data
+#' @param LW Dataframe with weight-length data
+#' @param sim Simulation number
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_biologicals = function(n_sexes, n_ages, age_bins, len_mids, LAA, LW, sim) {
+  
+  # Get WAA values from data
+  waa_sex = matrix(0, ncol = n_sexes, nrow = n_ages)
+  waa_nosex = matrix(0, ncol = 1, nrow = n_ages)
+  al_matrix_sexsp = array(0, dim = c(c(length(age_bins), length(len_mids), n_sexes)))
+  al_matrix_sexagg = array(0, dim = c(c(length(age_bins), length(len_mids), 1)))
+  
+  for(s in 1:n_sexes) {
+    
+    # Get sex-specific WAA
+    waa_sex_sp = get_WAA(LAA_obs_age = LAA$ages[LAA$sim == sim & LAA$sex == s], 
+                         LAA_obs_len = LAA$lens[LAA$sim == sim & LAA$sex == s],
+                         WL_obs_len = LW$lens[LW$sim == sim & LAA$sex == s],
+                         WL_obs_wt = LW$wts[LW$sim == sim & LAA$sex == s],
+                         ages = age_bins)
+    
+    waa_sex[,s] = waa_sex_sp[[1]] # waa
+    al_matrix_sexsp[,,s] = get_al_trans_matrix(age_bins, len_bins, waa_sex_sp[[2]], waa_sex_sp[[6]]) # get al transition matrix
+    
+    if(s == n_sexes) { # sex-aggregated waa
+      waa_sex_agg = get_WAA(LAA_obs_age = LAA$ages[LAA$sim == sim], 
+                            LAA_obs_len = LAA$lens[LAA$sim == sim],
+                            WL_obs_len = LW$lens[LW$sim == sim],
+                            WL_obs_wt = LW$wts[LW$sim == sim],
+                            ages = age_bins)
+      waa_nosex[,1] = waa_sex_agg[[1]] # get waa
+      al_matrix_sexagg[,,1] = get_al_trans_matrix(age_bins, len_bins, waa_sex_agg[[2]], waa_sex_agg[[6]])
+    } # if sex-aggregated waa
+  } # end s loop
+  
+  return(list(waa_nosex = waa_nosex, al_matrix_sexagg = al_matrix_sexagg, 
+              waa_sex = waa_sex, al_matrix_sexsp = al_matrix_sexsp))
+} # end function
+
+
+#' Title Take additional newton steps with TMB model
+#'
+#' @param n.newton number of additional newton steps we want to take
+#' @param ad_model MakeADFUN model object
+#' @param mle_optim Optimized model object
+#'
+#' @return
+#' @export
+#'
+#' @examples
+
+add_newton <- function(n.newton, ad_model, mle_optim) {
   
   tryCatch(expr = for(i in 1:n.newton) {
     g = as.numeric(ad_model$gr(mle_optim$par))
