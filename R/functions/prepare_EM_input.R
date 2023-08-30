@@ -164,6 +164,7 @@ prepare_EM_inputs = function(sim,
   parameters$ln_q_fish = log(q_Fish)
   parameters$ln_q_srv = log(q_Srv)
   parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
+  parameters$ln_Fmsy = log(0.1) # fmsy in log space
   if(selex_type == "length") {
     parameters$ln_fish_selpars = array(log(c(1.5, 63)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
     parameters$ln_srv_selpars = array(log(c(0.25, 55)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
@@ -174,7 +175,6 @@ prepare_EM_inputs = function(sim,
     parameters$ln_srv_selpars = array(log(3), dim = c(n_sexes, n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
   } # age-based selectivity
   
-
 # Mapping -----------------------------------------------------------------
   # fixing steepness
   if(sum(fix_pars %in% c("h")) == 1) {

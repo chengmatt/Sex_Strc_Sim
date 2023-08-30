@@ -86,13 +86,13 @@ Type objective_function<Type>::operator() ()
   PARAMETER_ARRAY(ln_srv_selpars); // Fishery Selectivity Parameters; n_sexes x n_fish_fleets x n_srv_selpars (2; ln_a50 and ln_k)
   
   // Reference Point Parameters --------------
-  // PARAMETER(ln_Fmsy); // Fmsy parameter in log space
+  PARAMETER(ln_Fmsy); // Fmsy parameter in log space
 
   // PARAMETER TRANSFORMATIONS --------------------
   vector<Type> M = exp(ln_M); // Natural Mortality in normal Space
   Type sigmaRec = exp(ln_sigmaRec); // Recruiment sd in normal space
   Type sigmaRec2 = pow(sigmaRec, 2); // Recruitment Variability in normal Space
-  // Type Fmsy = exp(ln_Fmsy); // Fmsy in normal space
+  Type Fmsy = exp(ln_Fmsy); // Fmsy in normal space
   vector<Type> q_fish = exp(ln_q_fish); // Fishery catchability in normal space
   vector<Type> q_srv = exp(ln_q_srv); // Survey catchability in normal space
   
@@ -139,6 +139,7 @@ Type objective_function<Type>::operator() ()
   array<Type> srv_age_comp_nLL(n_years, n_sexes, n_srv_fleets); // Survey age comps likelihood
   array<Type> fish_len_comp_nLL(n_years, n_sexes, n_fish_fleets); // Fishery length comps likelihood
   array<Type> srv_len_comp_nLL(n_years, n_sexes, n_srv_fleets); // Survey length comps likelihood
+  Type Fmsy_nLL = 0; // Fmsy likelihood for minimzing
   Type rec_nLL = 0; // Recruitment likelihood penalty 
   Type sexRatio_nLL = 0; // Sex-Ratio likelihood penalty
   Type jnLL = 0; // Joint Negative log Likelihood
@@ -241,8 +242,8 @@ Type objective_function<Type>::operator() ()
     for(int s = 0; s < n_sexes; s++) {
       
       // Recruitment 
-      Type ln_Det_BH_Rec = Get_Det_BH_Rec(RecPars, ssb0, SSB(y-1)); // deterministic beverton-holt recruitment
-      NAA(y, 0, s) =  exp(ln_Det_BH_Rec + ln_RecDevs(y-1)) * sexRatio(s); // recruitment with process error
+      Type Det_BH_Rec = Get_Det_BH_Rec(RecPars, ssb0, SSB(y-1)); // deterministic beverton-holt recruitment
+      NAA(y, 0, s) =  Det_BH_Rec * exp(ln_RecDevs(y-1)) * sexRatio(s); // recruitment with process error
       Total_Rec(y) += NAA(y, 0, s); // Get total recruitment - increment to get total recruitment
       
       for(int a = 1; a < n_ages; a++) {
@@ -649,10 +650,23 @@ Type objective_function<Type>::operator() ()
     rec_nLL -= dnorm(ln_RecDevs(a), -sigmaRec2/Type(2), sigmaRec, true);
   } 
   
+  // Get reference values for computing FMSY
+  vector<Type> Ref_Selex = Fish_Slx.col(0).col(0).transpose().col(n_years - 1); // Get reference selectivity
+  vector<Type> Init_N = NAA.col(0).transpose().col(0); // initial numbers at age (sex-specific)
+  if(n_sexes == 1) Init_N *= Type(0.5); // initial numbers at age (sex-aggregated)
+  vector<Type> Ref_WAA = WAA.col(0); // Get weight at age for females
+  Type Ref_M = M(0); // Get M for females
+  
+  // Compute SPR, YPR, and BMSY quantities
+  Type SPR_MSY = Get_SBPR(Fmsy, Ref_Selex, Ref_M, Ref_WAA, MatAA, ages); // get spr for fmsy
+  Type YPR_MSY = Get_YPR(Fmsy, Ref_Selex, Ref_M, Ref_WAA, ages); // get ypr for fmsy
+  Type BMSY = Get_SSBe(Fmsy, Init_N, Ref_Selex, Ref_M, Ref_WAA, MatAA, ages); // Get bmsy
+  Fmsy_nLL = (-1.0 * log((YPR_MSY * BMSY)/SPR_MSY)); // minimization criteria for fmsy
+  
   // Compute joint likelihood
   jnLL = rec_nLL + sum(catch_nLL) + sum(fish_index_nLL) + sum(fish_age_comp_nLL) +
          sum(fish_len_comp_nLL) + sum(srv_index_nLL) + sum(srv_age_comp_nLL) +
-         sum(srv_len_comp_nLL);
+         sum(srv_len_comp_nLL) + Fmsy_nLL;
   
   // REPORT SECTION ------------------------
   REPORT(NAA);
@@ -672,8 +686,9 @@ Type objective_function<Type>::operator() ()
   REPORT(ssb0);
   REPORT(Total_Rec);
   REPORT(Total_Biom);
-  
+
   REPORT(jnLL);
+  REPORT(Fmsy_nLL);
   REPORT(rec_nLL);
   REPORT(catch_nLL);
   REPORT(fish_index_nLL);
@@ -682,6 +697,9 @@ Type objective_function<Type>::operator() ()
   REPORT(srv_index_nLL);
   REPORT(srv_age_comp_nLL);
   REPORT(srv_len_comp_nLL);
+  REPORT(SPR_MSY);
+  REPORT(YPR_MSY);
+  REPORT(BMSY)
   
   // DERIVED QUANTITIES -------------------
   ADREPORT(SSB);

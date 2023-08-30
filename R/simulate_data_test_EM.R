@@ -26,6 +26,7 @@
   lines(FishAge_Selex[,2,1])
   plot(SrvAge_Selex[,1,1])
   lines(SrvAge_Selex[,2,1])
+  plot(NAA[1,,1,5])
   
   # Get Length weight samples
   Srv_LAA = data.table::rbindlist(Srv_LAA)
@@ -49,6 +50,7 @@
   ssb_all = data.frame()
   m_all = data.frame()
   rec_all = data.frame()
+  fmsy_all = data.frame()
   
   for(sim in 1:n_sims) {
     
@@ -61,10 +63,10 @@
                                   WAA = biologicals$waa_sex,
                                   age_len_transition = biologicals$al_matrix_sexsp,
                                   n_sexes = 2,
-                                  fish_age_prop = "across",
-                                  srv_age_prop = "across",
-                                  fish_len_prop = "across",
-                                  srv_len_prop = "across",
+                                  fish_age_prop = "within",
+                                  srv_age_prop = "within",
+                                  fish_len_prop = "within",
+                                  srv_len_prop = "within",
                                   agg_fish_age = FALSE,
                                   agg_srv_age = FALSE,
                                   share_M_sex = FALSE,
@@ -83,17 +85,21 @@
     model_fxn$rep <- model_fxn$report(model_fxn$env$last.par.best) # Need to pass both fixed and random effects!!!
     sd_rep <- TMB::sdreport(model_fxn)
     
-    Report = model_fxn$rep # get report
-    SSBres = data.frame(Pred = Report$SSB, True = SSB[-n_years,sim], years = 1:length(Report$SSB))
-    ssb_all = rbind(SSBres, ssb_all)
-    TotalBiomres = data.frame(Pred = Report$Total_Biom, True = Total_Biom[-n_years,sim], years = 1:length(Report$Total_Biom))
-    totalbiom_all = rbind(TotalBiomres, totalbiom_all)
-    TotalRecres = data.frame(Pred = Report$Total_Rec, True = rowSums(NAA[-n_years,1,,sim]), years = 1:length(Report$Total_Biom))
-    totalrec_all = rbind(totalrec_all, TotalRecres)
-    Mest = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "ln_M"]), True = M, Sex = rep(c("F", "M")))
-    recest = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "RecPars"]), True = r0)
-    rec_all = rbind(rec_all, recest)
-    m_all = rbind(Mest, m_all)
+    if(sum(is.na(sd_rep$sd)) == 0) {
+      Report = model_fxn$rep # get report
+      SSBres = data.frame(Pred = Report$SSB, True = SSB[-n_years,sim], years = 1:length(Report$SSB))
+      ssb_all = rbind(SSBres, ssb_all)
+      TotalBiomres = data.frame(Pred = Report$Total_Biom, True = Total_Biom[-n_years,sim], years = 1:length(Report$Total_Biom))
+      totalbiom_all = rbind(TotalBiomres, totalbiom_all)
+      TotalRecres = data.frame(Pred = Report$Total_Rec, True = rowSums(NAA[-n_years,1,,sim]), years = 1:length(Report$Total_Biom))
+      totalrec_all = rbind(totalrec_all, TotalRecres)
+      Mest = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "ln_M"]), True = M, Sex = rep(c("F", "M")))
+      recest = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "RecPars"]), True = r0)
+      rec_all = rbind(rec_all, recest)
+      m_all = rbind(Mest, m_all)
+      fmsy_est = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "ln_Fmsy"]))
+      fmsy_all <- rbind(fmsy_est, fmsy_all)
+    }
   } # end sim
 
 plot(Report$Fish_Slx[1,,1,1])
@@ -142,10 +148,10 @@ totalbiom_all %>%
 
 totalrec_all %>% 
   group_by(years) %>% 
-  mutate(RE = (Pred - True) / True,
-         median = median(RE),
-         lwr95 = quantile(RE, 0.025),
-         upr95 = quantile(RE, 0.975)) %>% 
+  mutate(RE = (Pred - True) / True) %>% 
+  summarize(median = median(RE),
+            lwr95 = quantile(RE, 0.025),
+            upr95 = quantile(RE, 0.975)) %>% 
   ggplot(aes(x = years, y = median, ymin = lwr95, ymax = upr95)) +
   geom_line() +
   geom_ribbon(alpha = 0.3) +

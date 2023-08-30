@@ -177,3 +177,47 @@ add_newton <- function(n.newton, ad_model, mle_optim) {
   }, error = function(e){e})
   
 }
+
+#' Title Run Estimation Model
+#'
+#' @param data list of data inputs
+#' @param parameters list of parameter random starting values
+#' @param map map to fix parameters
+#' @param n.newton number of additional newton steps to take
+#' @param iter.max number of iterations for nlminb to run (default = 1e5)
+#' @param eval.max number of nlminb evaluations (default = 1e5)
+#' @param silent whether or not to print stuff out
+#' @param getsdrep whether to return a sdreport
+#' @param DLL DLL character
+#' @return
+#' @export
+#'
+#' @examples
+
+run_EM <- function(data, parameters, map, n.newton, random = NULL, DLL,
+                   iter.max = 1e6, eval.max = 1e6, 
+                   silent = TRUE, getsdrep = TRUE) {
+  
+  # Make AD Function here
+  model_fxn <- TMB::MakeADFun(data, parameters, map, random = random,
+                              DLL= DLL, silent = silent, 
+                              checkParameterOrder = TRUE, tracepar = TRUE)
+  
+  # Optimize model here w/ nlminb
+  mle_optim <- stats::nlminb(model_fxn$par, model_fxn$fn, model_fxn$gr, 
+                             control = list(iter.max = iter.max, eval.max = eval.max))
+  
+  # Take additional newton steps
+  add_newton(n.newton = n.newton, ad_model = model_fxn, mle_optim = mle_optim)
+  
+  if(getsdrep == TRUE) {
+    # Get report with mle optimized parameters
+    model_fxn$rep <- model_fxn$report(model_fxn$env$last.par.best) # Need to pass both fixed and random effects!!!
+    # Get sd report here from TMB
+    sd_rep <- TMB::sdreport(model_fxn)
+  } # if get sdrep = TRUE
+  
+  return(list(model_fxn = model_fxn, mle_optim = mle_optim, sd_rep = sd_rep))
+  
+}
+  

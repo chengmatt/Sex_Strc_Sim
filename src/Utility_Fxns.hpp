@@ -54,8 +54,8 @@ Type Get_Det_BH_Rec(vector<Type> RecPars, // vector of recruitment parameters (l
   // Define BH components
   Type BH_first_part = Type(4) * h * R0 * SSB;
   Type BH_sec_part = (ssb0 * (Type(1) - h)) + SSB * ((Type(5)*h) - 1);
-  Type ln_BH_tmp_rec = log(BH_first_part/BH_sec_part); // Deterministic BH
-  return ln_BH_tmp_rec;
+  Type BH_tmp_rec = BH_first_part/BH_sec_part; // Deterministic BH
+  return BH_tmp_rec;
 } // end function
 
 // Go from CV to SD
@@ -89,3 +89,97 @@ vector<Type> Convert_AL(array<Type> age_len_trans_mat, // age length transition 
   return lens;
 } // end function
 
+// Get Spawning Biomass Per Recruit
+template<class Type>
+Type Get_SBPR(Type F, // trial F value
+             vector<Type> selex, // vector of age-specific selectivities
+             Type M, // Female natural mortality
+             vector<Type> waa, // vector of weight at ages
+             vector<Type> MatAA, // vector of maturity at ages
+             vector<Type> ages // vector of ages
+               ) {
+  
+  Type Na = 1; // Define initial population
+  vector<Type> Za = (selex * F) + M; // Get total mortality
+  vector<Type> Srva = exp(-Za); // Get survival
+  Type SBPR = Na * exp(-Za(0)) * waa(0) * MatAA(0); // initialize SPR with first age class
+  
+  // Loop through to get the rest of the quantities
+  for(int a = 1; a < (ages.size() * 4); a++) {
+    if(a >= ages.size() ) { // if a is at the max iteration
+      SBPR += Na * exp(-Za(ages.size() - 1)) * waa(ages.size() - 1) * MatAA(ages.size() - 1);
+      Na *= Srva(ages.size() - 1);
+    } else {
+      SBPR += Na * exp(-Za(a)) * waa(a) * MatAA(a);
+      Na *= Srva(a);
+    } // end if else for a >= max iteration
+  } // end a loop
+  
+  return SBPR;
+} // end get spr function
+
+
+// Get Yield Per Recruit
+template<class Type>
+Type Get_YPR(Type F, // trial F value
+             vector<Type> selex, // vector of age-specific selectivities
+             Type M, // Female natural mortality
+             vector<Type> waa, // vector of weight at ages
+             vector<Type> ages // vector of ages
+               ) {
+  
+  Type Na = 1; // initialize population
+  Type YPR = ((selex(0) * F) / (M + selex(0) * F)) * // Get YPR for the first age class
+             Na * (Type(1) - exp(-(M + selex(0) * F))) * waa(0);
+  // Finish filling in quantities w/ age loop
+  for(int a = 1; a < ages.size() * 4; a++) {
+    if(a >= ages.size()) { // if max iteration
+      Na *= exp(-(M + selex(ages.size() - 1) * F));
+      YPR += (selex(ages.size() - 1) * F) / (M + selex(ages.size() - 1) * F) * 
+             Na * (Type(1) - exp(-(M + selex(ages.size() - 1) * F))) * waa(ages.size() - 1);
+    } else{
+      Na *= exp(-(M + selex(a) * F));
+      YPR += (selex(a) * F) / (M + selex(a) * F) * 
+             Na * (Type(1) - exp(-(M + selex(a) * F))) * waa(a);
+    } // end if else for max iteration loop
+  } // end a loop
+  
+  return YPR;
+} // end Get_YPR function
+  
+  
+// Get equilibrium SSB for Bmsy
+template<class Type>
+Type Get_SSBe(Type F, // trial F value
+              vector<Type> N_init, // vector of inital numbers at age
+              vector<Type> selex, // vector of age-specific selectivities
+              Type M, // Female natural mortality
+              vector<Type> waa, // vector of weight at ages
+              vector<Type> MatAA, // vector of maturity at ages
+              vector<Type> ages // vector of ages
+                ) {
+  // Set up
+  Type ssbe = 0; // equilibrium ssb
+  vector<Type> Fa = F * selex; // fishing mortality at age
+  vector<Type> Za = Fa + M; // total mortality at age
+  vector<Type> Sa = exp(-Za); // survival at age
+  array<Type> N_equilibrium(ages.size(), ages.size() * 2); // set up array 
+  N_equilibrium.col(0) = N_init; // input initial numbers at age into the first year
+  
+  // Run annual cycle 
+  for(int y = 1; y < (ages.size() * 2); y++) {
+    // Initial recruitment
+    N_equilibrium(0, y) = N_init(0);
+    for(int a = 1; a < ages.size(); a++) 
+      N_equilibrium(a, y) = N_equilibrium(a - 1, y - 1) * Sa(a - 1); // project population forward (not plus group)
+      N_equilibrium(ages.size() - 1, y) = N_equilibrium(ages.size()  - 2, y - 1) * Sa(ages.size()  - 2) +
+                                          N_equilibrium(ages.size()  - 1, y - 1) * Sa(ages.size()  - 1); // plus group calculations
+  }
+  
+  // Calculate SSB equilibrium
+  for(int a = 0; a < ages.size(); a++) {
+    ssbe += N_equilibrium(a, (ages.size() * 2) - 1) * exp(-Za(a)) * MatAA(a) * waa(a);
+  } // end a loop
+
+  return(ssbe);
+} // end Get SSBe function
