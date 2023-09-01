@@ -236,7 +236,7 @@ Type objective_function<Type>::operator() ()
   SBPR_N = Get_SBPR_N(n_ages, M(0)); // M(0) to index female natural mortality
   for(int a = 0; a < n_ages; a++) SBPR_SSB0(a) = SBPR_N(a) * MatAA(a) * WAA(a,0); // Compute SBPR0
   Type ssb0 = SBPR_SSB0.sum() * exp(RecPars(0)); // Get Virgin Equilibrium SSB here
-
+ 
   // Project population forward -------------
   for(int y = 1; y < n_years; y++){
     for(int s = 0; s < n_sexes; s++) {

@@ -15,6 +15,7 @@
                 Fish_Neff_Len = 100,
                 Srv_Neff_Age = 100,
                 Srv_Neff_Len = 100,
+                F_pattern = "Increase",
                 comp_across_sex = "across",
                 selex_type = "length",
                 q_Fish = 0.025,
@@ -60,13 +61,13 @@
     em_inputs = prepare_EM_inputs(sim = sim,
                                   sexRatio = c(0.5, 0.5),
                                   catch_cv = c(1e-3),
-                                  WAA = biologicals$waa_sex,
-                                  age_len_transition = biologicals$al_matrix_sexsp,
+                                  WAA = waa,
+                                  age_len_transition = al_matrix,
                                   n_sexes = 2,
-                                  fish_age_prop = "within",
-                                  srv_age_prop = "within",
-                                  fish_len_prop = "within",
-                                  srv_len_prop = "within",
+                                  fish_age_prop = "across",
+                                  srv_age_prop = "across",
+                                  fish_len_prop = "across",
+                                  srv_len_prop = "across",
                                   agg_fish_age = FALSE,
                                   agg_srv_age = FALSE,
                                   share_M_sex = FALSE,
@@ -97,22 +98,13 @@
       recest = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "RecPars"]), True = r0)
       rec_all = rbind(rec_all, recest)
       m_all = rbind(Mest, m_all)
-      
-      # Get true fmsy
-      fmsy_true = get_Fmsy(ln_Fmsy = log(0.25), 
-                           M = M[1], 
-                           selex = FishAge_Selex[,1,1], 
-                           waa = biologicals$waa_sex[,1], 
-                           mat_at_age = em_inputs$data$MatAA, 
-                           ages = ages, 
-                           Init_N = NAA[1,,1,sim])
-      fmsy_est = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "ln_Fmsy"]), True = fmsy_true$Fmsy)
+      fmsy_est = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "ln_Fmsy"]), True = fmsy[sim])
       fmsy_all <- rbind(fmsy_est, fmsy_all)
     }
     
     print(sim)
   } # end sim
-
+  
 plot(Report$Fish_Slx[1,,1,1])
 lines(FishAge_Selex[,1,1])
 plot(Report$Fish_Slx[1,,2,1])

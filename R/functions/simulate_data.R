@@ -8,6 +8,7 @@ simulate_data = function(spreadsheet_path,
                          Fish_Neff_Len = 100,
                          Srv_Neff_Age = 100,
                          Srv_Neff_Len = 100,
+                         F_pattern = "Contrast",
                          comp_across_sex = "within",
                          q_Fish = 0.025,
                          cv_Fish_Index = 0.25,
@@ -45,6 +46,8 @@ simulate_data = function(spreadsheet_path,
   Fish_Neff_Len= array(Fish_Neff_Len, dim = c(n_years, n_fish_fleets)) # Length Effective Sample Size
   Fish_Index = array(0, dim = c(n_years, n_fish_fleets, n_sims))
   FishAge_Selex = array(0, dim = c(n_ages, n_sexes, n_fish_fleets))
+  Fmort = array(0, dim = c(n_years, n_fish_fleets, n_sims)) # fishing mortality container
+  fmsy = vector(length = n_sims) # vector to store fmsy values
   
   # Survey Containers
   Srv_AgeComps = array(0, dim = c(n_years, n_ages, n_sexes, n_srv_fleets, n_sims)) 
@@ -125,13 +128,10 @@ simulate_data = function(spreadsheet_path,
     SrvAge_Selex = array(c(srv_age_selex_Female, srv_age_selex_Male),dim = c(length(age_bins), n_sexes, n_srv_fleets))
   } # end if for age-based selectivity 
   
-  Fmort = array(seq(0.1, 0.001, length.out = n_years), dim = c(n_years, n_fish_fleets, n_sims))
-
 # Start Simulation --------------------------------------------------------
 
   for(sim in 1:n_sims) {
     
-    # Initialize Population --------------------------------------------------
     # Generate recruitment deviates and deviations from equilibrium
     RecDevs[,sim] = exp(rnorm(n_years-1, mean = -sigma_rec^2/2, sd = sigma_rec))
     InitDevs[,sim] = exp(rnorm(length(age_bins), mean = -sigma_rec^2/2, sd = sigma_rec))
@@ -146,6 +146,14 @@ simulate_data = function(spreadsheet_path,
     # Calculate SSB at time t = 1
     SSB[1,sim] = sum(NAA[1,,1,sim] * waa[,1] * mat_at_age[,1])
     Total_Biom[1, sim] = sum(NAA[1,,,sim] * waa[,]) # get total biomass at time t1
+    
+    # Get fmsy
+    fmsy[sim] = get_Fmsy(ln_Fmsy = log(0.29),  M = M[1],  selex = FishAge_Selex[,1,1], 
+                         waa = waa[,1], mat_at_age = mat_at_age[,1], ages = ages, 
+                         Init_N = NAA[1,,1,sim])[[1]]
+    
+    # Specify fishing mortality scenarios
+    Fmort[,,sim] = f_pattern_scenarios(F_pattern = F_pattern, n_years = n_years, fmsy = fmsy[sim])
     
     for(y in 2:n_years) {
       # Calculate Deaths from Fishery
@@ -348,4 +356,5 @@ simulate_data = function(spreadsheet_path,
   cv_Fish_Index <<- cv_Fish_Index
   q_Fish <<- q_Fish
   q_Srv <<- q_Srv
+  fmsy <<- fmsy
 } # end function

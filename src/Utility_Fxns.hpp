@@ -36,8 +36,9 @@ vector<Type> Get_SBPR_N(int n_ages, // integer of max age
   // Loop through to get SBPR in numbers
   for(int a = 0; a < n_ages; a++) {
     if(a == 0) SBPR_N(a) = Type(1);
-    if(a > 0 && a < n_ages - 1) SBPR_N(a) = SBPR_N(a - 1) * exp(-M); 
-    if(a == n_ages - 1) SBPR_N(a) = ((SBPR_N(a - 1) * exp(-M)) / (1 - exp(-M)));
+    if(a > 0) SBPR_N(a) = SBPR_N(a - 1) * exp(-M); 
+    // if(a > 0 && a < n_ages - 1) SBPR_N(a) = SBPR_N(a - 1) * exp(-M); 
+    // if(a == n_ages - 1) SBPR_N(a) = ((SBPR_N(a - 1) * exp(-M)) / (1 - exp(-M)));
   } // age loop
   return SBPR_N;
 } // end function
