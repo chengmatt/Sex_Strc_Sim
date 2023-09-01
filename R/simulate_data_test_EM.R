@@ -56,7 +56,7 @@
     
     # get biological information
     biologicals = get_biologicals(n_sexes, n_ages, age_bins, len_mids, Srv_LAA, Srv_LW, sim = sim)
-
+    
     em_inputs = prepare_EM_inputs(sim = sim,
                                   sexRatio = c(0.5, 0.5),
                                   catch_cv = c(1e-3),
@@ -84,9 +84,9 @@
     add_newton(n.newton = 3, ad_model = model_fxn, mle_optim = mle_optim)
     model_fxn$rep <- model_fxn$report(model_fxn$env$last.par.best) # Need to pass both fixed and random effects!!!
     sd_rep <- TMB::sdreport(model_fxn)
+    Report = model_fxn$rep # get report
     
     if(sum(is.na(sd_rep$sd)) == 0) {
-      Report = model_fxn$rep # get report
       SSBres = data.frame(Pred = Report$SSB, True = SSB[-n_years,sim], years = 1:length(Report$SSB))
       ssb_all = rbind(SSBres, ssb_all)
       TotalBiomres = data.frame(Pred = Report$Total_Biom, True = Total_Biom[-n_years,sim], years = 1:length(Report$Total_Biom))
@@ -97,9 +97,20 @@
       recest = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "RecPars"]), True = r0)
       rec_all = rbind(rec_all, recest)
       m_all = rbind(Mest, m_all)
-      fmsy_est = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "ln_Fmsy"]))
+      
+      # Get true fmsy
+      fmsy_true = get_Fmsy(ln_Fmsy = log(0.25), 
+                           M = M[1], 
+                           selex = FishAge_Selex[,1,1], 
+                           waa = biologicals$waa_sex[,1], 
+                           mat_at_age = em_inputs$data$MatAA, 
+                           ages = ages, 
+                           Init_N = NAA[1,,1,sim])
+      fmsy_est = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "ln_Fmsy"]), True = fmsy_true$Fmsy)
       fmsy_all <- rbind(fmsy_est, fmsy_all)
     }
+    
+    print(sim)
   } # end sim
 
 plot(Report$Fish_Slx[1,,1,1])
@@ -119,7 +130,14 @@ ggplot(m_all, aes(x = Sex, y = (Pred - True) / True)) +
 
 ggplot(rec_all, aes(x = "r0", y = (Pred - True) / True)) +
   geom_boxplot() +
-  geom_hline(yintercept = 0) +
+  geom_hline(
+    yintercept = 0) +
+  coord_cartesian(ylim = c(-0.5, 0.5))
+
+ggplot(fmsy_all, aes(x = "fmsy", y = (Pred - True) / True)) +
+  geom_boxplot() +
+  geom_hline(
+    yintercept = 0) +
   coord_cartesian(ylim = c(-0.5, 0.5))
 
 ssb_all %>% 

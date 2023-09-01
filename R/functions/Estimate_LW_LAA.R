@@ -103,11 +103,11 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
   
   # Get weight-length relationship
   WL_rel = bbmle::mle2(nLL_WL,
-                        start = list(ln_beta = log(0.1),
-                                     ln_alpha = log(0.1),
-                                     ln_sigma = log(0.1)),
+                        start = list(ln_alpha = log(1e-05),
+                                     ln_sigma = log(2),
+                                     ln_beta = log(beta_wl$Female[1])),
                         data = list(obs_len = WL_obs_len,
-                                    obs_wt = WL_obs_wt),
+                                    obs_wt = WL_obs_wt), # fix beta
                         method="Nelder-Mead",
                         optimizer="nlminb",
                         control=list(maxit=1e6))
@@ -115,10 +115,10 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
   
   # Get length at age relationship
   LAA_rel = bbmle::mle2(nLL_LAA,
-                        start = list(ln_linf = log(60),
-                                     ln_k = log(0.15),
-                                     ln_sigma = log(0.15),
-                                     t0 = 1),
+                        start = list(ln_linf = log(70),
+                                     ln_k = log(0.2),
+                                     ln_sigma = log(4),
+                                     t0 = 0),
                         data = list(obs_age = LAA_obs_age,
                                     obs_lens = LAA_obs_len),
                         method="Nelder-Mead",

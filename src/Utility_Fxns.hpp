@@ -106,7 +106,7 @@ Type Get_SBPR(Type F, // trial F value
   
   // Loop through to get the rest of the quantities
   for(int a = 1; a < (ages.size() * 4); a++) {
-    if(a >= ages.size() ) { // if a is at the max iteration
+    if(a >= ages.size() ) { // using the max age for these calculations when we reach it
       SBPR += Na * exp(-Za(ages.size() - 1)) * waa(ages.size() - 1) * MatAA(ages.size() - 1);
       Na *= Srva(ages.size() - 1);
     } else {
