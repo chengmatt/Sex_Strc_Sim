@@ -221,3 +221,14 @@ run_EM <- function(data, parameters, map, n.newton, random = NULL, DLL,
   
 }
   
+#' Title Scale to zero and one
+#'
+#' @param x Vector of values you want to rescale
+#'
+#' @return
+#' @export
+#'
+#' @examples
+scale_zero_one = function(x) {
+  return((x - min(x))/(max(x) - min(x)))
+}

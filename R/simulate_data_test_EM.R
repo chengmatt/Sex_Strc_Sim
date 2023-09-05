@@ -41,7 +41,7 @@
   # TMB Testing -------------------------------------------------------------
   
   library(TMB)
-  # setwd("src")
+  setwd("src")
   TMB::compile("Sex_Str_EM.cpp")
   dyn.unload(dynlib('Sex_Str_EM'))
   dyn.load(dynlib('Sex_Str_EM'))
@@ -64,10 +64,10 @@
                                   WAA = waa,
                                   age_len_transition = al_matrix,
                                   n_sexes = 2,
-                                  fish_age_prop = "across",
-                                  srv_age_prop = "across",
-                                  fish_len_prop = "across",
-                                  srv_len_prop = "across",
+                                  fish_age_prop = "within",
+                                  srv_age_prop = "within",
+                                  fish_len_prop = "within",
+                                  srv_len_prop = "within",
                                   agg_fish_age = FALSE,
                                   agg_srv_age = FALSE,
                                   share_M_sex = FALSE,
@@ -86,6 +86,20 @@
     model_fxn$rep <- model_fxn$report(model_fxn$env$last.par.best) # Need to pass both fixed and random effects!!!
     sd_rep <- TMB::sdreport(model_fxn)
     Report = model_fxn$rep # get report
+    
+    profiles = like_prof(em_inputs = em_inputs, sim = sim, assessment_name = "a")
+    
+    like_prof_all %>% 
+      pivot_longer(!c(prof_val, om_val, par_name, assessment_name, sim), 
+                   names_to = "type", values_to = "nLL") %>% 
+      group_by(type) %>% 
+      mutate(nLL = nLL - min(nLL, na.rm = TRUE)) %>% 
+      filter(par_name == "ln_fish_selpars_1",
+             prof_val > -0.5) %>% 
+      ggplot(aes(x = exp(prof_val), y = nLL, color = type)) +
+      geom_line(size = 1.5) +
+      geom_vline(aes(xintercept = exp(om_val))) +
+      facet_grid(~par_name)
     
     if(sum(is.na(sd_rep$sd)) == 0) {
       SSBres = data.frame(Pred = Report$SSB, True = SSB[-n_years,sim], years = 1:length(Report$SSB))

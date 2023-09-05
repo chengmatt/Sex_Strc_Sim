@@ -101,8 +101,8 @@ get_SSBe = function(M, selex, Trial_F, waa, mat_at_age, ages, Init_N) {
     # Initial recruitment
     N_equilibrium[1, y] = Init_N[1]
     for(a in 2:length(ages)) N_equilibrium[a,y] = N_equilibrium[a-1,y-1] * Sa[a-1] # not plus group
-    N_equilibrium[length(ages),y] = N_equilibrium[length(ages)-1,y-1] * Srva[a-1] +
-                                    N_equilibrium[length(ages),y-1] * Srva[a] # plus group
+    N_equilibrium[length(ages),y] = N_equilibrium[length(ages)-1,y-1] * Sa[a-1] +
+                                    N_equilibrium[length(ages),y-1] * Sa[a] # plus group
   } # end y loop
   
   # Get equilibrium SSB (subject to fishing for 1 year and calculate ssb)

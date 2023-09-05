@@ -149,7 +149,7 @@ simulate_data = function(spreadsheet_path,
     
     # Get fmsy
     fmsy[sim] = get_Fmsy(ln_Fmsy = log(0.29),  M = M[1],  selex = FishAge_Selex[,1,1], 
-                         waa = waa[,1], mat_at_age = mat_at_age[,1], ages = ages, 
+                         waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins, 
                          Init_N = NAA[1,,1,sim])[[1]]
     
     # Specify fishing mortality scenarios
