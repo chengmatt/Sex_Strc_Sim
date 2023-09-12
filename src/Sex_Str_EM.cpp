@@ -216,8 +216,7 @@ Type objective_function<Type>::operator() ()
   for(int s = 0; s < n_sexes; s++) {
     for(int a = 0; a < n_ages; a++) {
       // Get starting NAA
-      NAA(0, a, s) = exp(RecPars(0)) * exp(-M(s) * Type(a)) * 
-                          exp(ln_InitDevs(a)) * sexRatio(s); 
+      NAA(0, a, s) = exp(RecPars(0)) * exp(-M(s) * Type(a)) * exp(ln_InitDevs(a)) * sexRatio(s); 
       
       if(a == 0) Total_Rec(0) += NAA(0, 0, s); // Get total recruitment - increment to get total recruitment
       Total_Biom(0) += NAA(0, a, s) * WAA(a,s); // Get total biomass
@@ -508,7 +507,7 @@ Type objective_function<Type>::operator() ()
                              log(pred_srv_index(y, sf)) - pow(srv_index_sd(sf),2)/2,
                              srv_index_sd(sf), true);
     } // y loop
-  } // sf loop
+  } // sf loop 
   
   // Fishery Composition Likelihoods -----
   // Fishery Age Compositions
@@ -648,8 +647,6 @@ Type objective_function<Type>::operator() ()
   
   // Get reference values for computing FMSY
   vector<Type> Ref_Selex = Fish_Slx.col(0).col(0).transpose().col(n_years - 1); // Get reference selectivity
-  vector<Type> Init_N = NAA.col(0).transpose().col(0); // initial numbers at age (sex-specific)
-  if(n_sexes == 1) Init_N *= Type(0.5); // initial numbers at age (sex-aggregated)
   vector<Type> Ref_WAA = WAA.col(0); // Get weight at age for females
   Type Ref_M = M(0); // Get M for females
   
@@ -684,6 +681,7 @@ Type objective_function<Type>::operator() ()
   REPORT(Total_Rec);
   REPORT(Total_Biom);
 
+  // likelihoods
   REPORT(jnLL);
   REPORT(Fmsy_nLL);
   REPORT(rec_nLL);
@@ -694,9 +692,12 @@ Type objective_function<Type>::operator() ()
   REPORT(srv_index_nLL);
   REPORT(srv_age_comp_nLL);
   REPORT(srv_len_comp_nLL);
+  
+  // Reference points
   REPORT(SBPR_MSY);
   REPORT(YPR_MSY);
-  REPORT(BMSY)
+  REPORT(BMSY);
+  REPORT(Req);
   
   // DERIVED QUANTITIES -------------------
   ADREPORT(SSB);

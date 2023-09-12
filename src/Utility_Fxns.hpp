@@ -161,14 +161,14 @@ Type Get_Req(Type SBPR_Fmsy, // value for SBPR fmsy
   
   // set up
   Type SBPR_0 = 0; // sbpr initialize
-  vector<Type> N_0(ages.size()); // unfished numbers
+  vector<Type> N_0(ages.size()-1); // unfished numbers
   N_0(0) = 1; // initialize per-recruit
   Type r0 = exp(RecPars(0)); // exponentiate from log space
   Type h = RecPars(1); // steepness
   
   // Get unfished SBPR
-  for (int a = 1; a < ages.size(); a++)  N_0(a) = N_0(a - 1) * exp(-M);
-  for (int a = 0; a < ages.size(); a++)  SBPR_0 += N_0(a) * waa(a) * MatAA(a);
+  for (int a = 1; a < ages.size()-1; a++)  N_0(a) = N_0(a - 1) * exp(-M);
+  for (int a = 0; a < ages.size()-1; a++)  SBPR_0 += N_0(a) * waa(a) * MatAA(a);
   
   // get equilibrium recruitment
   Type Req = (r0 * (4*h*SBPR_Fmsy - (1-h) * SBPR_0)) / ((5*h - 1) * SBPR_Fmsy);

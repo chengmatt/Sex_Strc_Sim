@@ -11,28 +11,24 @@
   for(i in 1:length(files)) source(here(fxn_path, files[i]))
   
   simulate_data(spreadsheet_path = here("input", "Sablefish_Inputs.xlsx"),
-                Fish_Neff_Age = 30,
-                Fish_Neff_Len = 30,
-                Srv_Neff_Age = 30,
-                Srv_Neff_Len = 30,
+                Fish_Neff_Age = 100,
+                Fish_Neff_Len = 100,
+                Srv_Neff_Age = 100,
+                Srv_Neff_Len = 100,
                 F_pattern = "Contrast",
                 comp_across_sex = "across",
                 selex_type = "length",
                 q_Fish = 0.025,
-                cv_Fish_Index = 0.25,
+                cv_Fish_Index = 0.5,
                 q_Srv = 0.05,
-                cv_Srv_Index = 0.25)
+                cv_Srv_Index = 0.5)
   
   plot(FishAge_Selex[,1,1])
   lines(FishAge_Selex[,2,1])
   plot(SrvAge_Selex[,1,1])
   lines(SrvAge_Selex[,2,1])
-  plot(NAA[1,,1,5])
-  
-  # Get Length weight samples
-  Srv_LAA = data.table::rbindlist(Srv_LAA)
-  Srv_LW = data.table::rbindlist(Srv_LW)
-  
+  plot(NAA[1,,1,6])
+
   ggplot(Srv_LAA %>% filter(sim == 1), aes(x = ages, y = lens, color = factor(sex))) +
     geom_point() 
   ggplot(Srv_LW %>% filter(sim == 1), aes(x = lens, y = wts, color = factor(sex))) +
@@ -53,8 +49,9 @@
   rec_all = data.frame()
   fmsy_all = data.frame()
   bmsy_all = data.frame()
+  Req_all = data.frame()
   all_profiles = data.frame()
-  
+
   for(sim in 1:n_sims) {
     
     # get biological information
@@ -66,10 +63,10 @@
                                   WAA = waa,
                                   age_len_transition = al_matrix,
                                   n_sexes = 2,
-                                  fish_age_prop = "within",
-                                  srv_age_prop = "within",
-                                  fish_len_prop = "within",
-                                  srv_len_prop = "within",
+                                  fish_age_prop = "across",
+                                  srv_age_prop = "across",
+                                  fish_len_prop = "across",
+                                  srv_len_prop = "across",
                                   agg_fish_age = FALSE,
                                   agg_srv_age = FALSE,
                                   share_M_sex = FALSE,
@@ -94,7 +91,7 @@
       ssb_all = rbind(SSBres, ssb_all)
       TotalBiomres = data.frame(Pred = models$rep$Total_Biom, True = Total_Biom[-n_years,sim], years = 1:length(models$rep$Total_Biom), sim = sim)
       totalbiom_all = rbind(TotalBiomres, totalbiom_all)
-      bmsy_df = data.frame(Pred = models$rep$BMSY, True = bmsy[sim], sim = sim)
+      bmsy_df = data.frame(Pred = models$rep$BMSY, True = bmsy, sim = sim)
       bmsy_all = rbind(bmsy_all, bmsy_df)
       TotalRecres = data.frame(Pred = models$rep$Total_Rec, True = rowSums(NAA[-n_years,1,,sim]), years = 1:length(models$rep$Total_Biom), sim = sim)
       totalrec_all = rbind(totalrec_all, TotalRecres)
@@ -102,8 +99,10 @@
       m_all = rbind(Mest, m_all)
       recest = data.frame(Pred = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "RecPars"]), True = r0, sim = sim)
       rec_all = rbind(rec_all, recest)
-      fmsy_est = data.frame(Pred = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_Fmsy"]), True = fmsy[sim], sim = sim)
+      fmsy_est = data.frame(Pred = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_Fmsy"]), True = fmsy, sim = sim)
       fmsy_all <- rbind(fmsy_est, fmsy_all)
+      Reqres = data.frame(Pred = models$rep$Req, True = Req, sim = sim)
+      Req_all = rbind(Reqres, Req_all)
     }
     
     print(sim)
@@ -112,10 +111,12 @@
 m_all_df = m_all %>% mutate(RE = (Pred - True) / True, type = paste("M", Sex, sep = "_")) %>% select(-Sex)
 rec_all_df = rec_all %>% mutate(RE = (Pred - True) / True, type = "R0")
 fmsy_all_df = fmsy_all %>% mutate(RE = (Pred - True) / True, type = "Fmsy")
-bmsy_all_df = bmsy_all %>% mutate(RE = (Pred - True) / True, type = "bmsy")
-par_all = rbind(bmsy_all_df, m_all_df, rec_all_df, fmsy_all_df) %>% 
-  select(RE, type, sim) %>% 
-  pivot_wider(names_from = "type", values_from = "RE") %>% select(-sim)
+bmsy_all_df = bmsy_all %>% mutate(RE = (Pred - True) / True, type = "Bmsy")
+Req_all_df = Req_all %>% mutate(RE = (Pred - True) / True, type = "Req")
+
+par_all = rbind(Req_all_df, bmsy_all_df, m_all_df, rec_all_df, fmsy_all_df) %>% 
+  select(RE, type, sim) %>%  pivot_wider(names_from = "type", values_from = "RE") %>%
+  select(-sim)
 
 # ssb df
 ssb_df = ssb_all %>% 

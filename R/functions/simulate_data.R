@@ -47,9 +47,7 @@ simulate_data = function(spreadsheet_path,
   Fish_Index = array(0, dim = c(n_years, n_fish_fleets, n_sims))
   FishAge_Selex = array(0, dim = c(n_ages, n_sexes, n_fish_fleets))
   Fmort = array(0, dim = c(n_years, n_fish_fleets, n_sims)) # fishing mortality container
-  fmsy = vector(length = n_sims) # vector to store fmsy values
-  bmsy = vector(length = n_sims) # vector to store bmsy values
-  
+
   # Survey Containers
   Srv_AgeComps = array(0, dim = c(n_years, n_ages, n_sexes, n_srv_fleets, n_sims)) 
   Srv_Neff_Age = array(Srv_Neff_Age, dim = c(n_years, n_srv_fleets)) # Age Effective Sample Size
@@ -57,8 +55,8 @@ simulate_data = function(spreadsheet_path,
   Srv_Neff_Len= array(Srv_Neff_Len, dim = c(n_years, n_srv_fleets)) # Length Effective Sample Size
   Srv_Index = array(0, dim = c(n_years, n_srv_fleets, n_sims))
   SrvAge_Selex = array(0, dim = c(n_ages, n_sexes, n_srv_fleets))
-  Srv_LAA = list()
-  Srv_LW = list()
+  Srv_LAA = vector("list", length = n_sexes * (n_years-1) * n_srv_fleets) # pre-allocate vector list size
+  Srv_LW = vector("list", length = n_sexes * (n_years-1) * n_srv_fleets) # pre-allocate vector list size
   
   # counters for sampling survey length-at-age and weight-length
   srv_counter_age = 1
@@ -129,6 +127,19 @@ simulate_data = function(spreadsheet_path,
     SrvAge_Selex = array(c(srv_age_selex_Female, srv_age_selex_Male),dim = c(length(age_bins), n_sexes, n_srv_fleets))
   } # end if for age-based selectivity 
   
+  
+  # Get reference points + set up Fs ----------------------------------------
+  fmsy = get_Fmsy(ln_Fmsy = log(0.29),  M = M[1],  selex = FishAge_Selex[,1,1], 
+                       waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins)[[1]]
+  # get bmsy
+  SBPR_MSY = get_SBPR(M = M[1], selex = FishAge_Selex[,1,1], Trial_F = fmsy, 
+                      waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins)$SBPR_sum
+  Req = get_Req(SBPR_Fmsy = SBPR_MSY, waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins)
+  bmsy = SBPR_MSY * Req
+  
+  # Set up fishing mortality
+  Fmort[] = f_pattern_scenarios(F_pattern = "Contrast", n_years = n_years, fmsy = fmsy) # Specify fishing mortality scenarios
+
 # Start Simulation --------------------------------------------------------
 
   for(sim in 1:n_sims) {
@@ -136,7 +147,7 @@ simulate_data = function(spreadsheet_path,
     # Generate recruitment deviates and deviations from equilibrium
     RecDevs[,sim] = exp(rnorm(n_years-1, mean = -sigma_rec^2/2, sd = sigma_rec))
     InitDevs[,sim] = exp(rnorm(length(age_bins), mean = -sigma_rec^2/2, sd = sigma_rec))
-    
+
     for(s in 1:n_sexes) {
       # Get numbers at age - not plus group
       NAA[1,,s,sim] = r0 * exp(-M[s] * 0:(length(age_bins)-1)) * InitDevs[,sim] * sexRatio[s]
@@ -147,23 +158,6 @@ simulate_data = function(spreadsheet_path,
     # Calculate SSB at time t = 1
     SSB[1,sim] = sum(NAA[1,,1,sim] * waa[,1] * mat_at_age[,1])
     Total_Biom[1, sim] = sum(NAA[1,,,sim] * waa[,]) # get total biomass at time t1
-    
-
-# Get reference points + set up Fs ----------------------------------------
-    # Get fmsy
-    fmsy[sim] = get_Fmsy(ln_Fmsy = log(0.29),  M = M[1],  selex = FishAge_Selex[,1,1], 
-                         waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins, 
-                         Init_N = NAA[1,,1,sim])[[1]]
-    
-    # get bmsy
-    SBPR_MSY = get_SBPR(M = M[1], selex = FishAge_Selex[,1,1], Trial_F = fmsy[sim], 
-                         waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins)$SBPR_sum
-    Req = get_Req(SBPR_Fmsy = SBPR_MSY, waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins)
-    bmsy[sim] = SBPR_MSY * Req
-    
-    # Specify fishing mortality scenarios
-    Fmort[,,sim] = f_pattern_scenarios(F_pattern = F_pattern, n_years = n_years, fmsy = fmsy[sim])
-    
 
 # Population Projection ---------------------------------------------------
 
@@ -179,9 +173,8 @@ simulate_data = function(spreadsheet_path,
           
           # Recruitment
           if(a == 1) {
-            NAA[y,1,s,sim] = beverton_holt_recruit(ssb = SSB[y - 1, sim], 
-                                                   h = h,  r0 = r0, M = M[1]) * 
-              RecDevs[y - 1,sim] * sexRatio[s]
+            NAA[y,1,s,sim] = beverton_holt_recruit(ssb = SSB[y - 1, sim],  h = h, 
+                                                   r0 = r0, M = M[1]) * RecDevs[y - 1,sim] * sexRatio[s]
           } # end if recruitment age
           
           if(a > 1 & a < n_ages) {
@@ -246,15 +239,17 @@ simulate_data = function(spreadsheet_path,
           exp(rnorm(1, -Fish_Index_sd^2/2, Fish_Index_sd))
         
         # Get Total Catch
-        Total_Catch[y-1,f,sim] = sum(Total_Catch_Sex[y-1,,f,sim])
+        catch_sd =  sqrt(log(1e-3 + 1)) # turn cv to sd
+        Total_Catch[y-1,f,sim] = sum(Total_Catch_Sex[y-1,,f,sim]) * 
+                                 exp(rnorm(1, -catch_sd^2/2, sd = catch_sd)) # lognormal multiplicative error
       } # end fish fleet loop
       
       # Observation Model (Survey) ----------------------------------------------
       for(sf in 1:n_srv_fleets) {
         for(s in 1:n_sexes) {
           
-          ### Simulate Survey Compositions (Within Sexes) ---------------------------------------
-          if(comp_across_sex == 1) {
+        ### Simulate Survey Compositions (Within Sexes) ---------------------------------------
+        if(comp_across_sex == 1) {
             # Survey Age Compositions
             Prob_SrvAge = (NAA[y-1,,s,sim] * SrvAge_Selex[,s,sf]) / sum((NAA[y-1,,s,sim] * SrvAge_Selex[,s,sf])) # Get probability of sampling ages
             Srv_AgeComps[y-1,,s,sf,sim] = rmultinom(1, size = Srv_Neff_Age[y,sf], Prob_SrvAge)
@@ -295,26 +290,38 @@ simulate_data = function(spreadsheet_path,
         
         ### Simulate Growth from Survey Age and Length Compositions ---------------------------
         for(s in 1:n_sexes) {
-          for (a in 1:n_ages) {
-            if (Srv_AgeComps[y-1,a,s,sf,sim] != 0) {
-              n_age_samples = Srv_AgeComps[y-1,a,s,sf,sim]
-              sampled_srv_lens = rnorm(n = n_age_samples, mean = vonB[a,s], sd = as.numeric(vonB_sd[s]))
-              Srv_LAA[[srv_counter_age]] = data.frame(lens = sampled_srv_lens, ages = age_bins[a],
-                                                      sex = s, srv_fleet = sf, sim = sim)
-              srv_counter_age = srv_counter_age + 1
-            } # end if statement
-          } # end third age loop
           
-          # Get weight-length samples
-          for(l in 1:length(len_mids)) {
-            if (Srv_LenComps[y-1,l,s,f,sim] != 0) {
-              n_len_samples = Srv_LenComps[y-1,l,s,sf,sim]
-              sampled_srv_wts = rnorm(n = n_len_samples, mean = wl[l,s], sd = as.numeric(wl_sd[s]))
-              Srv_LW[[srv_counter_len]] = data.frame(wts = sampled_srv_wts, lens = len_bins[l],
-                                                     sex = s, srv_fleet = sf, sim = sim)
-              srv_counter_len = srv_counter_len + 1
-            } # end if statement
-          } # end second length loop
+          # Extract composition values here
+          ageCompValue = Srv_AgeComps[y-1,,s,sf,sim]
+          non_zero_age = which(ageCompValue != 0)
+          lenCompValue = Srv_LenComps[y-1,,s,sf,sim]
+          non_zero_len = which(lenCompValue != 0)
+          
+          # Get survey length at age
+          Srv_LAA_tmp <- lapply(non_zero_age, function(a) {
+            n_age_samples <- ageCompValue[a]
+            sampled_srv_lens <- rnorm(n = n_age_samples, mean = vonB[a, s], sd = as.numeric(vonB_sd[s]))
+            data.frame(lens = sampled_srv_lens, ages = age_bins[a], sex = s, srv_fleet = sf, sim = sim)
+          })
+          
+          # Get survey length weight relationship
+          Srv_LW_tmp = lapply(non_zero_len, function(l) {
+            n_len_samples <- lenCompValue[l]
+            sampled_srv_wts = rnorm(n = n_len_samples, mean = wl[l,s], sd = as.numeric(wl_sd[s]))
+            data.frame(wts = sampled_srv_wts, lens = len_bins[l], sex = s, srv_fleet = sf, sim = sim)
+          })
+          
+          # put laa and lw into list when done
+          Srv_LAA_tmp <- do.call(rbind, Srv_LAA_tmp)
+          Srv_LAA[[srv_counter_age]] = Srv_LAA_tmp
+          Srv_LW_tmp <- do.call(rbind, Srv_LW_tmp)
+          Srv_LW[[srv_counter_len]] = Srv_LW_tmp
+          
+          # update counters
+          srv_counter_age = srv_counter_age + 1
+          srv_counter_len = srv_counter_len + 1
+          
+          
         } # end fifth sex loop
       } # end survey fleet loop
       
@@ -351,6 +358,10 @@ simulate_data = function(spreadsheet_path,
   Srv_Neff_Len <<- Srv_Neff_Len
   Srv_Index <<- Srv_Index
   SrvAge_Selex <<- SrvAge_Selex
+  
+  # Get Length weight samples
+  Srv_LAA = data.table::rbindlist(Srv_LAA)
+  Srv_LW = data.table::rbindlist(Srv_LW)
   Srv_LAA <<- Srv_LAA
   Srv_LW <<- Srv_LW
 
@@ -370,4 +381,5 @@ simulate_data = function(spreadsheet_path,
   q_Srv <<- q_Srv
   fmsy <<- fmsy
   bmsy <<- bmsy
+  Req <<- Req 
 } # end function

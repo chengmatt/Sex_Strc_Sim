@@ -103,12 +103,11 @@ get_Req = function(SBPR_Fmsy, waa, mat_at_age, ages) {
 #' @param waa female weight at age
 #' @param mat_at_age maturity at age
 #' @param ages vector of ages
-#' @param Init_N vector of inital ages
 #' @return
 #' @export
 #'
 #' @examples
-get_Fmsy_nLL = function(ln_Fmsy, M, selex, waa, mat_at_age, ages, Init_N) {
+get_Fmsy_nLL = function(ln_Fmsy, M, selex, waa, mat_at_age, ages) {
   
   # set up optimization
   Fmsy = exp(ln_Fmsy) # exponentiate
@@ -133,12 +132,11 @@ get_Fmsy_nLL = function(ln_Fmsy, M, selex, waa, mat_at_age, ages, Init_N) {
 #' @param waa female weight at age
 #' @param mat_at_age maturity at age
 #' @param ages vector of ages
-#' @param Init_N vector of inital ages
 #' @return
 #' @export
 #'
 #' @examples
-get_Fmsy = function(ln_Fmsy, M, selex, waa, mat_at_age, ages, Init_N) {
+get_Fmsy = function(ln_Fmsy, M, selex, waa, mat_at_age, ages) {
   
   # Minimization to get Fmsy
   Fmsy = bbmle::mle2(get_Fmsy_nLL,
@@ -147,8 +145,7 @@ get_Fmsy = function(ln_Fmsy, M, selex, waa, mat_at_age, ages, Init_N) {
                                  selex = selex,
                                  waa = waa,
                                  mat_at_age = mat_at_age,
-                                 ages = ages,
-                                 Init_N = Init_N),
+                                 ages = ages),
                      method="Nelder-Mead",
                      optimizer="nlminb",
                      control=list(maxit=1e6))
