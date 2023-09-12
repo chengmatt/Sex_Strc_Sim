@@ -141,7 +141,7 @@ Type objective_function<Type>::operator() ()
   array<Type> srv_len_comp_nLL(n_years, n_sexes, n_srv_fleets); // Survey length comps likelihood
   Type Fmsy_nLL = 0; // Fmsy likelihood for minimzing
   Type rec_nLL = 0; // Recruitment likelihood penalty 
-  Type sexRatio_nLL = 0; // Sex-Ratio likelihood penalty
+  // Type sexRatio_nLL = 0; // Sex-Ratio likelihood penalty
   Type jnLL = 0; // Joint Negative log Likelihood
   
   // Set containers to zeros
@@ -535,20 +535,18 @@ Type objective_function<Type>::operator() ()
               vector<Type> pred_fish_age_ws = pred_fish_age_comps.col(f).col(s).transpose().col(y); // Pull out predicted vector
               fish_age_comp_nLL(y,s,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_ws, pred_fish_age_ws, true); // Get likelihood here
             } // if sex-specific comps
-            
-            // Sex-aggregated comps
-            if(agg_sex_fish_age == 1) {
-              matrix<Type> obs_fish_age_mat = obs_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-              matrix<Type> pred_fish_age_mat = pred_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-              obs_fish_age_agg = obs_fish_age_mat.rowwise().sum(); // Sum across rows
-              pred_fish_age_agg = pred_fish_age_mat.rowwise().sum(); // Sum across rows
-              if(s == n_sexes - 1) {
-                pred_fish_age_agg /= n_sexes; // divide by the number of sexes
-                fish_age_comp_nLL(y,0,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_agg, pred_fish_age_agg, true); // Get likelihood here
-              } // if s == n_sexes-1, compute likelihood
-            } // Aggregated comps
-            
           } // s loop
+          
+          // Sex-aggregated comps
+          if(agg_sex_fish_age == 1) {
+            matrix<Type> obs_fish_age_mat = obs_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+            matrix<Type> pred_fish_age_mat = pred_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+            obs_fish_age_agg = obs_fish_age_mat.rowwise().sum(); // Sum across rows
+            pred_fish_age_agg = pred_fish_age_mat.rowwise().sum(); // Sum across rows
+            pred_fish_age_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
+            fish_age_comp_nLL(y,0,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_agg, pred_fish_age_agg, true); // Get likelihood here
+          } // Aggregated comps
+          
         } // if proportions within sex for fishery ages
         
     } // y loop
@@ -600,20 +598,18 @@ Type objective_function<Type>::operator() ()
             vector<Type> pred_srv_age_ws = pred_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
             srv_age_comp_nLL(y,s,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_ws, pred_srv_age_ws, true); // Get likelihood here
             } // end if for sex-specific comps
-          
-          if(agg_sex_srv_age == 1) {
-            // Extract out quantities
-            matrix<Type> obs_srv_age_mat = obs_srv_age_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-            matrix<Type> pred_srv_age_mat = pred_srv_age_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-            obs_srv_age_agg = obs_srv_age_mat.rowwise().sum(); // Sum across rows
-            pred_srv_age_agg = pred_srv_age_mat.rowwise().sum(); // Sum across rows
-            if(s == n_sexes - 1) {
-              pred_srv_age_agg /= n_sexes; // divide by the number of sexes
-              srv_age_comp_nLL(y,0,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_agg, pred_srv_age_agg, true); // Get likelihood here
-              } // if s == n_sexes-1, compute likelihood
-            } // Aggregated comps
-            
           } // s loop
+        
+        if(agg_sex_srv_age == 1) { // aggregated compositions
+          // Extract out quantities
+          matrix<Type> obs_srv_age_mat = obs_srv_age_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+          matrix<Type> pred_srv_age_mat = pred_srv_age_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+          obs_srv_age_agg = obs_srv_age_mat.rowwise().sum(); // Sum across rows
+          pred_srv_age_agg = pred_srv_age_mat.rowwise().sum(); // Sum across rows
+          pred_srv_age_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
+          srv_age_comp_nLL(y,0,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_agg, pred_srv_age_agg, true); // Get likelihood here
+        } // Aggregated comps
+        
         } // if proportions within sex for fishery ages
 
     } // y loop
@@ -660,7 +656,7 @@ Type objective_function<Type>::operator() ()
   // Compute SPR, YPR, and BMSY quantities
   Type SPR_MSY = Get_SBPR(Fmsy, Ref_Selex, Ref_M, Ref_WAA, MatAA, ages); // get spr for fmsy
   Type YPR_MSY = Get_YPR(Fmsy, Ref_Selex, Ref_M, Ref_WAA, ages); // get ypr for fmsy
-  Type BMSY = Get_SSBe(Fmsy, Init_N, Ref_Selex, Ref_M, Ref_WAA, MatAA, ages); // Get bmsy
+  Type BMSY = Get_SSBe(Fmsy, Init_N, Ref_Selex, Ref_M, Ref_WAA, MatAA, ages, exp(RecPars(0))); // Get bmsy
   Fmsy_nLL = (-1.0 * log((YPR_MSY * BMSY)/SPR_MSY)); // minimization criteria for fmsy
   
   // Compute joint likelihood

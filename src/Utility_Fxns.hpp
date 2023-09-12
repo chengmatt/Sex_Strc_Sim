@@ -157,7 +157,8 @@ Type Get_SSBe(Type F, // trial F value
               Type M, // Female natural mortality
               vector<Type> waa, // vector of weight at ages
               vector<Type> MatAA, // vector of maturity at ages
-              vector<Type> ages // vector of ages
+              vector<Type> ages, // vector of ages
+              Type r0 // virgin recruitment
                 ) {
   // Set up
   Type ssbe = 0; // equilibrium ssb
@@ -170,7 +171,7 @@ Type Get_SSBe(Type F, // trial F value
   // Run annual cycle 
   for(int y = 1; y < (ages.size() * 2); y++) {
     // Initial recruitment
-    N_equilibrium(0, y) = N_init(0);
+    N_equilibrium(0, y) = r0;
     for(int a = 1; a < ages.size(); a++) 
       N_equilibrium(a, y) = N_equilibrium(a - 1, y - 1) * Sa(a - 1); // project population forward (not plus group)
       N_equilibrium(ages.size() - 1, y) = N_equilibrium(ages.size()  - 2, y - 1) * Sa(ages.size()  - 2) +

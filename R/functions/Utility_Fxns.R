@@ -221,14 +221,31 @@ run_EM <- function(data, parameters, map, n.newton, random = NULL, DLL,
   
 }
   
-#' Title Scale to zero and one
+#' Title Run Model
 #'
-#' @param x Vector of values you want to rescale
+#' @param data Data in list format
+#' @param parameters Parameters in list format
+#' @param map Map parameters in list format 
+#' @param DLL DLL
+#' @param iter.max iterations for optimization 
+#' @param eval.max evaluations for optimization
+#' @param n.newton additional newton steps to take
 #'
 #' @return
 #' @export
 #'
 #' @examples
-scale_zero_one = function(x) {
-  return((x - min(x))/(max(x) - min(x)))
+run_model = function(data, parameters, map, DLL = "Sex_Str_EM", iter.max = 1e6, eval.max = 1e6, n.newton = 3) {
+  # make ad object
+  model_fxn = TMB::MakeADFun(data, parameters, map, random = NULL, 
+                             DLL= DLL, silent = TRUE,  checkParameterOrder = TRUE, tracepar = TRUE)
+  
+  # Optimize model here w/ nlminb
+  mle_optim <- stats::nlminb(model_fxn$par, model_fxn$fn, model_fxn$gr, control = list(iter.max = iter.max, eval.max = eval.max))
+  add_newton(n.newton = n.newton, ad_model = model_fxn, mle_optim = mle_optim) # take extra newton steps if needed
+  model_fxn$rep <- model_fxn$report(model_fxn$env$last.par.best) # Need to pass both fixed and random effects!!!
+  model_fxn$sd_rep <- TMB::sdreport(model_fxn) # get standard errors from inverse hessian
+  return(model_fxn)
 }
+
+

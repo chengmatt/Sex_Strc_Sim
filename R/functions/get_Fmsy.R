@@ -89,6 +89,12 @@ get_YPR = function(M, selex, Trial_F, waa, ages) {
 #' @examples
 get_SSBe = function(M, selex, Trial_F, waa, mat_at_age, ages, Init_N) {
   
+  # TESTING
+  # Init_N = models$rep$NAA[1,,1]
+  # Trial_F = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_Fmsy"])
+  # selex = models$rep$Fish_Slx[1,,1,1]
+  # M = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_M"])
+  
   # set up
   ssbe = vector(length = length(ages))
   N_equilibrium = matrix(nrow = length(ages), ncol = length(ages) * 2)
@@ -99,7 +105,7 @@ get_SSBe = function(M, selex, Trial_F, waa, mat_at_age, ages, Init_N) {
   
   for(y in 2:(length(ages) * 2)) { # population projeciton
     # Initial recruitment
-    N_equilibrium[1, y] = Init_N[1]
+    N_equilibrium[1, y] = r0
     for(a in 2:length(ages)) N_equilibrium[a,y] = N_equilibrium[a-1,y-1] * Sa[a-1] # not plus group
     N_equilibrium[length(ages),y] = N_equilibrium[length(ages)-1,y-1] * Sa[a-1] +
                                     N_equilibrium[length(ages),y-1] * Sa[a] # plus group

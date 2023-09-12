@@ -48,6 +48,7 @@ simulate_data = function(spreadsheet_path,
   FishAge_Selex = array(0, dim = c(n_ages, n_sexes, n_fish_fleets))
   Fmort = array(0, dim = c(n_years, n_fish_fleets, n_sims)) # fishing mortality container
   fmsy = vector(length = n_sims) # vector to store fmsy values
+  bmsy = vector(length = n_sims) # vector to store bmsy values
   
   # Survey Containers
   Srv_AgeComps = array(0, dim = c(n_years, n_ages, n_sexes, n_srv_fleets, n_sims)) 
@@ -148,9 +149,13 @@ simulate_data = function(spreadsheet_path,
     Total_Biom[1, sim] = sum(NAA[1,,,sim] * waa[,]) # get total biomass at time t1
     
     # Get fmsy
-    fmsy[sim] = get_Fmsy(ln_Fmsy = log(0.29),  M = M[1],  selex = FishAge_Selex[,1,1], 
+    fmsy[sim] = get_Fmsy(ln_Fmsy = log(0.29), M = M[1],  selex = FishAge_Selex[,1,1], 
                          waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins, 
                          Init_N = NAA[1,,1,sim])[[1]]
+    
+    # get bmsy
+    bmsy[sim] = get_SSBe(M = M[1], selex = FishAge_Selex[,1,1], Trial_F = fmsy[sim], waa = waa[,1], 
+                         mat_at_age = mat_at_age[,1],ages = age_bins, Init_N = NAA[1,,1,sim])$ssbe_sum
     
     # Specify fishing mortality scenarios
     Fmort[,,sim] = f_pattern_scenarios(F_pattern = F_pattern, n_years = n_years, fmsy = fmsy[sim])
@@ -357,4 +362,5 @@ simulate_data = function(spreadsheet_path,
   q_Fish <<- q_Fish
   q_Srv <<- q_Srv
   fmsy <<- fmsy
+  bmsy <<- bmsy
 } # end function

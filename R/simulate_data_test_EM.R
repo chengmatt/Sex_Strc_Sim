@@ -11,11 +11,11 @@
   for(i in 1:length(files)) source(here(fxn_path, files[i]))
   
   simulate_data(spreadsheet_path = here("input", "Sablefish_Inputs.xlsx"),
-                Fish_Neff_Age = 100,
-                Fish_Neff_Len = 100,
-                Srv_Neff_Age = 100,
-                Srv_Neff_Len = 100,
-                F_pattern = "Increase",
+                Fish_Neff_Age = 50,
+                Fish_Neff_Len = 50,
+                Srv_Neff_Age = 50,
+                Srv_Neff_Len = 50,
+                F_pattern = "Contrast",
                 comp_across_sex = "across",
                 selex_type = "length",
                 q_Fish = 0.025,
@@ -41,7 +41,7 @@
   # TMB Testing -------------------------------------------------------------
   
   library(TMB)
-  setwd("src")
+  # setwd("src")
   TMB::compile("Sex_Str_EM.cpp")
   dyn.unload(dynlib('Sex_Str_EM'))
   dyn.load(dynlib('Sex_Str_EM'))
@@ -52,6 +52,8 @@
   m_all = data.frame()
   rec_all = data.frame()
   fmsy_all = data.frame()
+  bmsy_all = data.frame()
+  all_profiles = data.frame()
   
   for(sim in 1:n_sims) {
     
@@ -75,110 +77,98 @@
                                   selex_type = "length",
                                   fix_pars = c("h", "ln_sigmaRec"))
     
-    model_fxn = TMB::MakeADFun(em_inputs$data, em_inputs$parameters, em_inputs$map, random = NULL,
-                               DLL= "Sex_Str_EM", silent = TRUE,  
-                               checkParameterOrder = TRUE, tracepar = TRUE)
+    # run model here
+    models = run_model(data = em_inputs$data, parameters = em_inputs$parameters, map = em_inputs$map)
     
-    # Optimize model here w/ nlminb
-    mle_optim <- stats::nlminb(model_fxn$par, model_fxn$fn, model_fxn$gr,
-                               control = list(iter.max = 1e5, eval.max = 1e5))
-    add_newton(n.newton = 3, ad_model = model_fxn, mle_optim = mle_optim)
-    model_fxn$rep <- model_fxn$report(model_fxn$env$last.par.best) # Need to pass both fixed and random effects!!!
-    sd_rep <- TMB::sdreport(model_fxn)
-    Report = model_fxn$rep # get report
+    # if(sim %in% c(seq(1, n_sims, 10))) {
+    #   profiles = like_prof(em_inputs = em_inputs, sim = sim, assessment_name = "a", 
+    #                        share_M = FALSE, sex_specific = TRUE)
+    #   all_profiles = rbind(profiles, all_profiles)
+    # } # only do profiles for every tenth simulation
     
-    profiles = like_prof(em_inputs = em_inputs, sim = sim, assessment_name = "a")
-    
-    like_prof_all %>% 
-      pivot_longer(!c(prof_val, om_val, par_name, assessment_name, sim), 
-                   names_to = "type", values_to = "nLL") %>% 
-      group_by(type) %>% 
-      mutate(nLL = nLL - min(nLL, na.rm = TRUE)) %>% 
-      filter(par_name == "ln_fish_selpars_1",
-             prof_val > -0.5) %>% 
-      ggplot(aes(x = exp(prof_val), y = nLL, color = type)) +
-      geom_line(size = 1.5) +
-      geom_vline(aes(xintercept = exp(om_val))) +
-      facet_grid(~par_name)
-    
-    if(sum(is.na(sd_rep$sd)) == 0) {
-      SSBres = data.frame(Pred = Report$SSB, True = SSB[-n_years,sim], years = 1:length(Report$SSB))
+    if(sum(is.na(models$sd_rep$sd)) == 0) {
+      SSBres = data.frame(Pred = models$rep$SSB, True = SSB[-n_years,sim], years = 1:length(models$rep$SSB), sim = sim)
       ssb_all = rbind(SSBres, ssb_all)
-      TotalBiomres = data.frame(Pred = Report$Total_Biom, True = Total_Biom[-n_years,sim], years = 1:length(Report$Total_Biom))
+      TotalBiomres = data.frame(Pred = models$rep$Total_Biom, True = Total_Biom[-n_years,sim], years = 1:length(models$rep$Total_Biom), sim = sim)
       totalbiom_all = rbind(TotalBiomres, totalbiom_all)
-      TotalRecres = data.frame(Pred = Report$Total_Rec, True = rowSums(NAA[-n_years,1,,sim]), years = 1:length(Report$Total_Biom))
+      bmsy_df = data.frame(Pred = models$rep$BMSY, True = bmsy[sim], sim = sim)
+      bmsy_all = rbind(bmsy_all, bmsy_df)
+      TotalRecres = data.frame(Pred = models$rep$Total_Rec, True = rowSums(NAA[-n_years,1,,sim]), years = 1:length(models$rep$Total_Biom), sim = sim)
       totalrec_all = rbind(totalrec_all, TotalRecres)
-      Mest = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "ln_M"]), True = M, Sex = rep(c("F", "M")))
-      recest = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "RecPars"]), True = r0)
-      rec_all = rbind(rec_all, recest)
+      Mest = data.frame(Pred = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_M"]), True = M, Sex = rep(c("F", "M")), sim = sim)
       m_all = rbind(Mest, m_all)
-      fmsy_est = data.frame(Pred = exp(sd_rep$par.fixed[names(sd_rep$par.fixed) == "ln_Fmsy"]), True = fmsy[sim])
+      recest = data.frame(Pred = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "RecPars"]), True = r0, sim = sim)
+      rec_all = rbind(rec_all, recest)
+      fmsy_est = data.frame(Pred = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_Fmsy"]), True = fmsy[sim], sim = sim)
       fmsy_all <- rbind(fmsy_est, fmsy_all)
     }
     
     print(sim)
   } # end sim
-  
-plot(Report$Fish_Slx[1,,1,1])
-lines(FishAge_Selex[,1,1])
-plot(Report$Fish_Slx[1,,2,1])
-lines(FishAge_Selex[,2,1])
 
-plot(Report$Srv_Slx[1,,1,1])
-lines(SrvAge_Selex[,1,1])
-plot(Report$Srv_Slx[1,,2,1])
-lines(SrvAge_Selex[,2,1])
+m_all_df = m_all %>% mutate(RE = (Pred - True) / True, type = paste("M", Sex, sep = "_")) %>% select(-Sex)
+rec_all_df = rec_all %>% mutate(RE = (Pred - True) / True, type = "R0")
+fmsy_all_df = fmsy_all %>% mutate(RE = (Pred - True) / True, type = "Fmsy")
+bmsy_all_df = bmsy_all %>% mutate(RE = (Pred - True) / True, type = "bmsy")
+par_all = rbind(bmsy_all_df, m_all_df, rec_all_df, fmsy_all_df) %>% select(RE, type, sim) %>% 
+  pivot_wider(names_from = "type", values_from = "RE") %>% select(-sim)
 
-ggplot(m_all, aes(x = Sex, y = (Pred - True) / True)) +
-  geom_boxplot() +
-  geom_hline(yintercept = 0) +
-  coord_cartesian(ylim = c(-0.3, 0.3))
-
-ggplot(rec_all, aes(x = "r0", y = (Pred - True) / True)) +
-  geom_boxplot() +
-  geom_hline(
-    yintercept = 0) +
-  coord_cartesian(ylim = c(-0.5, 0.5))
-
-ggplot(fmsy_all, aes(x = "fmsy", y = (Pred - True) / True)) +
-  geom_boxplot() +
-  geom_hline(
-    yintercept = 0) +
-  coord_cartesian(ylim = c(-0.5, 0.5))
-
-ssb_all %>% 
+# ssb df
+ssb_df = ssb_all %>% 
   group_by(years) %>% 
   mutate(RE = (Pred - True) / True) %>% 
   summarize(median = median(RE),
             lwr95 = quantile(RE, 0.025),
-            upr95 = quantile(RE, 0.975)) %>% 
-  ggplot(aes(x = years, y = median, ymin = lwr95, ymax = upr95)) +
-  geom_line() +
-  geom_ribbon(alpha = 0.3) +
-  geom_hline(yintercept = 0) +
-  coord_cartesian(ylim = c(-0.5, 0.5))
+            upr95 = quantile(RE, 0.975),
+            lwr50 = quantile(RE, 0.25),
+            upr50 = quantile(RE, 0.75))
 
-totalbiom_all %>% 
+# total biomass
+totalbiom_all_df = totalbiom_all %>% 
   group_by(years) %>% 
   mutate(RE = (Pred - True) / True) %>% 
   summarize(median = median(RE),
          lwr95 = quantile(RE, 0.025),
-         upr95 = quantile(RE, 0.975)) %>% 
-  ggplot(aes(x = years, y = median, ymin = lwr95, ymax = upr95)) +
-  geom_line() +
-  geom_ribbon(alpha = 0.3) +
-  geom_hline(yintercept = 0) +
-  coord_cartesian(ylim = c(-0.5, 0.5))
+         upr95 = quantile(RE, 0.975),
+         lwr50 = quantile(RE, 0.25),
+         upr50 = quantile(RE, 0.75))
 
-totalrec_all %>% 
+totalrec_all_df = totalrec_all %>% 
   group_by(years) %>% 
   mutate(RE = (Pred - True) / True) %>% 
   summarize(median = median(RE),
             lwr95 = quantile(RE, 0.025),
-            upr95 = quantile(RE, 0.975)) %>% 
-  ggplot(aes(x = years, y = median, ymin = lwr95, ymax = upr95)) +
-  geom_line() +
-  geom_ribbon(alpha = 0.3) +
-  geom_hline(yintercept = 0) +
-  coord_cartesian(ylim = c(-0.5, 0.5))
+            upr95 = quantile(RE, 0.975),
+            lwr50 = quantile(RE, 0.25),
+            upr50 = quantile(RE, 0.75))
 
+par(mar=c(4,6,1,2))
+
+nf <- layout(
+  matrix(c(1,2,3,rep(4, 3)), ncol=3, byrow=TRUE), 
+  widths=c(1,1), 
+  heights=c(2,2)
+)
+plot_re_ts(ssb_df, ylab = "Relative Error in SSB")
+plot_re_ts(totalbiom_all_df, ylab = "Relative Error in Total Biomass")
+plot_re_ts(totalrec_all_df, ylab = "Relative Error in Total Recruitment")
+plot_re_par(par_all)
+
+# all_profiles %>%
+#   pivot_longer(!c(prof_val, om_val, par_name, assessment_name, sim),
+#                names_to = "type", values_to = "nLL") %>%
+#   drop_na() %>% 
+#   group_by(type, par_name, sim) %>%
+#   mutate(nLL = nLL - min(nLL, na.rm = TRUE)) %>%
+#   ungroup() %>% 
+#   group_by(type, par_name, prof_val) %>% 
+#   mutate(median = median(nLL)) %>% 
+#   filter(case_when(
+#     str_detect(par_name,"ln_M") ~ prof_val < log(0.185), TRUE ~ TRUE )) %>%  
+#   filter(par_name == "RecPars_1") %>%
+#   ggplot(aes(x = exp(prof_val), y = nLL, group = sim)) +
+#   geom_line(size = 1.25, alpha = 95, color = "grey") +
+#   geom_line(aes(y = median)) +
+#   geom_vline(aes(xintercept = exp(om_val)), lty = 2) +
+#   facet_wrap(~type, scale = "free_x") +
+#   theme(legend.position = "top")

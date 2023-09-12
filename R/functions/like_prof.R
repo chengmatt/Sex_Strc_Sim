@@ -2,7 +2,23 @@
 # Creator: Matthew LH. Cheng (UAF-CFOS)
 # Date 9/4/23
 
-like_prof = function(em_inputs, sim, assessment_name, share_M = FALSE) {
+#' Title To conduct likelihood profiles
+#'
+#' @param em_inputs Inputs for EM
+#' @param sim Simulation number
+#' @param assessment_name Name of assessment
+#' @param share_M TRUE or FALSE for sharing natural mortality
+#' @param sex_specific TRUE or FALSE for sex-specific assessment
+#'
+#' @return
+#' @export
+#'
+#' @examples
+like_prof = function(em_inputs, 
+                     sim, 
+                     assessment_name,
+                     share_M = FALSE, 
+                     sex_specific = TRUE) {
   
   # mle_vals = mle_vals # Define maximum likelihood estimate value
   parameter_names = c("ln_fish_selpars", "ln_srv_selpars", "ln_M", "RecPars")
@@ -19,7 +35,7 @@ like_prof = function(em_inputs, sim, assessment_name, share_M = FALSE) {
     # get parameter length
     par_len = length(parameters[names(parameters) == parameter_names[p]][[1]])
     if(parameter_names[p] == "RecPars") par_len = 1 # only profile across r0
-    if(share_M == TRUE) par_len = 1 # only profile across a shared value of M
+    if(share_M == TRUE & sex_specific == TRUE) par_len = 1 # only profile across a shared value of M
     
     for(l in 1:par_len) {
       map = em_inputs$map # initialize mapping
@@ -40,12 +56,12 @@ like_prof = function(em_inputs, sim, assessment_name, share_M = FALSE) {
       } # end if statement
       
       # get profile values
-      prof_vals = seq(om_vals[[p]][l] - 1.5, om_vals[[p]][l] + 1.5, 0.1)
+      prof_vals = seq(om_vals[[p]][l] - 0.5, om_vals[[p]][l] + 1, 0.075)
       
       if(parameter_names[p] == "RecPars") map$RecPars = factor(c(NA, NA))
-      if(share_M == TRUE) { # if we are sharing the M
+      if(share_M == TRUE & sex_specific == TRUE) { # if we are sharing the M
         map$ln_M = factor(c(NA, NA)) 
-        prof_vals = seq(mean(om_vals[[p]]) - 1.5, mean(om_vals[[p]]) + 1.5, 0.1)
+        prof_vals = seq(mean(om_vals[[p]]) - 1, mean(om_vals[[p]]) + 1, 0.1)
       } # end if statement for sharing m
       
       # setup data frame for storage
@@ -58,7 +74,7 @@ like_prof = function(em_inputs, sim, assessment_name, share_M = FALSE) {
         # which value to fix parameter at
         parameters[names(parameters) == parameter_names[p]][[1]][l] = prof_vals[v]
         # different way of profiling for single M (repeating 2 to make sure the same value gets mapped to both sexes)
-        if(share_M == TRUE) parameters[names(parameters) == parameter_names[p]][[1]] = rep(prof_vals[v], 2)
+        if(share_M == TRUE & sex_specific == TRUE) parameters[names(parameters) == parameter_names[p]][[1]] = rep(prof_vals[v], 2)
         tryCatch({ # tryCatch keeps the loop going despite erros 
           
           # make ad obj
