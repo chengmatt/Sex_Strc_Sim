@@ -149,39 +149,28 @@ Type Get_YPR(Type F, // trial F value
 } // end Get_YPR function
   
   
-// Get equilibrium SSB for Bmsy
+// Get equilibrium recruitment
 template<class Type>
-Type Get_SSBe(Type F, // trial F value
-              vector<Type> N_init, // vector of inital numbers at age
-              vector<Type> selex, // vector of age-specific selectivities
-              Type M, // Female natural mortality
-              vector<Type> waa, // vector of weight at ages
-              vector<Type> MatAA, // vector of maturity at ages
-              vector<Type> ages, // vector of ages
-              Type r0 // virgin recruitment
-                ) {
-  // Set up
-  Type ssbe = 0; // equilibrium ssb
-  vector<Type> Fa = F * selex; // fishing mortality at age
-  vector<Type> Za = Fa + M; // total mortality at age
-  vector<Type> Sa = exp(-Za); // survival at age
-  array<Type> N_equilibrium(ages.size(), ages.size() * 2); // set up array 
-  N_equilibrium.col(0) = N_init; // input initial numbers at age into the first year
+Type Get_Req(Type SBPR_Fmsy, // value for SBPR fmsy
+        Type M, // natural mortality for females
+        vector<Type> waa, // vector of weights at age
+        vector<Type> MatAA, // vector of maturity at ages
+        vector<Type> ages, // vector of ages
+        vector<Type> RecPars // recruitment parameters
+               ) { 
   
-  // Run annual cycle 
-  for(int y = 1; y < (ages.size() * 2); y++) {
-    // Initial recruitment
-    N_equilibrium(0, y) = r0;
-    for(int a = 1; a < ages.size(); a++) 
-      N_equilibrium(a, y) = N_equilibrium(a - 1, y - 1) * Sa(a - 1); // project population forward (not plus group)
-      N_equilibrium(ages.size() - 1, y) = N_equilibrium(ages.size()  - 2, y - 1) * Sa(ages.size()  - 2) +
-                                          N_equilibrium(ages.size()  - 1, y - 1) * Sa(ages.size()  - 1); // plus group calculations
-  }
+  // set up
+  Type SBPR_0 = 0; // sbpr initialize
+  vector<Type> N_0(ages.size()); // unfished numbers
+  N_0(0) = 1; // initialize per-recruit
+  Type r0 = exp(RecPars(0)); // exponentiate from log space
+  Type h = RecPars(1); // steepness
   
-  // Calculate SSB equilibrium
-  for(int a = 0; a < ages.size(); a++) {
-    ssbe += N_equilibrium(a, (ages.size() * 2) - 1) * exp(-Za(a)) * MatAA(a) * waa(a);
-  } // end a loop
-
-  return(ssbe);
-} // end Get SSBe function
+  // Get unfished SBPR
+  for (int a = 1; a < ages.size(); a++)  N_0(a) = N_0(a - 1) * exp(-M);
+  for (int a = 0; a < ages.size(); a++)  SBPR_0 += N_0(a) * waa(a) * MatAA(a);
+  
+  // get equilibrium recruitment
+  Type Req = (r0 * (4*h*SBPR_Fmsy - (1-h) * SBPR_0)) / ((5*h - 1) * SBPR_Fmsy);
+  return Req;
+}

@@ -653,11 +653,12 @@ Type objective_function<Type>::operator() ()
   vector<Type> Ref_WAA = WAA.col(0); // Get weight at age for females
   Type Ref_M = M(0); // Get M for females
   
-  // Compute SPR, YPR, and BMSY quantities
-  Type SPR_MSY = Get_SBPR(Fmsy, Ref_Selex, Ref_M, Ref_WAA, MatAA, ages); // get spr for fmsy
+  // Compute SBPR, YPR, and BMSY quantities
+  Type SBPR_MSY = Get_SBPR(Fmsy, Ref_Selex, Ref_M, Ref_WAA, MatAA, ages); // get spr for fmsy
   Type YPR_MSY = Get_YPR(Fmsy, Ref_Selex, Ref_M, Ref_WAA, ages); // get ypr for fmsy
-  Type BMSY = Get_SSBe(Fmsy, Init_N, Ref_Selex, Ref_M, Ref_WAA, MatAA, ages, exp(RecPars(0))); // Get bmsy
-  Fmsy_nLL = (-1.0 * log((YPR_MSY * BMSY)/SPR_MSY)); // minimization criteria for fmsy
+  Type Req = Get_Req(SBPR_MSY, Ref_M, Ref_WAA, MatAA, ages, RecPars); // get equilibrium recruitment
+  Type BMSY = SBPR_MSY * Req; // derive bmsy
+  Fmsy_nLL = (-1.0 * log((YPR_MSY * Req))); // minimization criteria for fmsy (yield per recruit * equilibrium recruits)
   
   // Compute joint likelihood
   jnLL = rec_nLL + sum(catch_nLL) + sum(fish_index_nLL) + sum(fish_age_comp_nLL) +
@@ -693,7 +694,7 @@ Type objective_function<Type>::operator() ()
   REPORT(srv_index_nLL);
   REPORT(srv_age_comp_nLL);
   REPORT(srv_len_comp_nLL);
-  REPORT(SPR_MSY);
+  REPORT(SBPR_MSY);
   REPORT(YPR_MSY);
   REPORT(BMSY)
   

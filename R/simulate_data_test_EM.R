@@ -11,10 +11,10 @@
   for(i in 1:length(files)) source(here(fxn_path, files[i]))
   
   simulate_data(spreadsheet_path = here("input", "Sablefish_Inputs.xlsx"),
-                Fish_Neff_Age = 50,
-                Fish_Neff_Len = 50,
-                Srv_Neff_Age = 50,
-                Srv_Neff_Len = 50,
+                Fish_Neff_Age = 30,
+                Fish_Neff_Len = 30,
+                Srv_Neff_Age = 30,
+                Srv_Neff_Len = 30,
                 F_pattern = "Contrast",
                 comp_across_sex = "across",
                 selex_type = "length",
@@ -86,6 +86,9 @@
     #   all_profiles = rbind(profiles, all_profiles)
     # } # only do profiles for every tenth simulation
     
+    # plot(NAA[30,,1,sim-1])
+    # lines(models$rep$NAA[30,,1])
+    
     if(sum(is.na(models$sd_rep$sd)) == 0) {
       SSBres = data.frame(Pred = models$rep$SSB, True = SSB[-n_years,sim], years = 1:length(models$rep$SSB), sim = sim)
       ssb_all = rbind(SSBres, ssb_all)
@@ -110,7 +113,8 @@ m_all_df = m_all %>% mutate(RE = (Pred - True) / True, type = paste("M", Sex, se
 rec_all_df = rec_all %>% mutate(RE = (Pred - True) / True, type = "R0")
 fmsy_all_df = fmsy_all %>% mutate(RE = (Pred - True) / True, type = "Fmsy")
 bmsy_all_df = bmsy_all %>% mutate(RE = (Pred - True) / True, type = "bmsy")
-par_all = rbind(bmsy_all_df, m_all_df, rec_all_df, fmsy_all_df) %>% select(RE, type, sim) %>% 
+par_all = rbind(bmsy_all_df, m_all_df, rec_all_df, fmsy_all_df) %>% 
+  select(RE, type, sim) %>% 
   pivot_wider(names_from = "type", values_from = "RE") %>% select(-sim)
 
 # ssb df

@@ -74,49 +74,26 @@ get_YPR = function(M, selex, Trial_F, waa, ages) {
   return(list(YPR_Na = Na, YPR_sum = sum(YPR), YPR_vec = YPR))
 } # end function
 
-#' Title Get equilibrium SSB
+#' Title Get equilibrium recruitment
 #'
-#' @param M  Female M
-#' @param selex Female fishery selectivity
-#' @param Trial_F Trial F
-#' @param waa female weight at age
+#' @param SBPR_Fmsy SBPR Fmsy
+#' @param SBPR_0 Unfished SBPR
+#' @param waa weight at age
 #' @param mat_at_age maturity at age
-#' @param ages vector of ages
-#' @param Init_N vector of inital ages
+#' @param ages age bins
+#'
 #' @return
 #' @export
 #'
 #' @examples
-get_SSBe = function(M, selex, Trial_F, waa, mat_at_age, ages, Init_N) {
-  
-  # TESTING
-  # Init_N = models$rep$NAA[1,,1]
-  # Trial_F = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_Fmsy"])
-  # selex = models$rep$Fish_Slx[1,,1,1]
-  # M = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_M"])
-  
-  # set up
-  ssbe = vector(length = length(ages))
-  N_equilibrium = matrix(nrow = length(ages), ncol = length(ages) * 2)
-  N_equilibrium[,1] = Init_N # initial numbers at N
-  Fa = Trial_F * selex
-  Za = Fa + M
-  Sa = exp(-Za)
-  
-  for(y in 2:(length(ages) * 2)) { # population projeciton
-    # Initial recruitment
-    N_equilibrium[1, y] = r0
-    for(a in 2:length(ages)) N_equilibrium[a,y] = N_equilibrium[a-1,y-1] * Sa[a-1] # not plus group
-    N_equilibrium[length(ages),y] = N_equilibrium[length(ages)-1,y-1] * Sa[a-1] +
-                                    N_equilibrium[length(ages),y-1] * Sa[a] # plus group
-  } # end y loop
-  
-  # Get equilibrium SSB (subject to fishing for 1 year and calculate ssb)
-  for(a in 1:n_ages) ssbe[a] = N_equilibrium[a, (length(ages) * 2)] * Sa[a] * waa[a] * mat_at_age[a]  
-
-  return(list(N_equilibrium = N_equilibrium, ssbe_sum = sum(ssbe), ssbe_vec = ssbe))
-} # end function
-
+get_Req = function(SBPR_Fmsy, waa, mat_at_age, ages) {
+  # Get unfished SBPR
+  Z0 <- c(0, rep(M[1], length(ages)-1)) # Get Natural mortality
+  N0 <- 1 * exp(-cumsum(Z0)) # Calculate Numbers over the lifespan of cohort
+  SBPR_0 <- sum(N0 * waa * mat_at_age) # Get SSB in biomass units
+  Req = (r0 * (4*h*SBPR_Fmsy - (1-h) * SBPR_0)) / ((5*h - 1) * SBPR_Fmsy) # get equilibrium recruitment
+  return(Req)
+}
 
 #' Title Minimize to get Fmsy
 #'
@@ -132,12 +109,19 @@ get_SSBe = function(M, selex, Trial_F, waa, mat_at_age, ages, Init_N) {
 #'
 #' @examples
 get_Fmsy_nLL = function(ln_Fmsy, M, selex, waa, mat_at_age, ages, Init_N) {
+  
+  # set up optimization
   Fmsy = exp(ln_Fmsy) # exponentiate
-  # Get quantities to compute Fmsy
-  SBPR = get_SBPR(M = M, selex = selex, Trial_F = Fmsy, waa = waa, mat_at_age = mat_at_age, ages = ages)
-  YPR = get_YPR(M = M, selex = selex, Trial_F = Fmsy, waa = waa, ages = ages)
-  Bmsy = get_SSBe(Init_N = Init_N,M = M, selex = selex, Trial_F = Fmsy, waa = waa, mat_at_age = mat_at_age, ages = ages)
-  nLL = -1 * log((YPR$YPR_sum * Bmsy$ssbe_sum) / SBPR$SBPR_sum)
+  SBPR = get_SBPR(M = M, selex = selex, Trial_F = Fmsy, waa = waa, 
+                  mat_at_age = mat_at_age, ages = ages) # get sbpr at fmsy
+  YPR = get_YPR(M = M, selex = selex, Trial_F = Fmsy, waa = waa, ages = ages) # get YPR
+  Req = get_Req(SBPR_Fmsy = SBPR$SBPR_sum, waa = waa, 
+                mat_at_age = mat_at_age, ages = ages) # get equilibrium recruitment
+
+  # set up optimization criteria
+  catch_MSY = YPR$YPR_sum * Req 
+  nLL = -1 * log(catch_MSY)
+  
   return(nLL)
 } # end function
 
@@ -171,4 +155,3 @@ get_Fmsy = function(ln_Fmsy, M, selex, waa, mat_at_age, ages, Init_N) {
   
   return(list(Fmsy = exp(Fmsy@coef), obj = Fmsy@details$objective))
 } # end function
-

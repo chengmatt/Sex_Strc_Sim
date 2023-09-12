@@ -148,18 +148,25 @@ simulate_data = function(spreadsheet_path,
     SSB[1,sim] = sum(NAA[1,,1,sim] * waa[,1] * mat_at_age[,1])
     Total_Biom[1, sim] = sum(NAA[1,,,sim] * waa[,]) # get total biomass at time t1
     
+
+# Get reference points + set up Fs ----------------------------------------
     # Get fmsy
-    fmsy[sim] = get_Fmsy(ln_Fmsy = log(0.29), M = M[1],  selex = FishAge_Selex[,1,1], 
+    fmsy[sim] = get_Fmsy(ln_Fmsy = log(0.29),  M = M[1],  selex = FishAge_Selex[,1,1], 
                          waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins, 
                          Init_N = NAA[1,,1,sim])[[1]]
     
     # get bmsy
-    bmsy[sim] = get_SSBe(M = M[1], selex = FishAge_Selex[,1,1], Trial_F = fmsy[sim], waa = waa[,1], 
-                         mat_at_age = mat_at_age[,1],ages = age_bins, Init_N = NAA[1,,1,sim])$ssbe_sum
+    SBPR_MSY = get_SBPR(M = M[1], selex = FishAge_Selex[,1,1], Trial_F = fmsy[sim], 
+                         waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins)$SBPR_sum
+    Req = get_Req(SBPR_Fmsy = SBPR_MSY, waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins)
+    bmsy[sim] = SBPR_MSY * Req
     
     # Specify fishing mortality scenarios
     Fmort[,,sim] = f_pattern_scenarios(F_pattern = F_pattern, n_years = n_years, fmsy = fmsy[sim])
     
+
+# Population Projection ---------------------------------------------------
+
     for(y in 2:n_years) {
       # Calculate Deaths from Fishery
       FAA[y - 1,,,,sim] = Fmort[y-1,,sim] * FishAge_Selex[,,] # Fishing Mortality at Age
