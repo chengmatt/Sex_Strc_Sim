@@ -9,7 +9,7 @@
 #include "Utility_Fxns.hpp"
 template<class Type>
 Type objective_function<Type>::operator() ()
-{
+{ 
   using namespace density; // Define namespace to use SEPARABLE, AR1, SCALE
   using namespace Eigen; // Define namespace for Eigen functions (i.e., sparse matrix)
   

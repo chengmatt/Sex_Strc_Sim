@@ -84,14 +84,14 @@
                                   share_M_sex = FALSE,
                                   sex_specific = TRUE, 
                                   fit_sexsp_catch = TRUE,
-                                  selex_type = "length",
+                                  selex_type = "age",
                                   fix_pars = c("h", "ln_sigmaRec"))
     
     # run model here
     models = run_model(data = em_inputs$data, 
                        parameters = em_inputs$parameters, 
                        map = em_inputs$map, silent = TRUE, n.newton = 5)
-    
+
     plot(models$rep$pred_catch_sexsp[,1,1], col = "red", type = "l")
     lines(Total_Catch_Sex[-31,1,1,sim], col = "red")
     plot(models$rep$pred_catch_sexsp[,2,1], col = 'blue', type = "l")

@@ -10,8 +10,7 @@ Type Logist(Type age, // age integer
   // Transform parameters
   Type slope = exp(ln_pars(0));
   Type midpoint = exp(ln_pars(1));
-  Type alpha = 0 + (1 - 0) * (1 / (1 + exp(-ln_pars(2))));
-  Type Selex = alpha / (Type(1) + exp(-slope * (age - midpoint)));
+  Type Selex = Type(1) / (Type(1) + exp(-slope * (age - midpoint)));
   return Selex;
 } // end fxn
 
