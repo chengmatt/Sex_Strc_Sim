@@ -10,7 +10,8 @@ Type Logist(Type age, // age integer
   // Transform parameters
   Type slope = exp(ln_pars(0));
   Type midpoint = exp(ln_pars(1));
-  Type Selex = Type(1) / (Type(1) + exp(-slope * (age - midpoint)));
+  Type alpha = 0 + (1 - 0) * (1 / (1 + exp(-ln_pars(2))));
+  Type Selex = alpha / (Type(1) + exp(-slope * (age - midpoint)));
   return Selex;
 } // end fxn
 
@@ -106,7 +107,7 @@ Type Get_SBPR(Type F, // trial F value
   Type SBPR = Na * exp(-Za(0)) * waa(0) * MatAA(0); // initialize SPR with first age class
   
   // Loop through to get the rest of the quantities
-  for(int a = 1; a < (ages.size() * 4); a++) {
+  for(int a = 1; a < (ages.size() * 2); a++) {
     if(a >= ages.size() ) { // using the max age for these calculations when we reach it
       SBPR += Na * exp(-Za(ages.size() - 1)) * waa(ages.size() - 1) * MatAA(ages.size() - 1);
       Na *= Srva(ages.size() - 1);
@@ -133,7 +134,7 @@ Type Get_YPR(Type F, // trial F value
   Type YPR = ((selex(0) * F) / (M + selex(0) * F)) * // Get YPR for the first age class
              Na * (Type(1) - exp(-(M + selex(0) * F))) * waa(0);
   // Finish filling in quantities w/ age loop
-  for(int a = 1; a < ages.size() * 4; a++) {
+  for(int a = 1; a < ages.size() * 2; a++) {
     if(a >= ages.size()) { // if max iteration
       Na *= exp(-(M + selex(ages.size() - 1) * F));
       YPR += (selex(ages.size() - 1) * F) / (M + selex(ages.size() - 1) * F) * 
@@ -161,14 +162,14 @@ Type Get_Req(Type SBPR_Fmsy, // value for SBPR fmsy
   
   // set up
   Type SBPR_0 = 0; // sbpr initialize
-  vector<Type> N_0(ages.size()-1); // unfished numbers
+  vector<Type> N_0(ages.size()); // unfished numbers
   N_0(0) = 1; // initialize per-recruit
   Type r0 = exp(RecPars(0)); // exponentiate from log space
   Type h = RecPars(1); // steepness
   
   // Get unfished SBPR
-  for (int a = 1; a < ages.size()-1; a++)  N_0(a) = N_0(a - 1) * exp(-M);
-  for (int a = 0; a < ages.size()-1; a++)  SBPR_0 += N_0(a) * waa(a) * MatAA(a);
+  for (int a = 1; a < ages.size(); a++)  N_0(a) = N_0(a - 1) * exp(-M);
+  for (int a = 0; a < ages.size(); a++)  SBPR_0 += N_0(a) * waa(a) * MatAA(a);
   
   // get equilibrium recruitment
   Type Req = (r0 * (4*h*SBPR_Fmsy - (1-h) * SBPR_0)) / ((5*h - 1) * SBPR_Fmsy);

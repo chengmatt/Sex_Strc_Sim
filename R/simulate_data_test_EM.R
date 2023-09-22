@@ -19,15 +19,14 @@
                 comp_across_sex = "across",
                 selex_type = "length",
                 q_Fish = 0.025,
-                cv_Fish_Index = 0.5,
+                cv_Fish_Index = 0.25,
                 q_Srv = 0.05,
-                cv_Srv_Index = 0.5)
+                cv_Srv_Index = 0.25)
   
   plot(FishAge_Selex[,1,1])
   lines(FishAge_Selex[,2,1])
   plot(SrvAge_Selex[,1,1])
   lines(SrvAge_Selex[,2,1])
-  plot(NAA[1,,1,6])
 
   ggplot(Srv_LAA %>% filter(sim == 1), aes(x = ages, y = lens, color = factor(sex))) +
     geom_point() 
@@ -37,7 +36,7 @@
   # TMB Testing -------------------------------------------------------------
   
   library(TMB)
-  # setwd("src")
+  setwd("src")
   TMB::compile("Sex_Str_EM.cpp")
   dyn.unload(dynlib('Sex_Str_EM'))
   dyn.load(dynlib('Sex_Str_EM'))
@@ -50,8 +49,19 @@
   fmsy_all = data.frame()
   bmsy_all = data.frame()
   Req_all = data.frame()
+  fmort_all = data.frame()
+  selex_all = data.frame()
   all_profiles = data.frame()
-
+  
+  # plot(Fish_AgeComps[1,,1,1,1], type = "l", col = "red")
+  # lines(Fish_AgeComps[1,,2,1,1], type = "l", col = "blue")
+  # plot(Srv_AgeComps[1,,1,1,1], type = "l", col = "red")
+  # lines(Srv_AgeComps[1,,2,1,1], type = "l", col = "blue")
+  # plot(Fish_LenComps[1,,1,1,1], type = "l", col = "red")
+  # lines(Fish_LenComps[1,,2,1,1], type = "l", col = "blue")
+  # plot(Srv_LenComps[1,,1,1,1]/sum(Srv_LenComps[1,,1,1,1]), type = "l", col = "red")
+  # lines(Srv_LenComps[1,,2,1,1]/sum(Srv_LenComps[1,,2,1,1]), type = "l", col = "blue")
+  
   for(sim in 1:n_sims) {
     
     # get biological information
@@ -59,7 +69,7 @@
     
     em_inputs = prepare_EM_inputs(sim = sim,
                                   sexRatio = c(0.5, 0.5),
-                                  catch_cv = c(1e-3),
+                                  catch_cv = c(1e-2),
                                   WAA = waa,
                                   age_len_transition = al_matrix,
                                   n_sexes = 2,
@@ -68,17 +78,53 @@
                                   fish_len_prop = "across",
                                   srv_len_prop = "across",
                                   agg_fish_age = FALSE,
-                                  agg_srv_age = FALSE,
+                                  agg_srv_age = FALSE, 
+                                  agg_fish_len = FALSE,
+                                  agg_srv_len = FALSE,
                                   share_M_sex = FALSE,
-                                  sex_specific = TRUE,
+                                  sex_specific = TRUE, 
+                                  fit_sexsp_catch = TRUE,
                                   selex_type = "length",
                                   fix_pars = c("h", "ln_sigmaRec"))
     
     # run model here
-    models = run_model(data = em_inputs$data, parameters = em_inputs$parameters, map = em_inputs$map)
+    models = run_model(data = em_inputs$data, 
+                       parameters = em_inputs$parameters, 
+                       map = em_inputs$map, silent = TRUE, n.newton = 5)
+    
+    plot(models$rep$pred_catch_sexsp[,1,1], col = "red", type = "l")
+    lines(Total_Catch_Sex[-31,1,1,sim], col = "red")
+    plot(models$rep$pred_catch_sexsp[,2,1], col = 'blue', type = "l")
+    lines(Total_Catch_Sex[-31,2,1,sim], col = "blue")
+    
+    plot(rowSums(Total_Catch_Sex[-31,,1,sim]))
+    lines(models$rep$pred_catch_agg)
+    models$rep$catch_nLL
+
+    # plot(models$rep$pred_srv_len_agg)
+    # lines(models$rep$obs_srv_len_agg / sum(models$rep$obs_srv_len_agg))
+    # 
+    # plot(models$rep$pred_fish_len_agg)
+    # lines(models$rep$obs_fish_len_agg / sum(models$rep$obs_fish_len_agg))
+    
+    
+    # options(mc.cores = 4)
+    # models_stan = tmbstan::tmbstasn(models, init = "last.par.best")
+    # rstan::traceplot(models_stan) # trace plot
+    # vals = rstan::extract(models_stan)
+    # rstan::stan_rhat(models_stan) # rhats
+    # shinystan::launch_shinystan(models_stan) # shiny stan
+    # pairs(models_stan, pars=c("ln_M", "ln_q_srv", "RecPars"))
+    
+    
+    # plot(models$rep$pred_srv_age_as/sum(models$rep$pred_srv_age_as), type = 'l')
+    # lines(models$rep$obs_srv_age_as/sum(models$rep$obs_srv_age_as), type = 'l', col = "red")
+    # lines(as.vector(CAA[50,,,1,sim]/sum(CAA[50,,,1,sim])), type = 'l')
+    # plot(models$rep$Fish_Slx[1,,1,1])
+    # lines(models$rep$Fish_Slx[1,,2,1])
     
     # if(sim %in% c(seq(1, n_sims, 10))) {
-    #   profiles = like_prof(em_inputs = em_inputs, sim = sim, assessment_name = "a", 
+    #   profiles = like_prof(em_inputs = em_inputs, sim = sim, assessment_name = "a",
     #                        share_M = FALSE, sex_specific = TRUE)
     #   all_profiles = rbind(profiles, all_profiles)
     # } # only do profiles for every tenth simulation
@@ -103,10 +149,25 @@
       fmsy_all <- rbind(fmsy_est, fmsy_all)
       Reqres = data.frame(Pred = models$rep$Req, True = Req, sim = sim)
       Req_all = rbind(Reqres, Req_all)
+      fmort = data.frame(Pred = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_Fy"]), 
+                         True = Fmort[-n_years,1,sim], years = 1:length(models$rep$Total_Biom), sim = sim)
+      fmort_all = rbind(fmort_all, fmort)
+      
+      # Save selex estimates
+      selex_f = data.frame(Pred = models$rep$Fish_Slx[1,,1,1], True = FishAge_Selex[,1,1], sim = sim, sex = "F", age = age_bins)
+      selex_m = data.frame(Pred = models$rep$Fish_Slx[1,,2,1], True = FishAge_Selex[,2,1], sim = sim, sex = "M", age = age_bins)
+      selex_all = rbind(selex_f, selex_m, selex_all)
+      
     }
     
     print(sim)
+    
   } # end sim
+
+# plot(models$rep$Fish_Slx[20,,1,1], type = "l", col = "red")
+# lines(models$rep$Fish_Slx[20,,2,1], type = "l", col = "blue")
+# lines(FishAge_Selex[,1,1])
+# lines(FishAge_Selex[,2,1])
 
 m_all_df = m_all %>% mutate(RE = (Pred - True) / True, type = paste("M", Sex, sep = "_")) %>% select(-Sex)
 rec_all_df = rec_all %>% mutate(RE = (Pred - True) / True, type = "R0")
@@ -147,16 +208,61 @@ totalrec_all_df = totalrec_all %>%
             lwr50 = quantile(RE, 0.25),
             upr50 = quantile(RE, 0.75))
 
+fmort_all_df = fmort_all %>% 
+  group_by(years) %>% 
+  mutate(RE = (Pred - True) / True) %>% 
+  summarize(median = median(RE),
+            lwr95 = quantile(RE, 0.025),
+            upr95 = quantile(RE, 0.975),
+            lwr50 = quantile(RE, 0.25),
+            upr50 = quantile(RE, 0.75))
+
+fmort_all_df = fmort_all %>% 
+  group_by(years) %>% 
+  mutate(RE = (Pred - True) / True) %>% 
+  summarize(median = median(RE),
+            lwr95 = quantile(RE, 0.025),
+            upr95 = quantile(RE, 0.975),
+            lwr50 = quantile(RE, 0.25),
+            upr50 = quantile(RE, 0.75))
+
+ggplot(selex_all, aes(x = age, y = Pred, group = sim)) +
+  geom_line(color = "grey") +
+  geom_line(aes(y = True, color = sex), size = 1.5) +
+  facet_wrap(~sex) +
+  labs(x = "Age", y = "Selex") + 
+  ggthemes::scale_color_excel_new() +
+  ggthemes::theme_excel_new()
+
+selex_all%>% 
+  group_by(sex, age) %>% 
+  mutate(RE = (Pred - True) / True) %>% 
+  summarize(median = median(RE),
+            lwr95 = quantile(RE, 0.025),
+            upr95 = quantile(RE, 0.975),
+            lwr50 = quantile(RE, 0.25),
+            upr50 = quantile(RE, 0.75)) %>% 
+  ggplot(aes(x = age, y = median, ymin = lwr95, ymax = upr95)) +
+  geom_line() +
+  geom_ribbon(alpha = 0.5) +
+  facet_wrap(~sex) +
+  geom_hline(yintercept = 0) +
+  coord_cartesian(ylim = c(-0.75, 0.75)) 
+  # ggthemes::scale_color_excel_new() +
+  # ggthemes::theme_excel_new()
+  
 par(mar=c(4,6,1,2))
 
 nf <- layout(
-  matrix(c(1,2,3,rep(4, 3)), ncol=3, byrow=TRUE), 
+  matrix(c(1,2,3,4,rep(5, 4)), ncol=4, byrow=TRUE), 
   widths=c(1,1), 
   heights=c(2,2)
 )
+
 plot_re_ts(ssb_df, ylab = "Relative Error in SSB")
 plot_re_ts(totalbiom_all_df, ylab = "Relative Error in Total Biomass")
 plot_re_ts(totalrec_all_df, ylab = "Relative Error in Total Recruitment")
+plot_re_ts(fmort_all_df, ylab = "Relative Error in Total Fishing Mortality")
 plot_re_par(par_all)
 
 # all_profiles %>%

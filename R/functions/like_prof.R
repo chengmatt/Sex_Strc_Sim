@@ -22,6 +22,7 @@ like_prof = function(em_inputs,
   
   # mle_vals = mle_vals # Define maximum likelihood estimate value
   parameter_names = c("ln_fish_selpars", "ln_srv_selpars", "ln_M", "RecPars")
+  parameters = em_inputs$parameters # reset parameters
   # OM values
   om_vals = list(log(c(fish_len_slope, fish_len_midpoint)), log(c(srv_len_slope, srv_len_midpoint)), 
                  log(M), log(r0))

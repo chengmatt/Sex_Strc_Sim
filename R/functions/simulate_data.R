@@ -239,9 +239,9 @@ simulate_data = function(spreadsheet_path,
           exp(rnorm(1, -Fish_Index_sd^2/2, Fish_Index_sd))
         
         # Get Total Catch
-        catch_sd =  sqrt(log(1e-3 + 1)) # turn cv to sd
-        Total_Catch[y-1,f,sim] = sum(Total_Catch_Sex[y-1,,f,sim]) * 
-                                 exp(rnorm(1, -catch_sd^2/2, sd = catch_sd)) # lognormal multiplicative error
+        # catch_sd =  sqrt(log(1e-3 + 1)) # turn cv to sd
+        Total_Catch[y-1,f,sim] = sum(Total_Catch_Sex[y-1,,f,sim]) 
+                                 # exp(rnorm(1, -catch_sd^2/2, sd = catch_sd)) # lognormal multiplicative error
       } # end fish fleet loop
       
       # Observation Model (Survey) ----------------------------------------------

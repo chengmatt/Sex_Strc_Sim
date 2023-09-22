@@ -18,14 +18,14 @@
 
 get_SBPR = function(M, selex, Trial_F, waa, mat_at_age, ages) {
   # Set up
-  Na = vector(length = length(ages) * 4)
-  SBPR = vector(length = length(ages) * 4)
+  Na = vector(length = length(ages) * 2)
+  SBPR = vector(length = length(ages) * 2)
   Za = M + (selex * Trial_F) # get total mortality
   Srva = exp(-Za) # get survival
   Na[1] = 1 # initialize population
   SBPR[1] = Na[1] * Srva[1] * waa[1] * mat_at_age[1]
   
-  for(a in 2:(length(ages) * 4)) {
+  for(a in 2:(length(ages) * 2)) {
     if(a >= length(ages)) {  # if we are at thge max age of the iteartion, use the max age data to do calcs
       Na[a] = Na[a-1] * Srva[length(ages)]
       SBPR[a] = Na[a] * waa[length(ages)] * mat_at_age[length(ages)]
@@ -54,15 +54,15 @@ get_SBPR = function(M, selex, Trial_F, waa, mat_at_age, ages) {
 get_YPR = function(M, selex, Trial_F, waa, ages) {
   
   # initialize population
-  Na = vector(length = length(ages) * 4)
-  YPR = vector(length = length(ages) * 4)
+  Na = vector(length = length(ages) * 2)
+  YPR = vector(length = length(ages) * 2)
   Fa = selex * Trial_F # fishing mortality
   Za = M + (selex * Trial_F) # get total mortality
   Srva = exp(-Za) # get survival
   Na[1] = 1 # initialize population
   YPR[1] = (Na[1] * (1 - Srva[1]) * waa[1]) * (Fa[1] / Za[1]) # baranov
   
-  for(a in 2:(length(ages) * 4)) {
+  for(a in 2:(length(ages) * 2)) {
     if(a >= length(ages)) {  # if we are at thge max age of the iteartion, use the max age data to do calcs
       Na[a] = Na[a-1] * Srva[length(ages)]
       YPR[a] = Na[a] * (1 - Srva[length(ages)]) * waa[length(ages)] * (Fa[length(ages)] / Za[length(ages)])

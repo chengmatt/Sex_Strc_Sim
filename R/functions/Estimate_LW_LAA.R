@@ -104,18 +104,18 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
   # Get weight-length relationship
   WL_rel = bbmle::mle2(nLL_WL,
                         start = list(ln_alpha = log(1e-05),
-                                     ln_sigma = log(2),
-                                     ln_beta = log(beta_wl$Female[1])),
+                                     ln_sigma = log(3)),
                         data = list(obs_len = WL_obs_len,
-                                    obs_wt = WL_obs_wt), # fix beta
+                                    obs_wt = WL_obs_wt,
+                                    ln_beta = log(beta_wl$Female[1])), # fix beta
                         method="Nelder-Mead",
                         optimizer="nlminb",
-                        control=list(maxit=1e6))
+                        control=list(maxit=5e6))
   
   
   # Get length at age relationship
   LAA_rel = bbmle::mle2(nLL_LAA,
-                        start = list(ln_linf = log(70),
+                        start = list(ln_linf = log(80),
                                      ln_k = log(0.2),
                                      ln_sigma = log(4),
                                      t0 = 0),
@@ -123,7 +123,7 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
                                     obs_lens = LAA_obs_len),
                         method="Nelder-Mead",
                         optimizer="nlminb",
-                        control=list(maxit=1e6))
+                        control=list(maxit=5e6))
   
   # Extract parameters
   linf = exp(LAA_rel@coef[1])
@@ -131,7 +131,7 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
   t0 = LAA_rel@coef[3]
   laa_sd = exp(LAA_rel@coef[4])
   alpha = exp(WL_rel@coef[1])
-  beta = exp(WL_rel@coef[2])
+  beta = beta_wl$Female[1] # fixing beta here
   
   # Get weight at age now
   winf = (alpha * linf^beta)
