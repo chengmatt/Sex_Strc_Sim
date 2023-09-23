@@ -173,15 +173,15 @@ prepare_EM_inputs = function(sim,
   
 # Parameters --------------------------------------------------------------
   parameters$ln_M = vector(length = n_sexes)
-  for(s in 1:n_sexes) parameters$ln_M[s] = log(M[s] * 0.5)
-  if(share_M_sex == TRUE) for(s in 1:n_sexes) parameters$ln_M[s] = mean(log(M[s]) * 0.5) 
-  parameters$ln_InitDevs = log(InitDevs[,sim]* 0.5)
-  parameters$ln_RecDevs = log(RecDevs[-50,sim]* 0.5)
-  parameters$RecPars = c(log(r0* 0.5),h)
+  for(s in 1:n_sexes) parameters$ln_M[s] = log(M[s])
+  if(share_M_sex == TRUE) for(s in 1:n_sexes) parameters$ln_M[s] = mean(log(M[s])) 
+  parameters$ln_InitDevs = log(InitDevs[,sim])
+  parameters$ln_RecDevs = log(RecDevs[-50,sim])
+  parameters$RecPars = c(log(r0),h)
   parameters$ln_sigmaRec = log(sigma_rec)
-  parameters$ln_q_fish = log(q_Fish* 0.5)
-  parameters$ln_q_srv = log(q_Srv* 0.5)
-  parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]* 0.5), ncol = n_fish_fleets)
+  parameters$ln_q_fish = log(q_Fish)
+  parameters$ln_q_srv = log(q_Srv)
+  parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
   parameters$ln_Fmsy = log(0.1) # fmsy in log space
   if(selex_type == "length") {
     parameters$ln_fish_selpars = array(log(c(0.25, 0.25)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)

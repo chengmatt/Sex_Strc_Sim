@@ -153,7 +153,7 @@ Type objective_function<Type>::operator() ()
   array<Type> srv_len_comp_nLL(n_years, n_sexes, n_srv_fleets); // Survey length comps likelihood
   Type Fmsy_nLL = 0; // Fmsy likelihood for minimzing
   Type rec_nLL = 0; // Recruitment likelihood penalty 
-  // Type sexRatio_nLL = 0; // Sex-Ratio likelihood penalty
+  Type sexRatio_nLL = 0; // Sex-Ratio likelihood penalty
   Type jnLL = 0; // Joint Negative log Likelihood
   
   // Set containers to zeros
@@ -253,7 +253,7 @@ Type objective_function<Type>::operator() ()
   for(int y = 1; y < n_years; y++){
     for(int s = 0; s < n_sexes; s++) {
       
-      // Recruitment 
+      // Recruitment   
       Type Det_BH_Rec = Get_Det_BH_Rec(RecPars, ssb0, SSB(y-1)); // deterministic beverton-holt recruitment
       NAA(y, 0, s) =  Det_BH_Rec * exp(ln_RecDevs(y-1)) * sexRatio(s); // recruitment with process error
       Total_Rec(y) += NAA(y, 0, s); // Get total recruitment - increment to get total recruitment

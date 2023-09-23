@@ -25,6 +25,18 @@
   
   plot(FishAge_Selex[,1,1])
   lines(FishAge_Selex[,2,1])
+  
+  plot(SrvAge_Selex[,1,1])
+  lines(SrvAge_Selex[,2,1])
+  
+  plot(waa[,1])
+  lines(biologicals$waa_sex[,1])
+  plot(biologicals$waa_sex[,2])
+  lines(waa[,2])
+  
+  plot(vonB[,1])
+  lines(vonB[,2])
+
   plot(SrvAge_Selex[,1,1])
   lines(SrvAge_Selex[,2,1])
 
@@ -53,7 +65,7 @@
   selex_all = data.frame()
   all_profiles = data.frame()
   
-  # plot(Fish_AgeComps[1,,1,1,1], type = "l", col = "red")
+  plot(Fish_AgeComps[1,,1,1,1], type = "l", col = "red")
   # lines(Fish_AgeComps[1,,2,1,1], type = "l", col = "blue")
   # plot(Srv_AgeComps[1,,1,1,1], type = "l", col = "red")
   # lines(Srv_AgeComps[1,,2,1,1], type = "l", col = "blue")
@@ -69,14 +81,14 @@
     
     em_inputs = prepare_EM_inputs(sim = sim,
                                   sexRatio = c(0.5, 0.5),
-                                  catch_cv = c(1e-2),
-                                  WAA = waa,
-                                  age_len_transition = al_matrix,
+                                  catch_cv = c(1e-3),
+                                  WAA = biologicals$waa_sex,
+                                  age_len_transition = biologicals$al_matrix_sexsp,
                                   n_sexes = 2,
-                                  fish_age_prop = "across",
-                                  srv_age_prop = "across",
-                                  fish_len_prop = "across",
-                                  srv_len_prop = "across",
+                                  fish_age_prop = "within",
+                                  srv_age_prop = "within",
+                                  fish_len_prop = "within",
+                                  srv_len_prop = "within",
                                   agg_fish_age = FALSE,
                                   agg_srv_age = FALSE, 
                                   agg_fish_len = FALSE,
@@ -90,16 +102,16 @@
     # run model here
     models = run_model(data = em_inputs$data, 
                        parameters = em_inputs$parameters, 
-                       map = em_inputs$map, silent = TRUE, n.newton = 5)
+                       map = em_inputs$map, silent = TRUE, n.newton = 3)
 
-    plot(models$rep$pred_catch_sexsp[,1,1], col = "red", type = "l")
-    lines(Total_Catch_Sex[-31,1,1,sim], col = "red")
-    plot(models$rep$pred_catch_sexsp[,2,1], col = 'blue', type = "l")
-    lines(Total_Catch_Sex[-31,2,1,sim], col = "blue")
-    
-    plot(rowSums(Total_Catch_Sex[-31,,1,sim]))
-    lines(models$rep$pred_catch_agg)
-    models$rep$catch_nLL
+    # plot(models$rep$pred_catch_sexsp[,1,1], col = "red", type = "l")
+    # lines(Total_Catch_Sex[-31,1,1,sim], col = "red")
+    # plot(models$rep$pred_catch_sexsp[,2,1], col = 'blue', type = "l")
+    # lines(Total_Catch_Sex[-31,2,1,sim], col = "blue")
+    # 
+    # plot(rowSums(Total_Catch_Sex[-31,,1,sim]))
+    # lines(models$rep$pred_catch_agg)
+    # models$rep$catch_nLL
 
     # plot(models$rep$pred_srv_len_agg)
     # lines(models$rep$obs_srv_len_agg / sum(models$rep$obs_srv_len_agg))
@@ -159,9 +171,7 @@
       selex_all = rbind(selex_f, selex_m, selex_all)
       
     }
-    
     print(sim)
-    
   } # end sim
 
 # plot(models$rep$Fish_Slx[20,,1,1], type = "l", col = "red")
