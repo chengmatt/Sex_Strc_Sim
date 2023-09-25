@@ -59,8 +59,10 @@ Type objective_function<Type>::operator() ()
   DATA_IMATRIX(use_fish_index); // Using fishery index data; n_years, n_fish_fleets
   DATA_IMATRIX(use_srv_index); // Using survey index data; n_years, n_srv_fleets
   DATA_IMATRIX(use_fish_age_comps); // Using fishery age comp data; n_years, n_fish_fleets
+  DATA_IMATRIX(use_fish_sexRatio); // Using fishery sex ratio data; n_years, n_srv_fleets
   DATA_IMATRIX(use_fish_len_comps); // Using fishery len comp data; n_years, n_fish_fleets
   DATA_IMATRIX(use_srv_age_comps); // Using survey age comp data; n_years, n_srv_fleets
+  DATA_IMATRIX(use_srv_sexRatio); // Using survey sex ratio data; n_years, n_srv_fleets
   DATA_IMATRIX(use_srv_len_comps); // Using survey len comp data; n_years, n_srv_fleets
   
   // Proportions within or over sexes
@@ -740,7 +742,8 @@ Type objective_function<Type>::operator() ()
           vector<Type> pred_fish_sexRatio = CAA.col(f).transpose().col(y).col(a);
           pred_fem_sexRatio_fish(y,a,f) = pred_fish_sexRatio(0) / sum(pred_fish_sexRatio);
           // evaluate sex ratios as a binomial likelihood
-          sexRatio_fish_nLL(y,a,f) -= dbinom(obs_fish_sexRatio(0), sum(obs_fish_sexRatio), pred_fem_sexRatio_fish(y,a,f), true);
+          sexRatio_fish_nLL(y,a,f) -= use_fish_sexRatio(y, f) * dbinom(obs_fish_sexRatio(0), 
+                                      sum(obs_fish_sexRatio), pred_fem_sexRatio_fish(y,a,f), true);
         } // end f loop
         
         for(int sf = 0; sf < n_srv_fleets; sf++) {
@@ -751,7 +754,8 @@ Type objective_function<Type>::operator() ()
           vector<Type> pred_srv_sexRatio = Srv_AA.col(sf).transpose().col(y).col(a);
           pred_fem_sexRatio_srv(y,a,sf) = pred_srv_sexRatio(0) / sum(pred_srv_sexRatio);
           // evaluate sex ratios as a binomial likelihood
-          sexRatio_srv_nLL(y,a,sf) -= dbinom(obs_srv_sexRatio(0), sum(obs_srv_sexRatio), pred_fem_sexRatio_srv(y,a,sf), true);
+          sexRatio_srv_nLL(y,a,sf) -= use_srv_sexRatio(y, sf) * dbinom(obs_srv_sexRatio(0), 
+                                      sum(obs_srv_sexRatio), pred_fem_sexRatio_srv(y,a,sf), true);
         } // end sf loop
 
       } // end a loop

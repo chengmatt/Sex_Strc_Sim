@@ -87,6 +87,8 @@
                                   share_M_sex = FALSE,
                                   sexRatio = c(0.5, 0.5),
                                   est_sexRatio_par = TRUE,
+                                  use_fish_sexRatio = TRUE,
+                                  use_srv_sexRatio = TRUE,
                                   fit_sexsp_catch = FALSE,
                                   
                                   # selectivity
@@ -97,10 +99,10 @@
                                   age_len_transition = biologicals$al_matrix_sexsp,
                                   
                                   # Fishery proportion treatment
-                                  fish_age_prop = "across",
-                                  srv_age_prop = "across",
-                                  fish_len_prop = "across",
-                                  srv_len_prop = "across",
+                                  fish_age_prop = "within",
+                                  srv_age_prop = "within",
+                                  fish_len_prop = "within",
+                                  srv_len_prop = "within",
                                   
                                   # Aggregating comps
                                   agg_fish_age = FALSE,
@@ -108,9 +110,10 @@
                                   agg_fish_len = FALSE,
                                   agg_srv_len = FALSE,
                                   catch_cv = c(1e-3),
+                                  use_fish_index = FALSE,
                                   
                                   # Parameter fixing
-                                  fix_pars = c("h", "ln_sigmaRec"))
+                                  fix_pars = c("h", "ln_sigmaRec", "ln_q_fish"))
     
     # run model here
     models = run_model(data = em_inputs$data, 
@@ -120,13 +123,12 @@
     # plot(em_inputs$data$obs_fish_age_comps[1,,1,1])
     # lines(em_inputs$data$obs_fish_age_comps[1,,2,1])
     # 
-    # plot(models$rep$obs_fem_sexRatio_fish[5,,1])
-    # lines(models$rep$pred_fem_sexRatio_fish[5,,1])
-    # 
-    # plot(models$rep$obs_fem_sexRatio_srv[5,,1])
-    # lines(models$rep$pred_fem_sexRatio_srv[5,,1])
-  
-    
+    plot(models$rep$obs_fem_sexRatio_fish[5,,1])
+    lines(models$rep$pred_fem_sexRatio_fish[5,,1])
+
+    plot(models$rep$obs_fem_sexRatio_srv[5,,1])
+    lines(models$rep$pred_fem_sexRatio_srv[5,,1])
+
     # plot(models$rep$pred_catch_sexsp[,1,1], col = "red", type = "l")
     # lines(Total_Catch_Sex[-31,1,1,sim], col = "red")
     # plot(models$rep$pred_catch_sexsp[,2,1], col = 'blue', type = "l")

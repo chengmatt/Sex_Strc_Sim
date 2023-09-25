@@ -30,7 +30,10 @@
 #' @param sim simulation index
 #' @param sexRatio Sex Ratio input
 #' @param est_sexRatio_par Whether we estimate sex Ratio as a parameter
+#' @param use_fish_sexRatio Use fishery sex ratios (boolean)
+#' @param use_srv_sexRatio Use survey sex ratios (boolean)
 #' @param selex_type Selex type for "length" or "age" based
+#'
 #' @return
 #' @export
 #'
@@ -53,9 +56,11 @@ prepare_EM_inputs = function(sim,
                              use_fish_index = TRUE,
                              use_srv_index = TRUE,
                              use_fish_age_comps = TRUE,
+                             use_fish_sexRatio = TRUE,
                              use_fish_len_comps = TRUE,
                              use_srv_age_comps = TRUE,
                              use_srv_len_comps = TRUE,
+                             use_srv_sexRatio = TRUE,
                              fix_pars,
                              share_M_sex,
                              est_sexRatio_par, 
@@ -139,6 +144,9 @@ prepare_EM_inputs = function(sim,
   # fishery length comps
   if(use_fish_len_comps == TRUE) data$use_fish_len_comps = matrix(1, ncol = n_fish_fleets, nrow = n_years - 1)
   else data$use_fish_len_comps = matrix(0, ncol = n_fish_fleets, nrow = n_years - 1)
+  # fishery sex ratios
+  if(use_fish_sexRatio == TRUE) data$use_fish_sexRatio = matrix(1, ncol = n_fish_fleets, nrow = n_years - 1)
+  else data$use_fish_sexRatio = matrix(0, ncol = n_fish_fleets, nrow = n_years - 1)
 
   if(fish_age_prop == "within") data$p_ow_sex_fish_age = 0 # within sexes
   if(fish_len_prop == "within") data$p_ow_sex_fish_len = 0 # within sexes
@@ -161,7 +169,10 @@ prepare_EM_inputs = function(sim,
   # survey length comps
   if(use_srv_len_comps == TRUE) data$use_srv_len_comps = matrix(1, ncol = n_srv_fleets, nrow = n_years - 1)
   else data$use_srv_len_comps = matrix(0, ncol = n_srv_fleets, nrow = n_years - 1)
-
+  # survey sex ratios
+  if(use_srv_sexRatio == TRUE) data$use_srv_sexRatio = matrix(1, ncol = n_srv_fleets, nrow = n_years - 1)
+  else data$use_srv_sexRatio = matrix(0, ncol = n_srv_fleets, nrow = n_years - 1)
+  
   if(srv_age_prop == "within") data$p_ow_sex_srv_age = 0 # within sexes
   if(srv_len_prop == "within") data$p_ow_sex_srv_len = 0 # within sexes
   if(srv_age_prop == "across") data$p_ow_sex_srv_age = 1 # across sexes
