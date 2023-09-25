@@ -47,7 +47,7 @@ Type objective_function<Type>::operator() ()
   DATA_ARRAY(srv_len_comps_inputN); // Array of input sample sizes for survey length comps; n_years x n_sexes x n_srv_fleets 
   
   // Biological Observations (Fixed) ----------------
-  DATA_VECTOR(sexRatio); // Vector of sex ratio; n_sexes (Females, Males)
+  DATA_VECTOR(sexRatio_dat); // Vector of sex ratio; n_sexes (Females, Males)
   DATA_MATRIX(WAA); // Array for weight-at-age relationship (n_ages, n_sexes)
   DATA_VECTOR(MatAA); // Vector of maturity-at-age
   DATA_ARRAY(age_len_transition); // Array for age length transition matrix (n_ages, n_lens, n_sexes)
@@ -78,8 +78,10 @@ Type objective_function<Type>::operator() ()
   // Miscellaneous stuff
   DATA_INTEGER(fit_sexsp_catch); // Whether to fit sex-specific catch == 0 (aggregated), == 1 (sex-specific)
   DATA_INTEGER(selex_type); // Selectivity type == 0 (length-based selectivity), == 1 (age-based selectivity)
+  DATA_INTEGER(est_sexRatio_par); // whether to estimate sexRatios as a free parameter == 0 (use data input), == 1 (estimate)
   
   // PARAMETER SECTION ---------------------
+  PARAMETER(logit_init_sexRatio); // sex ratio for initial age-at-recruitment (females, males are offset from this) 
   // Biological Parameters -----------------
   PARAMETER_VECTOR(ln_M); // Log Natural Mortality; n_sexes
   PARAMETER_VECTOR(ln_InitDevs); // Log Deviations from initial equilibrium age-structure; n_ages - 1
@@ -106,6 +108,12 @@ Type objective_function<Type>::operator() ()
   Type Fmsy = exp(ln_Fmsy); // Fmsy in normal space
   vector<Type> q_fish = exp(ln_q_fish); // Fishery catchability in normal space
   vector<Type> q_srv = exp(ln_q_srv); // Survey catchability in normal space
+  vector<Type> init_sexRatios(n_sexes); // store sexRatios (inverse logit)
+  if(est_sexRatio_par == 0) init_sexRatios = sexRatio_dat; // if we are not estimating sexRatio as a parameter
+  if(est_sexRatio_par == 1) {
+    init_sexRatios(0) =  0 + (1 - 0) * (1 / (1 + exp(-logit_init_sexRatio))); 
+    init_sexRatios(1) = 1 - init_sexRatios(0);
+  } // if estimating sexRatio as a free parameter
   
   // PREDICTED QUANTITES & CONTAINERS -----------
   // Predicted Quantities ------------------------
@@ -142,7 +150,11 @@ Type objective_function<Type>::operator() ()
   vector<Type> catch_sd(n_fish_fleets); // Empty container to store sd calculation
   vector<Type> fish_index_sd(n_fish_fleets); // Empty container to store sd calculation
   vector<Type> srv_index_sd(n_srv_fleets); // Empty container to store sd calculation
-
+  array<Type> obs_fem_sexRatio_fish(n_years, n_ages, n_fish_fleets); // Array for storing sex ratio observations for fishery
+  array<Type> pred_fem_sexRatio_fish(n_years, n_ages, n_fish_fleets); // Array for storing sex ratio predictions for fishery
+  array<Type> obs_fem_sexRatio_srv(n_years, n_ages, n_srv_fleets); // Array for storing sex ratio observations for survey
+  array<Type> pred_fem_sexRatio_srv(n_years, n_ages, n_srv_fleets); // Array for storing sex ratio predictions for survey
+  
   // INITIALIZE LIKELIHOODS ---------------------
   array<Type> catch_nLL(n_years, n_sexes, n_fish_fleets); // Catch likelihood
   matrix<Type> fish_index_nLL(n_years, n_fish_fleets); // Fishery index likelihood
@@ -151,9 +163,11 @@ Type objective_function<Type>::operator() ()
   array<Type> srv_age_comp_nLL(n_years, n_sexes, n_srv_fleets); // Survey age comps likelihood
   array<Type> fish_len_comp_nLL(n_years, n_sexes, n_fish_fleets); // Fishery length comps likelihood
   array<Type> srv_len_comp_nLL(n_years, n_sexes, n_srv_fleets); // Survey length comps likelihood
+  array<Type> sexRatio_fish_nLL(n_years, n_ages, n_fish_fleets); // Sex-Ratio likelihood penalty fishery obs
+  array<Type> sexRatio_srv_nLL(n_years, n_ages, n_srv_fleets); // Sex-Ratio likelihood penalty survey obs
+  
   Type Fmsy_nLL = 0; // Fmsy likelihood for minimzing
   Type rec_nLL = 0; // Recruitment likelihood penalty 
-  Type sexRatio_nLL = 0; // Sex-Ratio likelihood penalty
   Type jnLL = 0; // Joint Negative log Likelihood
   
   // Set containers to zeros
@@ -181,6 +195,8 @@ Type objective_function<Type>::operator() ()
   srv_age_comp_nLL.setZero();
   fish_len_comp_nLL.setZero();
   srv_len_comp_nLL.setZero();
+  sexRatio_fish_nLL.setZero();
+  sexRatio_srv_nLL.setZero();
   
   // MODEL SECTION -------------------------
   
@@ -229,7 +245,7 @@ Type objective_function<Type>::operator() ()
   for(int s = 0; s < n_sexes; s++) {
     for(int a = 0; a < n_ages; a++) {
       // Get starting NAA
-      NAA(0, a, s) = exp(RecPars(0)) * exp(-M(s) * Type(a)) * exp(ln_InitDevs(a)) * sexRatio(s); 
+      NAA(0, a, s) = exp(RecPars(0)) * exp(-M(s) * Type(a)) * exp(ln_InitDevs(a)) * init_sexRatios(s); 
       
       if(a == 0) Total_Rec(0) += NAA(0, 0, s); // Get total recruitment - increment to get total recruitment
       Total_Biom(0) += NAA(0, a, s) * WAA(a,s); // Get total biomass
@@ -255,7 +271,7 @@ Type objective_function<Type>::operator() ()
       
       // Recruitment   
       Type Det_BH_Rec = Get_Det_BH_Rec(RecPars, ssb0, SSB(y-1)); // deterministic beverton-holt recruitment
-      NAA(y, 0, s) =  Det_BH_Rec * exp(ln_RecDevs(y-1)) * sexRatio(s); // recruitment with process error
+      NAA(y, 0, s) =  Det_BH_Rec * exp(ln_RecDevs(y-1)) * init_sexRatios(s); // recruitment with process error
       Total_Rec(y) += NAA(y, 0, s); // Get total recruitment - increment to get total recruitment
       
       for(int a = 1; a < n_ages; a++) {
@@ -497,14 +513,14 @@ Type objective_function<Type>::operator() ()
     for(int y = 0; y < n_years; y ++) {
       
       if(fit_sexsp_catch == 0) {
-        // Get likelihood here (aggregated catch)
+        // (aggregated catch)
         catch_nLL(y,0,f) -= use_catch(y,0,f) * dnorm(log(obs_catch_agg(y, f)), 
                   log(pred_catch_agg(y, f)) - pow(catch_sd(f), 2)/2, 
                   catch_sd(f), true);
       } // if aggregated catch
       
       if(fit_sexsp_catch == 1) {
-        // Get likelihood here (sex-specific catch)
+        // (sex-specific catch)
         for(int s = 0; s < n_sexes; s++) {
           catch_nLL(y,s,f) -= use_catch(y,s,f) * dnorm(log(obs_catch_sexsp(y,s,f)), 
                     log(pred_catch_sexsp(y,s,f)) - pow(catch_sd(f), 2)/2, 
@@ -711,6 +727,37 @@ Type objective_function<Type>::operator() ()
     rec_nLL -= dnorm(ln_RecDevs(a), -sigmaRec2/Type(2), sigmaRec, true);
   } 
   
+  // Calculate likelihoods for sex-ratios (fishery and survey)
+  if(n_sexes > 1) {
+    for(int y = 0; y < n_years; y++) {
+      for(int a = 0; a < n_ages; a ++) {
+        
+        for(int f = 0; f < n_fish_fleets; f++) { // fishery sex-ratios
+          // Pull out vector of age comps here
+          vector<Type> obs_fish_sexRatio = obs_fish_age_comps.col(f).transpose().col(y).col(a); 
+          obs_fem_sexRatio_fish(y,a,f) = obs_fish_sexRatio(0) / sum(obs_fish_sexRatio);
+          // Pull out vector of predicted age comps here
+          vector<Type> pred_fish_sexRatio = CAA.col(f).transpose().col(y).col(a);
+          pred_fem_sexRatio_fish(y,a,f) = pred_fish_sexRatio(0) / sum(pred_fish_sexRatio);
+          // evaluate sex ratios as a binomial likelihood
+          sexRatio_fish_nLL(y,a,f) -= dbinom(obs_fish_sexRatio(0), sum(obs_fish_sexRatio), pred_fem_sexRatio_fish(y,a,f), true);
+        } // end f loop
+        
+        for(int sf = 0; sf < n_srv_fleets; sf++) {
+          // Pull out vector of age comps here
+          vector<Type> obs_srv_sexRatio = obs_srv_age_comps.col(sf).transpose().col(y).col(a); 
+          obs_fem_sexRatio_srv(y,a,sf) = obs_srv_sexRatio(0) / sum(obs_srv_sexRatio);
+          // Pull out vector of predicted age comps here
+          vector<Type> pred_srv_sexRatio = Srv_AA.col(sf).transpose().col(y).col(a);
+          pred_fem_sexRatio_srv(y,a,sf) = pred_srv_sexRatio(0) / sum(pred_srv_sexRatio);
+          // evaluate sex ratios as a binomial likelihood
+          sexRatio_srv_nLL(y,a,sf) -= dbinom(obs_srv_sexRatio(0), sum(obs_srv_sexRatio), pred_fem_sexRatio_srv(y,a,sf), true);
+        } // end sf loop
+
+      } // end a loop
+    } // end y loop
+  } // if more than 1 sex
+  
   // Get reference values for computing FMSY
   vector<Type> Ref_Selex = Fish_Slx.col(0).col(0).transpose().col(n_years - 1); // Get reference selectivity
   vector<Type> Ref_WAA = WAA.col(0); // Get weight at age for females
@@ -726,7 +773,8 @@ Type objective_function<Type>::operator() ()
   // Compute joint likelihood
   jnLL = rec_nLL + sum(catch_nLL) + sum(fish_index_nLL) + sum(fish_age_comp_nLL) +
          sum(fish_len_comp_nLL) + sum(srv_index_nLL) + sum(srv_age_comp_nLL) +
-         sum(srv_len_comp_nLL) + Fmsy_nLL;
+         sum(srv_len_comp_nLL) + sum(sexRatio_fish_nLL) + sum(sexRatio_srv_nLL) +
+         Fmsy_nLL;
   
   // REPORT SECTION ------------------------
   REPORT(NAA);
@@ -745,6 +793,10 @@ Type objective_function<Type>::operator() ()
   REPORT(Fish_Slx);
   REPORT(Srv_Slx);
   REPORT(ssb0);
+  REPORT(obs_fem_sexRatio_fish);
+  REPORT(pred_fem_sexRatio_fish);
+  REPORT(obs_fem_sexRatio_srv);
+  REPORT(pred_fem_sexRatio_srv);
   REPORT(Total_Rec);
   REPORT(Total_Biom);
 
@@ -759,6 +811,8 @@ Type objective_function<Type>::operator() ()
   REPORT(srv_index_nLL);
   REPORT(srv_age_comp_nLL);
   REPORT(srv_len_comp_nLL);
+  REPORT(sexRatio_fish_nLL);
+  REPORT(sexRatio_srv_nLL);
   
   // Reference points
   REPORT(SBPR_MSY);

@@ -28,7 +28,8 @@
 #' @param sex_specific Whether or not this is a sex-specific assessment (TRUE OR FALSE)
 #' @param n_sexes Number of sexes to model
 #' @param sim simulation index
-#' @param sexRatio Sex Ratio
+#' @param sexRatio Sex Ratio input
+#' @param est_sexRatio_par Whether we estimate sex Ratio as a parameter
 #' @param selex_type Selex type for "length" or "age" based
 #' @return
 #' @export
@@ -57,6 +58,7 @@ prepare_EM_inputs = function(sim,
                              use_srv_len_comps = TRUE,
                              fix_pars,
                              share_M_sex,
+                             est_sexRatio_par, 
                              fit_sexsp_catch,
                              selex_type,
                              sex_specific){
@@ -117,7 +119,7 @@ prepare_EM_inputs = function(sim,
                                                                            dim = c(n_years-1, length(len_mids), n_sexes, n_srv_fleets))
 
 # Biological Inputs -------------------------------------------------------
-  data$sexRatio = sexRatio
+  data$sexRatio_dat = sexRatio # data sex Ratio
   data$MatAA = as.vector(mat_at_age[,1])
   data$WAA = WAA
   data$age_len_transition = age_len_transition
@@ -170,6 +172,8 @@ prepare_EM_inputs = function(sim,
   if(agg_srv_len == TRUE) data$agg_sex_srv_len = 1 # aggregate survey len comps
   if(selex_type == "length") data$selex_type = 0 # length-based selectivity
   if(selex_type == "age") data$selex_type = 1 # age-based selectivity
+  if(est_sexRatio_par == FALSE) data$est_sexRatio_par = 0 # don't estimate sex ratio and use data input
+  if(est_sexRatio_par == TRUE) data$est_sexRatio_par = 1 # estiamte sex ratio as a free parameter
   
 # Parameters --------------------------------------------------------------
   parameters$ln_M = vector(length = n_sexes)
@@ -183,10 +187,13 @@ prepare_EM_inputs = function(sim,
   parameters$ln_q_srv = log(q_Srv)
   parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
   parameters$ln_Fmsy = log(0.1) # fmsy in log space
+  parameters$logit_init_sexRatio = 0 # at 0.5 right now
+
   if(selex_type == "length") {
     parameters$ln_fish_selpars = array(log(c(0.25, 0.25)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
     parameters$ln_srv_selpars = array(log(c(0.25, 0.25)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
     } # length-based selectivity
+  
   if(selex_type == "age") {
     parameters$ln_fish_selpars = array(log(3), dim = c(n_sexes, n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
     parameters$ln_srv_selpars = array(log(3), dim = c(n_sexes, n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
@@ -215,6 +222,9 @@ prepare_EM_inputs = function(sim,
     # Now, append this to our map list
     map <- c(map_par, map)
   } # end i
+  
+  # map out sex ratio parameter if we are not estimating it (if age structured assessment)
+  if(est_sexRatio_par == FALSE | n_sexes == 1) map$logit_init_sexRatio = factor(NA)
 
   return(list(data = data, parameters = parameters, map = map))
 } # end function

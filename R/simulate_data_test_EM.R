@@ -64,8 +64,9 @@
   fmort_all = data.frame()
   selex_all = data.frame()
   all_profiles = data.frame()
+  sexratio = vector()
   
-  plot(Fish_AgeComps[1,,1,1,1], type = "l", col = "red")
+  # plot(Fish_AgeComps[1,,1,1,1], type = "l", col = "red")
   # lines(Fish_AgeComps[1,,2,1,1], type = "l", col = "blue")
   # plot(Srv_AgeComps[1,,1,1,1], type = "l", col = "red")
   # lines(Srv_AgeComps[1,,2,1,1], type = "l", col = "blue")
@@ -80,30 +81,52 @@
     biologicals = get_biologicals(n_sexes, n_ages, age_bins, len_mids, Srv_LAA, Srv_LW, sim = sim)
     
     em_inputs = prepare_EM_inputs(sim = sim,
+                                  # sex-parameterizations
+                                  n_sexes = 2,
+                                  sex_specific = TRUE, 
+                                  share_M_sex = FALSE,
                                   sexRatio = c(0.5, 0.5),
-                                  catch_cv = c(1e-3),
+                                  est_sexRatio_par = TRUE,
+                                  fit_sexsp_catch = FALSE,
+                                  
+                                  # selectivity
+                                  selex_type = "length",
+                                  
+                                  # Biologicals
                                   WAA = biologicals$waa_sex,
                                   age_len_transition = biologicals$al_matrix_sexsp,
-                                  n_sexes = 2,
-                                  fish_age_prop = "within",
-                                  srv_age_prop = "within",
-                                  fish_len_prop = "within",
-                                  srv_len_prop = "within",
+                                  
+                                  # Fishery proportion treatment
+                                  fish_age_prop = "across",
+                                  srv_age_prop = "across",
+                                  fish_len_prop = "across",
+                                  srv_len_prop = "across",
+                                  
+                                  # Aggregating comps
                                   agg_fish_age = FALSE,
                                   agg_srv_age = FALSE, 
                                   agg_fish_len = FALSE,
                                   agg_srv_len = FALSE,
-                                  share_M_sex = FALSE,
-                                  sex_specific = TRUE, 
-                                  fit_sexsp_catch = TRUE,
-                                  selex_type = "age",
+                                  catch_cv = c(1e-3),
+                                  
+                                  # Parameter fixing
                                   fix_pars = c("h", "ln_sigmaRec"))
     
     # run model here
     models = run_model(data = em_inputs$data, 
                        parameters = em_inputs$parameters, 
                        map = em_inputs$map, silent = TRUE, n.newton = 3)
-
+    
+    # plot(em_inputs$data$obs_fish_age_comps[1,,1,1])
+    # lines(em_inputs$data$obs_fish_age_comps[1,,2,1])
+    # 
+    # plot(models$rep$obs_fem_sexRatio_fish[5,,1])
+    # lines(models$rep$pred_fem_sexRatio_fish[5,,1])
+    # 
+    # plot(models$rep$obs_fem_sexRatio_srv[5,,1])
+    # lines(models$rep$pred_fem_sexRatio_srv[5,,1])
+  
+    
     # plot(models$rep$pred_catch_sexsp[,1,1], col = "red", type = "l")
     # lines(Total_Catch_Sex[-31,1,1,sim], col = "red")
     # plot(models$rep$pred_catch_sexsp[,2,1], col = 'blue', type = "l")
@@ -165,11 +188,12 @@
                          True = Fmort[-n_years,1,sim], years = 1:length(models$rep$Total_Biom), sim = sim)
       fmort_all = rbind(fmort_all, fmort)
       
-      # Save selex estimates
+      # # Save selex estimates
       selex_f = data.frame(Pred = models$rep$Fish_Slx[1,,1,1], True = FishAge_Selex[,1,1], sim = sim, sex = "F", age = age_bins)
       selex_m = data.frame(Pred = models$rep$Fish_Slx[1,,2,1], True = FishAge_Selex[,2,1], sim = sim, sex = "M", age = age_bins)
       selex_all = rbind(selex_f, selex_m, selex_all)
-      
+      ratio_par = models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "logit_init_sexRatio"]
+      sexratio[sim] =  0 + (1 - 0) * (1 / (1 + exp(-ratio_par)))
     }
     print(sim)
   } # end sim
