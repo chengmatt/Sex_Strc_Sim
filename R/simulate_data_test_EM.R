@@ -48,7 +48,7 @@
   # TMB Testing -------------------------------------------------------------
   
   library(TMB)
-  # setwd("src")
+  setwd("src")
   TMB::compile("Sex_Str_EM.cpp")
   dyn.unload(dynlib('Sex_Str_EM'))
   dyn.load(dynlib('Sex_Str_EM'))
@@ -87,8 +87,8 @@
                                   share_M_sex = FALSE,
                                   sexRatio = c(0.5, 0.5),
                                   est_sexRatio_par = TRUE,
-                                  use_fish_sexRatio = TRUE,
-                                  use_srv_sexRatio = TRUE,
+                                  use_fish_sexRatio = FALSE,
+                                  use_srv_sexRatio = FALSE,
                                   fit_sexsp_catch = TRUE,
                                   
                                   # selectivity
@@ -99,10 +99,10 @@
                                   age_len_transition = biologicals$al_matrix_sexsp,
                                   
                                   # Fishery proportion treatment
-                                  fish_age_prop = "within",
-                                  srv_age_prop = "within",
-                                  fish_len_prop = "within",
-                                  srv_len_prop = "within",
+                                  fish_age_prop = "across",
+                                  srv_age_prop = "across",
+                                  fish_len_prop = "across",
+                                  srv_len_prop = "across",
                                   
                                   # Aggregating comps
                                   agg_fish_age = FALSE,
@@ -199,7 +199,7 @@
                                           r0 = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "RecPars"]),
                                           WAA = biologicals$waa_sex, MatAA = mat_at_age)
       
-      # median((est_hcr_catch[1:sim] - HCR_proj_catch[1:sim]) / HCR_proj_catch[1:sim], na.rm = T)
+      median((est_hcr_catch[1:sim] - HCR_proj_catch[1:sim]) / HCR_proj_catch[1:sim], na.rm = T)
       
       # # Save selex estimates
       selex_f = data.frame(Pred = models$rep$Fish_Slx[1,,1,1], True = FishAge_Selex[,1,1], sim = sim, sex = "F", age = age_bins)

@@ -59,8 +59,8 @@ get_proj_catch <- function(fmsy_val,
   proj_SSB = sum(N_proj[,1] * WAA[,1] * MatAA[,1])
   # Harvest control rule here
   bmsy_val_ratio = proj_SSB / bmsy_val # get b/bmsy_val
-  if(bmsy_val_ratio < 1) Fval = ((proj_SSB / bmsy_val  - 0.05) / (1 - 0.05)) * fmsy
-  if(bmsy_val_ratio == 1) Fval = fmsy
+  if(bmsy_val_ratio < 1) Fval = ((proj_SSB / bmsy_val  - 0.05) / (1 - 0.05)) * fmsy_val
+  if(bmsy_val_ratio >= 1) Fval = fmsy_val
 
   # Get f projections for age and sex here 
   for(a in 1:n_ages) {
@@ -78,6 +78,6 @@ get_proj_catch <- function(fmsy_val,
   
   
   
-  return(c(ABC,  ((proj_SSB / bmsy_val  - 0.05) / (1 - 0.05)), proj_SSB, sum(N_proj[,1])))
+  return(c(ABC))
   
 } # end function
