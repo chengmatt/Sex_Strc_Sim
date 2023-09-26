@@ -47,6 +47,7 @@ simulate_data = function(spreadsheet_path,
   Fish_Index = array(0, dim = c(n_years, n_fish_fleets, n_sims))
   FishAge_Selex = array(0, dim = c(n_ages, n_sexes, n_fish_fleets))
   Fmort = array(0, dim = c(n_years, n_fish_fleets, n_sims)) # fishing mortality container
+  HCR_proj_catch = vector()
 
   # Survey Containers
   Srv_AgeComps = array(0, dim = c(n_years, n_ages, n_sexes, n_srv_fleets, n_sims)) 
@@ -326,6 +327,13 @@ simulate_data = function(spreadsheet_path,
       } # end survey fleet loop
       
     } # end year loop
+    
+    # Get projected catch here
+    HCR_proj_catch[sim] = get_proj_catch(fmsy_val = fmsy, bmsy_val = bmsy, sex_ratio = sexRatio, 
+                   n_ages = n_ages, n_sexes = n_sexes, term_NAA = NAA[n_years-1,,,sim], 
+                   term_SSB = SSB[n_years-1, sim], term_F_Slx = FishAge_Selex, r0 = r0,
+                   term_F = Fmort[n_years - 1,,sim], M_s = M, WAA = waa, MatAA = mat_at_age)
+
     print(sim)
   } # end sim loop
   
@@ -382,4 +390,5 @@ simulate_data = function(spreadsheet_path,
   fmsy <<- fmsy
   bmsy <<- bmsy
   Req <<- Req 
+  HCR_proj_catch <<- HCR_proj_catch
 } # end function

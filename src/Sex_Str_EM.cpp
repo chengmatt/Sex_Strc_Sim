@@ -737,25 +737,27 @@ Type objective_function<Type>::operator() ()
         for(int f = 0; f < n_fish_fleets; f++) { // fishery sex-ratios
           // Pull out vector of age comps here
           vector<Type> obs_fish_sexRatio = obs_fish_age_comps.col(f).transpose().col(y).col(a); 
-          obs_fem_sexRatio_fish(y,a,f) = obs_fish_sexRatio(0) / sum(obs_fish_sexRatio);
+          Type sum_obs_fish_sexRatio = obs_fish_sexRatio.sum(); // get sum
+          obs_fem_sexRatio_fish(y,a,f) = obs_fish_sexRatio(0) / sum_obs_fish_sexRatio;
           // Pull out vector of predicted age comps here
           vector<Type> pred_fish_sexRatio = CAA.col(f).transpose().col(y).col(a);
           pred_fem_sexRatio_fish(y,a,f) = pred_fish_sexRatio(0) / sum(pred_fish_sexRatio);
           // evaluate sex ratios as a binomial likelihood
           sexRatio_fish_nLL(y,a,f) -= use_fish_sexRatio(y, f) * dbinom(obs_fish_sexRatio(0), 
-                                      sum(obs_fish_sexRatio), pred_fem_sexRatio_fish(y,a,f), true);
+                                      sum_obs_fish_sexRatio, pred_fem_sexRatio_fish(y,a,f), true);
         } // end f loop
         
         for(int sf = 0; sf < n_srv_fleets; sf++) {
           // Pull out vector of age comps here
           vector<Type> obs_srv_sexRatio = obs_srv_age_comps.col(sf).transpose().col(y).col(a); 
-          obs_fem_sexRatio_srv(y,a,sf) = obs_srv_sexRatio(0) / sum(obs_srv_sexRatio);
+          Type sum_obs_srv_sexRatio = obs_srv_sexRatio.sum(); // get sum
+          obs_fem_sexRatio_srv(y,a,sf) = obs_srv_sexRatio(0) / sum_obs_srv_sexRatio;
           // Pull out vector of predicted age comps here
           vector<Type> pred_srv_sexRatio = Srv_AA.col(sf).transpose().col(y).col(a);
           pred_fem_sexRatio_srv(y,a,sf) = pred_srv_sexRatio(0) / sum(pred_srv_sexRatio);
           // evaluate sex ratios as a binomial likelihood
           sexRatio_srv_nLL(y,a,sf) -= use_srv_sexRatio(y, sf) * dbinom(obs_srv_sexRatio(0), 
-                                      sum(obs_srv_sexRatio), pred_fem_sexRatio_srv(y,a,sf), true);
+                                      sum_obs_srv_sexRatio, pred_fem_sexRatio_srv(y,a,sf), true);
         } // end sf loop
 
       } // end a loop
@@ -773,6 +775,8 @@ Type objective_function<Type>::operator() ()
   Type Req = Get_Req(SBPR_MSY, Ref_M, Ref_WAA, MatAA, ages, RecPars); // get equilibrium recruitment
   Type BMSY = SBPR_MSY * Req; // derive bmsy
   Fmsy_nLL = (-1.0 * log((YPR_MSY * Req))); // minimization criteria for fmsy (yield per recruit * equilibrium recruits)
+  
+  // Do HCR projected calculations here
   
   // Compute joint likelihood
   jnLL = rec_nLL + sum(catch_nLL) + sum(fish_index_nLL) + sum(fish_age_comp_nLL) +
@@ -797,12 +801,11 @@ Type objective_function<Type>::operator() ()
   REPORT(Fish_Slx);
   REPORT(Srv_Slx);
   REPORT(ssb0);
-  REPORT(obs_fem_sexRatio_fish);
   REPORT(pred_fem_sexRatio_fish);
-  REPORT(obs_fem_sexRatio_srv);
   REPORT(pred_fem_sexRatio_srv);
   REPORT(Total_Rec);
   REPORT(Total_Biom);
+  REPORT(init_sexRatios); 
 
   // likelihoods
   REPORT(jnLL);

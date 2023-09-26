@@ -74,6 +74,8 @@ prepare_EM_inputs = function(sim,
   if(agg_srv_age == TRUE & srv_age_prop == "across") stop("Need to specify srv age prop as within")
   if(agg_fish_len == TRUE & fish_age_prop == "across") stop("Need to specify fish len prop as within")
   if(agg_srv_len == TRUE & srv_age_prop == "across") stop("Need to specify srv len prop as within")
+  if(srv_age_prop == "across" & use_srv_sexRatio == TRUE) stop("No need to fit sex ratios when across")
+  if(fish_age_prop == "across" & use_fish_sexRatio == TRUE) stop("No need to fit sex ratios when across")
   
   # List objects to output
   data = list()

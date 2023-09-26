@@ -48,7 +48,7 @@
   # TMB Testing -------------------------------------------------------------
   
   library(TMB)
-  setwd("src")
+  # setwd("src")
   TMB::compile("Sex_Str_EM.cpp")
   dyn.unload(dynlib('Sex_Str_EM'))
   dyn.load(dynlib('Sex_Str_EM'))
@@ -65,7 +65,7 @@
   selex_all = data.frame()
   all_profiles = data.frame()
   sexratio = vector()
-  
+  est_hcr_catch = vector()
   # plot(Fish_AgeComps[1,,1,1,1], type = "l", col = "red")
   # lines(Fish_AgeComps[1,,2,1,1], type = "l", col = "blue")
   # plot(Srv_AgeComps[1,,1,1,1], type = "l", col = "red")
@@ -89,7 +89,7 @@
                                   est_sexRatio_par = TRUE,
                                   use_fish_sexRatio = TRUE,
                                   use_srv_sexRatio = TRUE,
-                                  fit_sexsp_catch = FALSE,
+                                  fit_sexsp_catch = TRUE,
                                   
                                   # selectivity
                                   selex_type = "length",
@@ -120,14 +120,11 @@
                        parameters = em_inputs$parameters, 
                        map = em_inputs$map, silent = TRUE, n.newton = 3)
     
-    # plot(em_inputs$data$obs_fish_age_comps[1,,1,1])
-    # lines(em_inputs$data$obs_fish_age_comps[1,,2,1])
-    # 
-    plot(models$rep$obs_fem_sexRatio_fish[5,,1])
-    lines(models$rep$pred_fem_sexRatio_fish[5,,1])
+    # plot(est_hcr_catch[-6], HCR_proj_catch[-6])
+    
+    # plot(models$rep$pred_fem_sexRatio_fish[1,,1], type = "l")
+    # lines(CAA[1,,1,1,sim] / rowSums(CAA[1,,,1,sim]))
 
-    plot(models$rep$obs_fem_sexRatio_srv[5,,1])
-    lines(models$rep$pred_fem_sexRatio_srv[5,,1])
 
     # plot(models$rep$pred_catch_sexsp[,1,1], col = "red", type = "l")
     # lines(Total_Catch_Sex[-31,1,1,sim], col = "red")
@@ -189,6 +186,20 @@
       fmort = data.frame(Pred = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_Fy"]), 
                          True = Fmort[-n_years,1,sim], years = 1:length(models$rep$Total_Biom), sim = sim)
       fmort_all = rbind(fmort_all, fmort)
+      
+      est_hcr_catch[sim] =  get_proj_catch(fmsy_val = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_Fmsy"]),
+                                          bmsy_val = models$rep$BMSY, 
+                                          sex_ratio = models$rep$init_sexRatios, 
+                                          n_ages = n_ages, n_sexes = 2, 
+                                          term_NAA = models$rep$NAA[n_years - 1,,], 
+                                          term_SSB = models$rep$SSB[n_years - 1], 
+                                          term_F_Slx = models$rep$Fish_Slx[n_years-1,,,], 
+                                          term_F = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_Fy"])[n_years - 1], 
+                                          M_s = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_M"]), 
+                                          r0 = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "RecPars"]),
+                                          WAA = biologicals$waa_sex, MatAA = mat_at_age)
+      
+      # median((est_hcr_catch[1:sim] - HCR_proj_catch[1:sim]) / HCR_proj_catch[1:sim], na.rm = T)
       
       # # Save selex estimates
       selex_f = data.frame(Pred = models$rep$Fish_Slx[1,,1,1], True = FishAge_Selex[,1,1], sim = sim, sex = "F", age = age_bins)
