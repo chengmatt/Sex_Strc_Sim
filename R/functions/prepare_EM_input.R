@@ -189,6 +189,7 @@ prepare_EM_inputs = function(sim,
   if(est_sexRatio_par == TRUE) data$est_sexRatio_par = 1 # estiamte sex ratio as a free parameter
   
 # Parameters --------------------------------------------------------------
+  parameters$logit_init_sexRatio = 0 # at 0.5 right now
   parameters$ln_M = vector(length = n_sexes)
   for(s in 1:n_sexes) parameters$ln_M[s] = log(M[s])
   if(share_M_sex == TRUE) for(s in 1:n_sexes) parameters$ln_M[s] = mean(log(M[s])) 
@@ -199,8 +200,6 @@ prepare_EM_inputs = function(sim,
   parameters$ln_q_fish = log(q_Fish)
   parameters$ln_q_srv = log(q_Srv)
   parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
-  parameters$ln_Fmsy = log(0.1) # fmsy in log space
-  parameters$logit_init_sexRatio = 0 # at 0.5 right now
 
   if(selex_type == "length") {
     parameters$ln_fish_selpars = array(log(c(0.25, 0.25)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
@@ -211,6 +210,8 @@ prepare_EM_inputs = function(sim,
     parameters$ln_fish_selpars = array(log(3), dim = c(n_sexes, n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
     parameters$ln_srv_selpars = array(log(3), dim = c(n_sexes, n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
   } # age-based selectivity
+  
+  parameters$ln_Fmsy = log(0.1) # fmsy in log space
   
 # Mapping -----------------------------------------------------------------
   # fixing steepness

@@ -230,16 +230,17 @@ run_EM <- function(data, parameters, map, n.newton, random = NULL, DLL,
 #' @param iter.max iterations for optimization 
 #' @param eval.max evaluations for optimization
 #' @param n.newton additional newton steps to take
-#' @param silent Whether or not we want to output iterations 
+#' @param silent Whether or not we want to output iterations
+#' @param random Parameter for random effects 
 #'
 #' @return
 #' @export
 #'
 #' @examples
-run_model = function(data, parameters, map, DLL = "Sex_Str_EM", iter.max = 1e6, eval.max = 1e6, n.newton = 3,
-                     silent = TRUE) {
+run_model = function(data, parameters, map, DLL = "Sex_Str_EM", iter.max = 3e5, eval.max = 3e5, n.newton = 3,
+                     silent = TRUE, random = NULL) {
   # make ad object
-  model_fxn = TMB::MakeADFun(data, parameters, map, random = NULL, 
+  model_fxn = TMB::MakeADFun(data, parameters, map, random = random, 
                              DLL= DLL, silent = silent,  checkParameterOrder = TRUE, tracepar = TRUE)
   
   # Optimize model here w/ nlminb

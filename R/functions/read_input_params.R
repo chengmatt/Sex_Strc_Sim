@@ -52,7 +52,8 @@ read_params <- function(spreadsheet_path) {
   h <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "h"]) # Steepness (Recruitment at 20% of SSB0)
   r0 <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "r0"] ) # Virgin Recruitment
   sigma_rec <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "sigma_rec"]) # Recruitment variability
-  sexRatio <<- rep(as.numeric(recruitment_pars$Value[recruitment_pars$Par == "sexRatio"]), n_sexes) # sexRatio
+  sexRatio_F = rep(as.numeric(recruitment_pars$Value[recruitment_pars$Par == "sexRatio"])) # sexRatio for females
+  sexRatio <<- c(sexRatio_F, 1 - sexRatio_F) # all sex ratios
   M_Female <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "M_Female"]) # Female natural mortality
   M_Male <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "M_Male"]) # Male natural mortality
   M <<- c(M_Female, M_Male) # combined male and female natural mortality

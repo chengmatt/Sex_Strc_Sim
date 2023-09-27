@@ -130,7 +130,7 @@ Type objective_function<Type>::operator() ()
   
   // Storage Containers -------------------------
   array<Type> NAA(n_years, n_ages, n_sexes); // Numbers at age
-  array<Type> NAL(n_years, n_lens, n_sexes); // Numbers at length
+  // array<Type> NAL(n_years, n_lens, n_sexes); // Numbers at length
   array<Type> CAA(n_years, n_ages, n_sexes, n_fish_fleets); // Catch-at-age
   array<Type> Srv_AA(n_years, n_ages, n_sexes, n_srv_fleets); // Survey catch-at-age
   array<Type> CAL(n_years, n_lens, n_sexes, n_fish_fleets); // Catch-at-length
@@ -175,7 +175,7 @@ Type objective_function<Type>::operator() ()
   // Set containers to zeros
   SSB.setZero();
   NAA.setZero();
-  NAL.setZero();
+  // NAL.setZero();
   CAA.setZero();
   CAL.setZero();
   pred_catch_agg.setZero();
@@ -257,8 +257,8 @@ Type objective_function<Type>::operator() ()
       if(s == 0 && n_sexes == 1) SSB(0) += (NAA(0, a, 0) * MatAA(a) * WAA(a,0)) * 0.5; // sex-aggregated assessment
       
       // Compute Numbers-at-length in year 1
-      vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, 0, 0, n_lens, 0); 
-      for(int l = 0; l < n_lens; l++) NAL(0,l,s) = NAL_tmp_vec(l); // Loop through to input
+      // vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, 0, 0, n_lens, 0); 
+      // for(int l = 0; l < n_lens; l++) NAL(0,l,s) = NAL_tmp_vec(l); // Loop through to input
     } // end age loop
   } // end sex loop
   
@@ -288,8 +288,8 @@ Type objective_function<Type>::operator() ()
       } // end age loop
       
       // Compute Numbers-at-length 
-      vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, y, 0, n_lens, 0); // sex-specific assessment
-      for(int l = 0; l < n_lens; l++) NAL(y,l,s) = NAL_tmp_vec(l); // Loop through to input
+      // vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, y, 0, n_lens, 0); // sex-specific assessment
+      // for(int l = 0; l < n_lens; l++) NAL(y,l,s) = NAL_tmp_vec(l); // Loop through to input
       
       // Do residual calculations (total biomass and SSB)
       for(int a = 0; a < n_ages; a++) {
@@ -512,21 +512,20 @@ Type objective_function<Type>::operator() ()
   // Catch Likelihood ----------------------
   for(int f = 0; f < n_fish_fleets; f++) {
     catch_sd(f) = cv_to_sd(catch_cv(f)); // Calculate sd
+    Type catch_bias_oe = pow(catch_sd(f), 2)/2;
     for(int y = 0; y < n_years; y ++) {
       
       if(fit_sexsp_catch == 0) {
         // (aggregated catch)
         catch_nLL(y,0,f) -= use_catch(y,0,f) * dnorm(log(obs_catch_agg(y, f)), 
-                  log(pred_catch_agg(y, f)) - pow(catch_sd(f), 2)/2, 
-                  catch_sd(f), true);
+                  log(pred_catch_agg(y, f)) - catch_bias_oe, catch_sd(f), true);
       } // if aggregated catch
       
       if(fit_sexsp_catch == 1) {
         // (sex-specific catch)
         for(int s = 0; s < n_sexes; s++) {
           catch_nLL(y,s,f) -= use_catch(y,s,f) * dnorm(log(obs_catch_sexsp(y,s,f)), 
-                    log(pred_catch_sexsp(y,s,f)) - pow(catch_sd(f), 2)/2, 
-                    catch_sd(f), true);
+                    log(pred_catch_sexsp(y,s,f)) - catch_bias_oe, catch_sd(f), true);
         } // end s loop
       } // if sex-specific catch
 
@@ -536,22 +535,22 @@ Type objective_function<Type>::operator() ()
   // Fishery Index Likelihoods -----------
   for(int f = 0; f < n_fish_fleets; f++) {
     fish_index_sd(f) = cv_to_sd(fish_index_cv(f)); // Calculate sd
+    Type fish_idx_bias_oe = pow(fish_index_sd(f),2)/2;
     for(int y = 0 ; y < n_years; y++) {
       // Get likelihood here
       fish_index_nLL(y,f) -= use_fish_index(y,f) * dnorm(log(obs_fish_index(y, f)), 
-                             log(pred_fish_index(y, f)) - pow(fish_index_sd(f),2)/2, 
-                             fish_index_sd(f), true);
+                             log(pred_fish_index(y, f)) - fish_idx_bias_oe, fish_index_sd(f), true);
     } // y loop
   } // f loop
   
   // Survey Index Likelihoods -----------
   for(int sf = 0; sf < n_srv_fleets; sf++) {
     srv_index_sd(sf) = cv_to_sd(srv_index_cv(sf)); // Calculate sd
+    Type srv_idx_bias_oe = pow(srv_index_sd(sf),2)/2; 
     for(int y = 0 ; y < n_years; y++) {
       // Get likelihood here
       srv_index_nLL(y,sf) -= use_srv_index(y,sf) * dnorm(log(obs_srv_index(y, sf)),
-                             log(pred_srv_index(y, sf)) - pow(srv_index_sd(sf),2)/2,
-                             srv_index_sd(sf), true);
+                             log(pred_srv_index(y, sf)) - srv_idx_bias_oe, srv_index_sd(sf), true);
     } // y loop
   } // sf loop 
   
@@ -795,7 +794,7 @@ Type objective_function<Type>::operator() ()
   
   // REPORT SECTION ------------------------
   REPORT(NAA);
-  REPORT(NAL);
+  // REPORT(NAL);
   REPORT(CAA);
   REPORT(CAL);
   REPORT(SSB);
@@ -836,11 +835,7 @@ Type objective_function<Type>::operator() ()
   REPORT(BMSY);
   REPORT(Req);
   
-  // DERIVED QUANTITIES -------------------
-  ADREPORT(SSB);
-  
   return(jnLL);
-  
 } // end objective function
 
 
