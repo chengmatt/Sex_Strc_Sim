@@ -30,8 +30,8 @@
   lines(SrvAge_Selex[,2,1])
   
   plot(waa[,1])
-  lines(biologicals$waa_sex[,1])
-  plot(biologicals$waa_sex[,2])
+  # lines(biologicals$waa_sex[,1])
+  # plot(biologicals$waa_sex[,2])
   lines(waa[,2])
   
   plot(vonB[,1])
@@ -75,7 +75,7 @@
   # plot(Srv_LenComps[1,,1,1,1]/sum(Srv_LenComps[1,,1,1,1]), type = "l", col = "red")
   # lines(Srv_LenComps[1,,2,1,1]/sum(Srv_LenComps[1,,2,1,1]), type = "l", col = "blue")
   
-  for(sim in 1:n_sims) {
+  for(sim in sim:n_sims) {
     
     # get biological information
     biologicals = get_biologicals(n_sexes, n_ages, age_bins, len_mids, Srv_LAA, Srv_LW, sim = sim)
@@ -89,7 +89,7 @@
                                   est_sexRatio_par = TRUE,
                                   use_fish_sexRatio = TRUE,
                                   use_srv_sexRatio = TRUE,
-                                  fit_sexsp_catch = FALSE,
+                                  fit_sexsp_catch = TRUE,
                                   
                                   # selectivity
                                   selex_type = "length",
@@ -122,9 +122,8 @@
     
     # plot(est_hcr_catch[-6], HCR_proj_catch[-6])
     
-    # plot(models$rep$pred_fem_sexRatio_fish[1,,1], type = "l")
-    # lines(CAA[1,,1,1,sim] / rowSums(CAA[1,,,1,sim]))
-
+    # plot(models$rep$pred_fem_sexRatio_srvlen[19,,1], type = "l")
+    # lines(CAL[19,,1,1,sim] / rowSums(CAL[19,,,1,sim]))
 
     # plot(models$rep$pred_catch_sexsp[,1,1], col = "red", type = "l")
     # lines(Total_Catch_Sex[-31,1,1,sim], col = "red")
@@ -281,7 +280,7 @@ ggplot(selex_all, aes(x = age, y = Pred, group = sim)) +
   ggthemes::scale_color_excel_new() +
   ggthemes::theme_excel_new()
 
-selex_all%>% 
+selex_all %>% 
   group_by(sex, age) %>% 
   mutate(RE = (Pred - True) / True) %>% 
   summarize(median = median(RE),
