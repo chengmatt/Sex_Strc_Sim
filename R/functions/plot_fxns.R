@@ -13,7 +13,7 @@
 #' @examples
 plot_re_ts = function(df, ylab) {
   with(df,  plot(1, type = "n", xlab = "Years",
-                     ylab = ylab, xlim = c(1, max(years)), xaxs="i", cex.lab = 1.75,
+                     ylab = ylab, xlim = c(1, max(years)), ylim = c(-0.9, 0.9), xaxs="i", cex.lab = 1.75,
                      cex.axis = 2)) # xaxs i gets rid of bordering
   with(df, polygon(c(years, rev(years)), c(lwr95, rev(upr95)), border = NA, col = adjustcolor("#9fcae1", 1))) # 95% quantiles
   with(df, polygon(c(years, rev(years)), c(lwr50, rev(upr50)), border = NA, col = adjustcolor("#1a59a1", 0.55))) # 50% quantiles

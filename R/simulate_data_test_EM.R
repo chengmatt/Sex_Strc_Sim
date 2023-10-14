@@ -4,6 +4,7 @@
   
   library(here)
   library(tidyverse)
+  library(compResidual)
   
   # Load in all functions from the functions folder
   fxn_path <- here("R", "functions")
@@ -75,28 +76,28 @@
   # plot(Srv_LenComps[1,,1,1,1]/sum(Srv_LenComps[1,,1,1,1]), type = "l", col = "red")
   # lines(Srv_LenComps[1,,2,1,1]/sum(Srv_LenComps[1,,2,1,1]), type = "l", col = "blue")
   
-  for(sim in sim:n_sims) {
+  for(sim in 1:n_sims) {
     
     # get biological information
     biologicals = get_biologicals(n_sexes, n_ages, age_bins, len_mids, Srv_LAA, Srv_LW, sim = sim)
     
     em_inputs = prepare_EM_inputs(sim = sim,
                                   # sex-parameterizations
-                                  n_sexes = 2,
-                                  sex_specific = TRUE, 
+                                  n_sexes = 1,
+                                  sex_specific = FALSE, 
                                   share_M_sex = FALSE,
-                                  sexRatio = c(0.7, 0.3),
-                                  est_sexRatio_par = TRUE,
-                                  use_fish_sexRatio = TRUE,
-                                  use_srv_sexRatio = TRUE,
+                                  sexRatio = c(1, 1),
+                                  est_sexRatio_par = FALSE,
+                                  use_fish_sexRatio = FALSE,
+                                  use_srv_sexRatio = FALSE,
                                   fit_sexsp_catch = TRUE,
                                   
                                   # selectivity
                                   selex_type = "length",
                                   
                                   # Biologicals
-                                  WAA = biologicals$waa_sex,
-                                  age_len_transition = biologicals$al_matrix_sexsp,
+                                  WAA = biologicals$waa_nosex,
+                                  age_len_transition = biologicals$al_matrix_sexagg,
                                   
                                   # Fishery proportion treatment
                                   fish_age_prop = "within",
@@ -109,7 +110,7 @@
                                   agg_srv_age = FALSE, 
                                   agg_fish_len = FALSE,
                                   agg_srv_len = FALSE,
-                                  catch_cv = c(1e-3),
+                                  catch_cv = c(1e-2),
                                   use_fish_index = FALSE,
                                   
                                   # Parameter fixing
@@ -118,7 +119,7 @@
     # run model here
     models = run_model(data = em_inputs$data, 
                        parameters = em_inputs$parameters, 
-                       map = em_inputs$map, silent = TRUE)
+                       map = em_inputs$map, silent = TRUE, n.newton = 3)
     
     # plot(est_hcr_catch[-6], HCR_proj_catch[-6])
     
@@ -189,7 +190,7 @@
       est_hcr_catch[sim] =  get_proj_catch(fmsy_val = exp(models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "ln_Fmsy"]),
                                           bmsy_val = models$rep$BMSY, 
                                           sex_ratio = models$rep$init_sexRatios, 
-                                          n_ages = n_ages, n_sexes = 2, 
+                                          n_ages = n_ages, n_sexes = 1, 
                                           term_NAA = models$rep$NAA[n_years - 1,,], 
                                           term_SSB = models$rep$SSB[n_years - 1], 
                                           term_F_Slx = models$rep$Fish_Slx[n_years-1,,,], 
@@ -201,11 +202,11 @@
       # median((est_hcr_catch[1:sim] - HCR_proj_catch[1:sim]) / HCR_proj_catch[1:sim], na.rm = T)
       
       # # Save selex estimates
-      selex_f = data.frame(Pred = models$rep$Fish_Slx[1,,1,1], True = FishAge_Selex[,1,1], sim = sim, sex = "F", age = age_bins)
-      selex_m = data.frame(Pred = models$rep$Fish_Slx[1,,2,1], True = FishAge_Selex[,2,1], sim = sim, sex = "M", age = age_bins)
-      selex_all = rbind(selex_f, selex_m, selex_all)
-      ratio_par = models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "logit_init_sexRatio"]
-      sexratio[sim] =  0 + (1 - 0) * (1 / (1 + exp(-ratio_par)))
+      # selex_f = data.frame(Pred = models$rep$Fish_Slx[1,,1,1], True = FishAge_Selex[,1,1], sim = sim, sex = "F", age = age_bins)
+      # selex_m = data.frame(Pred = models$rep$Fish_Slx[1,,2,1], True = FishAge_Selex[,2,1], sim = sim, sex = "M", age = age_bins)
+      # selex_all = rbind(selex_f, selex_m, selex_all)
+      # ratio_par = models$sd_rep$par.fixed[names(models$sd_rep$par.fixed) == "logit_init_sexRatio"]
+      # sexratio[sim] =  0 + (1 - 0) * (1 / (1 + exp(-ratio_par)))
     }
     print(sim)
   } # end sim
@@ -220,7 +221,6 @@ rec_all_df = rec_all %>% mutate(RE = (Pred - True) / True, type = "R0")
 fmsy_all_df = fmsy_all %>% mutate(RE = (Pred - True) / True, type = "Fmsy")
 bmsy_all_df = bmsy_all %>% mutate(RE = (Pred - True) / True, type = "Bmsy")
 Req_all_df = Req_all %>% mutate(RE = (Pred - True) / True, type = "Req")
-
 par_all = rbind(Req_all_df, bmsy_all_df, m_all_df, rec_all_df, fmsy_all_df) %>% 
   select(RE, type, sim) %>%  pivot_wider(names_from = "type", values_from = "RE") %>%
   select(-sim)

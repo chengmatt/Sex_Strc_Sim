@@ -297,11 +297,7 @@ Type objective_function<Type>::operator() ()
                               (NAA(y-1,n_ages-2,s) * SAA(y-1,n_ages-2,s)); // increment into plus-group
         } // plus group
       } // end age loop
-      
-      // Compute Numbers-at-length 
-      // vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, y, 0, n_lens, 0); // sex-specific assessment
-      // for(int l = 0; l < n_lens; l++) NAL(y,l,s) = NAL_tmp_vec(l); // Loop through to input
-      
+
       // Do residual calculations (total biomass and SSB)
       for(int a = 0; a < n_ages; a++) {
         Total_Biom(y) += NAA(y, a, s) * WAA(a,s);

@@ -69,6 +69,7 @@ prepare_EM_inputs = function(sim,
                              sex_specific){
   
   if(sex_specific == TRUE & n_sexes == 1) stop("Sex-specific assessment, but n_sexes = 1")
+  if(est_sexRatio_par == TRUE & n_sexes == 1) stop("Sex-specific assessment, no need to estimate sex ratios")
   if(sex_specific == FALSE & n_sexes == 2) stop("Sex-aggregated assessment, but n_sexes = 2")
   if(agg_fish_age == TRUE & fish_age_prop == "across") stop("Need to specify fish age prop as within")
   if(agg_srv_age == TRUE & srv_age_prop == "across") stop("Need to specify srv age prop as within")
@@ -202,13 +203,13 @@ prepare_EM_inputs = function(sim,
   parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
 
   if(selex_type == "length") {
-    parameters$ln_fish_selpars = array(log(c(0.25, 0.25)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
-    parameters$ln_srv_selpars = array(log(c(0.25, 0.25)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
+    parameters$ln_fish_selpars = array(log(c(0.25, 60)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
+    parameters$ln_srv_selpars = array(log(c(0.25, 55)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
     } # length-based selectivity
   
   if(selex_type == "age") {
-    parameters$ln_fish_selpars = array(log(3), dim = c(n_sexes, n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
-    parameters$ln_srv_selpars = array(log(3), dim = c(n_sexes, n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
+    parameters$ln_fish_selpars = array(log(2), dim = c(n_sexes, n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
+    parameters$ln_srv_selpars = array(log(2), dim = c(n_sexes, n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
   } # age-based selectivity
   
   parameters$ln_Fmsy = log(0.1) # fmsy in log space

@@ -130,7 +130,7 @@ simulate_data = function(spreadsheet_path,
   
   
   # Get reference points + set up Fs ----------------------------------------
-  fmsy = get_Fmsy(ln_Fmsy = log(0.29),  M = M[1],  selex = FishAge_Selex[,1,1], 
+  fmsy = get_Fmsy(ln_Fmsy = log(0.1),  M = M[1],  selex = FishAge_Selex[,1,1], 
                        waa = waa[,1], mat_at_age = mat_at_age[,1], ages = age_bins)[[1]]
   # get bmsy
   SBPR_MSY = get_SBPR(M = M[1], selex = FishAge_Selex[,1,1], Trial_F = fmsy, 
