@@ -212,8 +212,6 @@ prepare_EM_inputs = function(sim,
     parameters$ln_srv_selpars = array(log(2), dim = c(n_sexes, n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
   } # age-based selectivity
   
-  parameters$ln_Fmsy = log(0.1) # fmsy in log space
-  
 # Mapping -----------------------------------------------------------------
   # fixing steepness
   if(sum(fix_pars %in% c("h")) == 1) {

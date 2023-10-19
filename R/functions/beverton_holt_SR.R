@@ -14,13 +14,12 @@ beverton_holt_recruit <- function(ssb, h, r0, M) {
   SPR_N <- vector()
   SPR_SSB0 <- vector()
   
-  for(a in 1:n_ages) {
+  for(a in 1:(n_ages * 2)) { # project 2x the number of ages in assessment
     if(a == 1) SPR_N[a] = 1
-    # if(a > 1 & a < n_ages) SPR_N[a] = SPR_N[a-1] * exp(-M) 
     if(a > 1) SPR_N[a] = SPR_N[a-1] * exp(-M) 
-    # if(a == n_ages) SPR_N[a] = (SPR_N[a-1] * exp(-M)) / (1 - exp(-M))
-    SPR_SSB0[a] = SPR_N[a] * waa[a,1] * mat_at_age[a,1]
-  }
+    if(a <= n_ages) SPR_SSB0[a] = SPR_N[a] * waa[a,1] * mat_at_age[a,1]
+    if(a > n_ages) SPR_SSB0[a] = SPR_N[a] * waa[n_ages,1] * mat_at_age[n_ages,1]
+  } # end a loop
   
   # Now, get SPR rate
   SPR0 <- sum(SPR_SSB0)

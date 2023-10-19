@@ -99,15 +99,11 @@ Type objective_function<Type>::operator() ()
   PARAMETER_MATRIX(ln_Fy); // Fishing Mortality Parameters; n_years x n_fish_fleets
   PARAMETER_ARRAY(ln_fish_selpars); // Fishery Selectivity Parameters; n_sexes x n_fish_fleets x n_fish_selpars (2; ln_a50 and ln_k)
   PARAMETER_ARRAY(ln_srv_selpars); // Fishery Selectivity Parameters; n_sexes x n_fish_fleets x n_srv_selpars (2; ln_a50 and ln_k)
-  
-  // Reference Point Parameters --------------
-  PARAMETER(ln_Fmsy); // Fmsy parameter in log space
 
   // PARAMETER TRANSFORMATIONS --------------------
   vector<Type> M = exp(ln_M); // Natural Mortality in normal Space
   Type sigmaRec = exp(ln_sigmaRec); // Recruiment sd in normal space
   Type sigmaRec2 = pow(sigmaRec, 2); // Recruitment Variability in normal Space
-  Type Fmsy = exp(ln_Fmsy); // Fmsy in normal space
   vector<Type> q_fish = exp(ln_q_fish); // Fishery catchability in normal space
   vector<Type> q_srv = exp(ln_q_srv); // Survey catchability in normal space
   vector<Type> init_sexRatios(n_sexes); // store sexRatios (inverse logit)
@@ -139,8 +135,8 @@ Type objective_function<Type>::operator() ()
   array<Type> ZAA(n_years, n_ages, n_sexes); // Total mortality-at-age
   array<Type> SAA(n_years, n_ages, n_sexes); // Survival at age
   vector<Type> SSB(n_years); // Spawning stock biomass
-  vector<Type> SBPR_N(n_ages); // Numbers Per recruit container
-  vector<Type> SBPR_SSB0(n_ages); // Spawning Biomass Per recruit container
+  vector<Type> SBPR_N(n_ages * 2); // Numbers Per recruit container
+  vector<Type> SBPR_SSB0(n_ages * 2); // Spawning Biomass Per recruit container
   vector<Type> Total_Rec(n_years); // Total Recruitment
   vector<Type> Total_Biom(n_years); // Total Biomass
   array<Type> Fish_Slx(n_years, n_ages, n_sexes, n_fish_fleets); // Fishery Selectivities
@@ -176,7 +172,6 @@ Type objective_function<Type>::operator() ()
   array<Type> sexRatio_fishlen_nLL(n_years, n_ages, n_fish_fleets); // Sex-Ratio likelihood penalty fishery obs lens
   array<Type> sexRatio_srvlen_nLL(n_years, n_ages, n_srv_fleets); // Sex-Ratio likelihood penalty survey obs lens
   
-  Type Fmsy_nLL = 0; // Fmsy likelihood for minimzing
   Type rec_nLL = 0; // Recruitment likelihood penalty 
   Type jnLL = 0; // Joint Negative log Likelihood
   
@@ -258,7 +253,7 @@ Type objective_function<Type>::operator() ()
   for(int s = 0; s < n_sexes; s++) {
     for(int a = 0; a < n_ages; a++) {
       // Get starting NAA
-      NAA(0, a, s) = exp(RecPars(0)) * exp(-M(s) * Type(a)) * exp(ln_InitDevs(a)) * init_sexRatios(s); 
+      NAA(0, a, s) = exp(RecPars(0)) * exp(-M(s) * Type(a) + ln_InitDevs(a)) * init_sexRatios(s); 
       
       if(a == 0) Total_Rec(0) += NAA(0, 0, s); // Get total recruitment - increment to get total recruitment
       Total_Biom(0) += NAA(0, a, s) * WAA(a,s); // Get total biomass
@@ -267,15 +262,16 @@ Type objective_function<Type>::operator() ()
       if(s == 0 && n_sexes > 1) SSB(0) += NAA(0, a, 0) * MatAA(a) * WAA(a,0); // sex-specific assessment
       if(s == 0 && n_sexes == 1) SSB(0) += (NAA(0, a, 0) * MatAA(a) * WAA(a,0)) * 0.5; // sex-aggregated assessment
       
-      // Compute Numbers-at-length in year 1
-      // vector<Type> NAL_tmp_vec = Convert_AL(age_len_transition, NAA, s, 0, 0, n_lens, 0); 
-      // for(int l = 0; l < n_lens; l++) NAL(0,l,s) = NAL_tmp_vec(l); // Loop through to input
     } // end age loop
   } // end sex loop
   
   // SSB0 Calculations ---------------------
-  SBPR_N = Get_SBPR_N(n_ages, M(0)); // M(0) to index female natural mortality
-  for(int a = 0; a < n_ages; a++) SBPR_SSB0(a) = SBPR_N(a) * MatAA(a) * WAA(a,0); // Compute SBPR0
+  for(int a = 0; a < n_ages * 2; a++) {
+    if(a == 0) SBPR_N(a) = Type(1);
+    if(a > 0) SBPR_N(a) = SBPR_N(a - 1) * exp(-M(0)); // sbpr in numbers (indexing females)
+    if(a <= n_ages - 1) SBPR_SSB0(a) = SBPR_N(a) * MatAA(a) * WAA(a,0); // compmute sbpr in biomass
+    if(a > n_ages - 1) SBPR_SSB0(a) = SBPR_N(a) * MatAA(n_ages - 1) * WAA(n_ages - 1,0); // larger than plus group
+  } // end a loop
   Type ssb0 = SBPR_SSB0.sum() * exp(RecPars(0)); // Get Virgin Equilibrium SSB here
  
   // Project population forward -------------
@@ -420,7 +416,7 @@ Type objective_function<Type>::operator() ()
         
         // Pull out vector for lengths
         vector<Type> fish_lens_tmp = CAL.col(f).col(s).transpose().col(y).vec();
-        
+         
         // Computing Length Compositions
         for(int l = 0; l < n_lens; l++) {
           // Get predicted comps here for catch-at-length (prior to normalization)
@@ -731,14 +727,14 @@ Type objective_function<Type>::operator() ()
           srv_len_comp_nLL(y,0,sf) -= use_srv_len_comps(y,sf) * dmultinom(obs_srv_len_agg, pred_srv_len_agg, true); // Get likelihood here
         } // Aggregated length comps
       } // if proportions within sex for survey lengths
-      
+         
     } // y loop
   } // sf loop
-
+ 
   // Penalty for Population Initialization
   for(int a = 0; a < ln_InitDevs.size(); a++) {
     rec_nLL -= dnorm(ln_InitDevs(a), -sigmaRec2/Type(2), sigmaRec, true);
-  } 
+  }        
   // Penalty for recruitment deviates
   for(int a = 0; a < ln_RecDevs.size(); a++) {
     rec_nLL -= dnorm(ln_RecDevs(a), -sigmaRec2/Type(2), sigmaRec, true);
@@ -814,31 +810,19 @@ Type objective_function<Type>::operator() ()
       } // end l loop
     } // end y loop
   } // if more than 1 sex
-  
-  // Get reference values for computing FMSY
-  vector<Type> Ref_Selex = Fish_Slx.col(0).col(0).transpose().col(n_years - 1); // Get reference selectivity
-  vector<Type> Ref_WAA = WAA.col(0); // Get weight at age for females
-  Type Ref_M = M(0); // Get M for females
-  
-  // Compute SBPR, YPR, and BMSY quantities
-  Type SBPR_MSY = Get_SBPR(Fmsy, Ref_Selex, Ref_M, Ref_WAA, MatAA, ages); // get spr for fmsy
-  Type YPR_MSY = Get_YPR(Fmsy, Ref_Selex, Ref_M, Ref_WAA, ages); // get ypr for fmsy
-  Type Req = Get_Req(SBPR_MSY, Ref_M, Ref_WAA, MatAA, ages, RecPars); // get equilibrium recruitment
-  Type BMSY = SBPR_MSY * Req; // derive bmsy
-  Fmsy_nLL = (-1.0 * log((YPR_MSY * Req))); // minimization criteria for fmsy (yield per recruit * equilibrium recruits)
-  
+
   // Compute joint likelihood
   jnLL = rec_nLL + sum(catch_nLL) + sum(fish_index_nLL) + sum(fish_age_comp_nLL) +
          sum(fish_len_comp_nLL) + sum(srv_index_nLL) + sum(srv_age_comp_nLL) +
          sum(srv_len_comp_nLL) + sum(sexRatio_fishage_nLL) + sum(sexRatio_srvage_nLL) +
-         sum(sexRatio_fishlen_nLL) + sum(sexRatio_srvlen_nLL) + Fmsy_nLL;
+         sum(sexRatio_fishlen_nLL) + sum(sexRatio_srvlen_nLL);
   
   // REPORT SECTION ------------------------
   REPORT(NAA);
   REPORT(CAA);
   REPORT(CAL);
   REPORT(SSB);
-  REPORT(pred_catch_agg);
+  REPORT(pred_catch_agg); 
   REPORT(pred_catch_sexsp);
   REPORT(pred_fish_index);
   REPORT(pred_fish_age_comps);
@@ -859,7 +843,6 @@ Type objective_function<Type>::operator() ()
 
   // likelihoods
   REPORT(jnLL);
-  REPORT(Fmsy_nLL);
   REPORT(rec_nLL);
   REPORT(catch_nLL);
   REPORT(fish_index_nLL);
@@ -872,12 +855,6 @@ Type objective_function<Type>::operator() ()
   REPORT(sexRatio_srvage_nLL);
   REPORT(sexRatio_fishlen_nLL);
   REPORT(sexRatio_srvlen_nLL);
-  
-  // Reference points
-  REPORT(SBPR_MSY);
-  REPORT(YPR_MSY);
-  REPORT(BMSY);
-  REPORT(Req);
   
   return(jnLL);
 } // end objective function

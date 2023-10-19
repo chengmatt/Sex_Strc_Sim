@@ -39,21 +39,19 @@ read_params <- function(spreadsheet_path) {
   
 # Growth Parameters -----------------------------------------------------------
   grwth <- read_xlsx(spreadsheet_path, sheet = "Growth_Param") # females then males
-  k <<- as.vector(grwth[1,1:2]) # brody coefficient
-  L_inf <<- as.vector(grwth[2,1:2]) # Linf parameter
-  t0 <<- as.vector(grwth[3,1:2]) # t0 parameter
-  beta_wl <<- as.vector(grwth[4,1:2]) # beta parameter
-  alpha_wl <<- as.vector(grwth[5,1:2]) # alpha parameter
-  vonB_sd <<- as.vector(grwth[6,1:2]) # vonbert sd
-  wl_sd <<- as.vector(grwth[7,1:2]) # weight length sd
+  k <<- as.numeric(as.vector(grwth[1,1:2])) # brody coefficient
+  L_inf <<- as.numeric(as.vector(grwth[2,1:2])) # Linf parameter
+  t0 <<- as.numeric(as.vector(grwth[3,1:2])) # t0 parameter
+  beta_wl <<- as.numeric(as.vector(grwth[4,1:2])) # beta parameter
+  alpha_wl <<- as.numeric(as.vector(grwth[5,1:2])) # alpha parameter
+  vonB_sd <<- as.numeric(as.vector(grwth[6,1:2])) # vonbert sd
+  wl_sd <<- as.numeric(as.vector(grwth[7,1:2])) # weight length sd
   
 # Recruitment + Mortality-------------------------------------------------------------
   recruitment_pars <- read_xlsx(spreadsheet_path, sheet = "Recruitment_Mortality")
   h <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "h"]) # Steepness (Recruitment at 20% of SSB0)
   r0 <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "r0"] ) # Virgin Recruitment
   sigma_rec <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "sigma_rec"]) # Recruitment variability
-  sexRatio_F = rep(as.numeric(recruitment_pars$Value[recruitment_pars$Par == "sexRatio"])) # sexRatio for females
-  sexRatio <<- c(sexRatio_F, 1 - sexRatio_F) # all sex ratios
   M_Female <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "M_Female"]) # Female natural mortality
   M_Male <<- as.numeric(recruitment_pars$Value[recruitment_pars$Par == "M_Male"]) # Male natural mortality
   M <<- c(M_Female, M_Male) # combined male and female natural mortality

@@ -14,7 +14,12 @@ simulate_data = function(spreadsheet_path,
                          cv_Fish_Index = 0.25,
                          q_Srv = 0.05,
                          selex_type,
-                         cv_Srv_Index = 0.25
+                         cv_Srv_Index = 0.25,
+                         growth_control = NA,
+                         growth_control_fct = 1,
+                         natmort_control = NA,
+                         natmort_control_fct = 1,
+                         sexRatio
                          ) {
   
   # Load in all functions from the functions folder
@@ -59,6 +64,17 @@ simulate_data = function(spreadsheet_path,
   Srv_LAA = vector("list", length = n_sexes * (n_years-1) * n_srv_fleets) # pre-allocate vector list size
   Srv_LW = vector("list", length = n_sexes * (n_years-1) * n_srv_fleets) # pre-allocate vector list size
   
+  # if statement for if we want to vary linf and k relative to females
+  if(growth_control == "chg_males_rel_females") { 
+    k[2] = k[1] * growth_control_fct
+    L_inf[2]= L_inf[1] * growth_control_fct
+  }
+  
+  # changing natural mortality males relative to females
+  if(natmort_control == "chg_males_rel_females") {
+    M[2] = M[1] * natmort_control_fct
+  }
+
   # counters for sampling survey length-at-age and weight-length
   srv_counter_age = 1
   srv_counter_len = 1
@@ -68,28 +84,31 @@ simulate_data = function(spreadsheet_path,
   if(comp_across_sex == "within") comp_across_sex = 1
   
 # Construct Length, Weight, and Age-Length Matrix Relationships -----------
-  # Construct vonB LAA 
-  vonB_Female = vonB(age_bins = age_bins, k = k[1]$Female, L_inf = L_inf[1]$Female, t0 = t0[1]$Female, sd = 0) # females
-  vonB_Male = vonB(age_bins = age_bins, k = k[2]$Male, L_inf = L_inf[2]$Male, t0 = t0[2]$Male, sd = 0) # males
-  vonB <<- matrix(c(vonB_Female, vonB_Male), ncol = n_sexes)
   
   # Construct Weight-Length relationship
-  wl_female = alpha_wl$Female[1] * len_mids^beta_wl$Female[1]
-  wl_male = alpha_wl$Male[1] * len_mids^beta_wl$Male[1]
+  wl_female = alpha_wl[1] * len_mids^beta_wl[1]
+  wl_male = alpha_wl[1] * len_mids^beta_wl[1]
   wl <<- matrix(c(wl_female, wl_male), ncol = n_sexes)
   
+  # Construct vonB LAA 
+  vonB_Female = vonB(age_bins = age_bins, k = k[1], L_inf = L_inf[1], t0 = t0[1], sd = 0) # females
+  vonB_Male = vonB(age_bins = age_bins, k = k[2], L_inf = L_inf[2], t0 = t0[2], sd = 0) # males
+  
   # Get WAA relationship
-  winf_Female = alpha_wl[1]$Female * L_inf[1]$Female^beta_wl[1]$Female
-  winf_Male = alpha_wl[2]$Male * L_inf[2]$Male^beta_wl[2]$Male
-  waa_Female = winf_Female * (1 - exp(-k[1]$Female * (age_bins - t0[1]$Female)))^beta_wl[1]$Female
-  waa_Male = winf_Male * (1 - exp(-k[2]$Male * (age_bins - t0[2]$Male)))^beta_wl[2]$Male
+  winf_Female = alpha_wl[1] * L_inf[1]^beta_wl[1]
+  winf_Male = alpha_wl[2] * L_inf[2]^beta_wl[2]
+  waa_Female = winf_Female * (1 - exp(-k[1] * (age_bins - t0[1])))^beta_wl[1]
+  waa_Male = winf_Male * (1 - exp(-k[2] * (age_bins - t0[2])))^beta_wl[2]
+  
+  # Bind females and males
+  vonB <<- matrix(c(vonB_Female, vonB_Male), ncol = n_sexes)
   waa <<- matrix(c(waa_Female, waa_Male), ncol = n_sexes)
   
   # Construct age-length transition matrices 
   al_matrix_Female <<- get_al_trans_matrix(age_bins = age_bins, len_bins = len_bins,
-                                         mean_length = vonB_Female, sd = vonB_sd$Female) # Female
+                                         mean_length = vonB_Female, sd = vonB_sd[2]) # Female
   al_matrix_Male <<- get_al_trans_matrix(age_bins = age_bins, len_bins = len_bins, 
-                                       mean_length = vonB_Male, sd = vonB_sd$Male) # Male
+                                       mean_length = vonB_Male, sd = vonB_sd[2]) # Male
   al_matrix <<- array(c(al_matrix_Female, al_matrix_Male), 
                     dim = c(length(age_bins), length(len_mids), n_sexes)) # combine age-length matrices
   
@@ -374,7 +393,9 @@ simulate_data = function(spreadsheet_path,
   Srv_LW <<- Srv_LW
 
   # Biologicals and Selex and unceratinty
+  M <<- M
   vonB <<- vonB
+  sexRatio <<- sexRatio
   wl <<- wl
   waa <<- waa
   al_matrix_Female <<- al_matrix_Female
@@ -390,5 +411,74 @@ simulate_data = function(spreadsheet_path,
   fmsy <<- fmsy
   bmsy <<- bmsy
   Req <<- Req 
+  SBPR_MSY <<- SBPR_MSY
   HCR_proj_catch <<- HCR_proj_catch
+  
+  # Output these as a list
+  oms <- list(
+    n_fish_fleets = n_fish_fleets,
+    n_srv_fleets = n_srv_fleets,
+    len_mids = len_mids,
+    n_ages = n_ages,
+    n_sexes = n_sexes,
+    age_bins = age_bins,
+    len_bins = len_bins,
+    NAA = NAA,
+    NAL = NAL,
+    FAA = FAA,
+    ZAA = ZAA,
+    CAA = CAA,
+    CAL = CAL,
+    Total_Catch_Sex = Total_Catch_Sex,
+    Total_Catch = Total_Catch,
+    SSB = SSB,
+    Total_Biom = Total_Biom,
+    RecDevs = RecDevs,
+    InitDevs = InitDevs,
+    mat_at_age = mat_at_age,
+    Fish_AgeComps = Fish_AgeComps,
+    Fish_Neff_Age = Fish_Neff_Age,
+    Fish_LenComps = Fish_LenComps,
+    Fish_Neff_Len = Fish_Neff_Len,
+    Fish_Index = Fish_Index,
+    FishAge_Selex = FishAge_Selex,
+    Srv_AgeComps = Srv_AgeComps,
+    Srv_Neff_Age = Srv_Neff_Age,
+    Srv_LenComps = Srv_LenComps,
+    Srv_Neff_Len = Srv_Neff_Len,
+    Srv_Index = Srv_Index,
+    SrvAge_Selex = SrvAge_Selex,
+    Srv_LAA = Srv_LAA,
+    Srv_LW = Srv_LW,
+    M = M,
+    r0 = r0,
+    h = h,
+    sigma_rec = sigma_rec,
+    vonB = vonB,
+    sexRatio = sexRatio,
+    wl = wl,
+    waa = waa,
+    al_matrix_Female = al_matrix_Female,
+    al_matrix_Male = al_matrix_Male,
+    al_matrix = al_matrix,
+    FishAge_Selex = FishAge_Selex,
+    SrvAge_Selex = SrvAge_Selex,
+    Fmort = Fmort,
+    cv_Srv_Index = cv_Srv_Index,
+    cv_Fish_Index = cv_Fish_Index,
+    q_Fish = q_Fish,
+    q_Srv = q_Srv,
+    fmsy = fmsy,
+    bmsy = bmsy,
+    Req = Req,
+    beta_wl = beta_wl,
+    alpha_wl = alpha_wl,
+    k = k,
+    n_sims = n_sims,
+    n_years = n_years,
+    L_inf = L_inf,
+    SBPR_MSY = SBPR_MSY,
+    HCR_proj_catch = HCR_proj_catch)
+  
+  return(oms)
 } # end function

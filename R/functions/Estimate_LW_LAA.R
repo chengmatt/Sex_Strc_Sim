@@ -107,7 +107,7 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
                                      ln_sigma = log(3)),
                         data = list(obs_len = WL_obs_len,
                                     obs_wt = WL_obs_wt,
-                                    ln_beta = log(beta_wl$Female[1])), # fix beta
+                                    ln_beta = log(beta_wl[1])), # fix beta
                         method="Nelder-Mead",
                         optimizer="nlminb",
                         control=list(maxit=5e6))
@@ -131,7 +131,7 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
   t0 = LAA_rel@coef[3]
   laa_sd = exp(LAA_rel@coef[4])
   alpha = exp(WL_rel@coef[1])
-  beta = beta_wl$Female[1] # fixing beta here
+  beta = beta_wl[1] # fixing beta here
   
   # Get weight at age now
   winf = (alpha * linf^beta)

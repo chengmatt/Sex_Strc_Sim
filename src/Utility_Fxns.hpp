@@ -26,23 +26,6 @@ Type Logist_19(Type age, // age integer
   return Selex;
 } // end fxn
 
-// Get SBPR in numbers
-template <class Type> 
-vector<Type> Get_SBPR_N(int n_ages, // integer of max age
-                        Type M // natural mortality
-                        ) {
-  // SBPR container
-  vector<Type> SBPR_N(n_ages); 
-  // Loop through to get SBPR in numbers
-  for(int a = 0; a < n_ages; a++) {
-    if(a == 0) SBPR_N(a) = Type(1);
-    if(a > 0) SBPR_N(a) = SBPR_N(a - 1) * exp(-M); 
-    // if(a > 0 && a < n_ages - 1) SBPR_N(a) = SBPR_N(a - 1) * exp(-M); 
-    // if(a == n_ages - 1) SBPR_N(a) = ((SBPR_N(a - 1) * exp(-M)) / (1 - exp(-M)));
-  } // age loop
-  return SBPR_N;
-} // end function
-
 // Get Beverton-Holt recruitment
 template <class Type>
 Type Get_Det_BH_Rec(vector<Type> RecPars, // vector of recruitment parameters (ln_R0, and h)
@@ -107,13 +90,13 @@ Type Get_SBPR(Type F, // trial F value
   
   // Loop through to get the rest of the quantities
   for(int a = 1; a < (ages.size() * 2); a++) {
-    if(a >= ages.size() ) { // using the max age for these calculations when we reach it
-      SBPR += Na * exp(-Za(ages.size() - 1)) * waa(ages.size() - 1) * MatAA(ages.size() - 1);
-      Na *= Srva(ages.size() - 1);
-    } else {
+    if(a < ages.size()) {
       SBPR += Na * exp(-Za(a)) * waa(a) * MatAA(a);
       Na *= Srva(a);
-    } // end if else for a >= max iteration
+    } else{
+      SBPR += Na * exp(-Za(ages.size() - 1)) * waa(ages.size() - 1) * MatAA(ages.size() - 1);
+      Na *= Srva(ages.size() - 1);
+    }
   } // end a loop
   
   return SBPR;
@@ -134,15 +117,15 @@ Type Get_YPR(Type F, // trial F value
              Na * (Type(1) - exp(-(M + selex(0) * F))) * waa(0);
   // Finish filling in quantities w/ age loop
   for(int a = 1; a < ages.size() * 2; a++) {
-    if(a >= ages.size()) { // if max iteration
-      Na *= exp(-(M + selex(ages.size() - 1) * F));
-      YPR += (selex(ages.size() - 1) * F) / (M + selex(ages.size() - 1) * F) * 
-             Na * (Type(1) - exp(-(M + selex(ages.size() - 1) * F))) * waa(ages.size() - 1);
-    } else{
+    if(a < ages.size()) {
       Na *= exp(-(M + selex(a) * F));
       YPR += (selex(a) * F) / (M + selex(a) * F) * 
-             Na * (Type(1) - exp(-(M + selex(a) * F))) * waa(a);
-    } // end if else for max iteration loop
+        Na * (Type(1) - exp(-(M + selex(a) * F))) * waa(a);
+    } else{
+      Na *= exp(-(M + selex(ages.size() - 1) * F));
+      YPR += (selex(ages.size() - 1) * F) / (M + selex(ages.size() - 1) * F) * 
+        Na * (Type(1) - exp(-(M + selex(ages.size() - 1) * F))) * waa(ages.size() - 1);
+    } // end if else
   } // end a loop
   
   return YPR;
