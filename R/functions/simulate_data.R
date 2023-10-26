@@ -16,9 +16,10 @@ simulate_data = function(spreadsheet_path,
                          selex_type,
                          cv_Srv_Index = 0.25,
                          growth_control = NA,
-                         growth_control_fct = 1,
                          natmort_control = NA,
+                         growth_control_fct = 1,
                          natmort_control_fct = 1,
+                         force_grwth_same_yng = FALSE,
                          sexRatio
                          ) {
   
@@ -71,9 +72,7 @@ simulate_data = function(spreadsheet_path,
   }
   
   # changing natural mortality males relative to females
-  if(natmort_control == "chg_males_rel_females") {
-    M[2] = M[1] * natmort_control_fct
-  }
+  if(natmort_control == "chg_males_rel_females")  M[2] = M[1] * natmort_control_fct
 
   # counters for sampling survey length-at-age and weight-length
   srv_counter_age = 1
@@ -91,22 +90,39 @@ simulate_data = function(spreadsheet_path,
   wl <<- matrix(c(wl_female, wl_male), ncol = n_sexes)
   
   # Construct vonB LAA 
-  vonB_Female = vonB(age_bins = age_bins, k = k[1], L_inf = L_inf[1], t0 = t0[1], sd = 0) # females
-  vonB_Male = vonB(age_bins = age_bins, k = k[2], L_inf = L_inf[2], t0 = t0[2], sd = 0) # males
+  vonB_Female = vonB_est(age_bins = age_bins, k = k[1], L_inf = L_inf[1], t0 = t0[1], sd = 0) # females
+  vonB_Male = vonB_est(age_bins = age_bins, k = k[2], L_inf = L_inf[2], t0 = t0[2], sd = 0) # males
+
+  if(force_grwth_same_yng == TRUE) {
+    
+    # set up
+    k_trial = seq(0.01, 0.5, 0.001) # define trial values to search through
+    young_ages = 1:3 # define young ages for whcih growth should be similar
+    minimize = vector()
+
+    for(i in 1:length(k_trial)) {
+      vonB_Male = vonB_est(age_bins = age_bins, k = k_trial[i], L_inf = L_inf[2], t0 = t0[2], sd = 0) # males
+      minimize[i] = sum(vonB_Female[1:3] - vonB_Male[1:3])^2 # minimize using ssq
+    } # end i loop
+    
+    k[2] = k_trial[which.min(minimize)] # redefine the k for males 
+    vonB_Male = vonB_est(age_bins = age_bins, k = k[2], L_inf = L_inf[2], t0 = t0[2], sd = 0) # males - now redfine this and bind
+    
+  } # end if forcing young individuals to similar growth 
+  
+  # Bind females and males
+  vonB <<- matrix(c(vonB_Female, vonB_Male), ncol = n_sexes)
   
   # Get WAA relationship
   winf_Female = alpha_wl[1] * L_inf[1]^beta_wl[1]
   winf_Male = alpha_wl[2] * L_inf[2]^beta_wl[2]
   waa_Female = winf_Female * (1 - exp(-k[1] * (age_bins - t0[1])))^beta_wl[1]
   waa_Male = winf_Male * (1 - exp(-k[2] * (age_bins - t0[2])))^beta_wl[2]
-  
-  # Bind females and males
-  vonB <<- matrix(c(vonB_Female, vonB_Male), ncol = n_sexes)
   waa <<- matrix(c(waa_Female, waa_Male), ncol = n_sexes)
   
   # Construct age-length transition matrices 
   al_matrix_Female <<- get_al_trans_matrix(age_bins = age_bins, len_bins = len_bins,
-                                         mean_length = vonB_Female, sd = vonB_sd[2]) # Female
+                                         mean_length = vonB_Female, sd = vonB_sd[1]) # Female
   al_matrix_Male <<- get_al_trans_matrix(age_bins = age_bins, len_bins = len_bins, 
                                        mean_length = vonB_Male, sd = vonB_sd[2]) # Male
   al_matrix <<- array(c(al_matrix_Female, al_matrix_Male), 
@@ -122,7 +138,7 @@ simulate_data = function(spreadsheet_path,
                                    bins = rep(len_mids,n_fish_fleets), midpoint = fish_len_midpoint),
                             nrow = length(len_mids), ncol = n_fish_fleets)
     for(f in 1:n_fish_fleets) { # convert length to age
-      for(s in 1:n_sexes) { # standardize to 1
+      for(s in 1:n_sexes) { 
         FishAge_Selex[,s,f] = al_matrix[,,s] %*% fish_len_selex[,f] 
       } # end s loop for sexes
     } # end f loop for fishery fleets
@@ -182,10 +198,11 @@ simulate_data = function(spreadsheet_path,
 # Population Projection ---------------------------------------------------
 
     for(y in 2:n_years) {
-      # Calculate Deaths from Fishery
-      FAA[y - 1,,,,sim] = Fmort[y-1,,sim] * FishAge_Selex[,,] # Fishing Mortality at Age
       for(a in 1:n_ages) {
         for(s in 1:n_sexes) {
+          
+          # Calculate Deaths from Fishery
+          FAA[y - 1,a,s,,sim] = Fmort[y-1,,sim] * FishAge_Selex[a,s,] # Fishing Mortality at Age
           # Calculate Total Mortality
           ZAA[y - 1,a,s,sim] = M[s] + sum(FAA[y - 1,a,s,,sim])
           
@@ -345,13 +362,15 @@ simulate_data = function(spreadsheet_path,
         } # end fifth sex loop
       } # end survey fleet loop
       
+      if(y == n_years - 1) {
+        # Get projected catch here
+        HCR_proj_catch[sim] = get_proj_catch(fmsy_val = fmsy, bmsy_val = bmsy, sex_ratio = sexRatio, 
+                                             n_ages = n_ages, n_sexes = n_sexes, term_NAA = NAA[y,,,sim], 
+                                             term_SSB = SSB[y, sim], term_F_Slx = FishAge_Selex, r0 = r0,
+                                             term_F = Fmort[y,,sim], M_s = M, WAA = waa, MatAA = mat_at_age)
+      } # get HCR catch
+      
     } # end year loop
-    
-    # Get projected catch here
-    HCR_proj_catch[sim] = get_proj_catch(fmsy_val = fmsy, bmsy_val = bmsy, sex_ratio = sexRatio, 
-                   n_ages = n_ages, n_sexes = n_sexes, term_NAA = NAA[n_years-1,,,sim], 
-                   term_SSB = SSB[n_years-1, sim], term_F_Slx = FishAge_Selex, r0 = r0,
-                   term_F = Fmort[n_years - 1,,sim], M_s = M, WAA = waa, MatAA = mat_at_age)
 
     print(sim)
   } # end sim loop

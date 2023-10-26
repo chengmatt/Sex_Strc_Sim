@@ -78,6 +78,12 @@ plot_OMs = function(oms, path) {
       labs(x = "Age", y = "Weight", color = "Sex")
   )
   
+  print(
+    ggplot(oms$Srv_LAA %>% filter(sim == 1), aes(x = ages, y = lens, color = factor(sex))) +
+      geom_point() +
+      facet_wrap(~sex, scales = "free_x")
+  )
+  
   # Natural Mortality -------------------------------------------------------
   M = data.frame(M = rep(oms$M, dim(oms$NAA)[1]), year = 1:dim(oms$NAA)[1],
                  sex = c(1, 2))

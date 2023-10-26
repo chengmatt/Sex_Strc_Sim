@@ -81,7 +81,9 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(fit_sexsp_catch); // Whether to fit sex-specific catch == 0 (aggregated), == 1 (sex-specific)
   DATA_INTEGER(selex_type); // Selectivity type == 0 (length-based selectivity), == 1 (age-based selectivity)
   DATA_INTEGER(est_sexRatio_par); // whether to estimate sexRatios as a free parameter == 0 (use data input), == 1 (estimate)
-  
+  DATA_INTEGER(sexRatio_al_or_y); // whether sex ratios are fitted by age or year (within each age or summed to each year) (0 = within age length and year), (1 = within year only)
+  DATA_INTEGER(share_M_sex) // whether to share M (0 = sex-specific), (1 = shared
+    
   // PARAMETER SECTION ---------------------
   PARAMETER(logit_init_sexRatio); // sex ratio for initial age-at-recruitment (females, males are offset from this) 
   // Biological Parameters -----------------
@@ -101,7 +103,13 @@ Type objective_function<Type>::operator() ()
   PARAMETER_ARRAY(ln_srv_selpars); // Fishery Selectivity Parameters; n_sexes x n_fish_fleets x n_srv_selpars (2; ln_a50 and ln_k)
 
   // PARAMETER TRANSFORMATIONS --------------------
-  vector<Type> M = exp(ln_M); // Natural Mortality in normal Space
+  vector<Type> M(n_sexes); // vector to store M values
+  if(share_M_sex == 1) M = exp(ln_M); // if we are sharing M
+  if(share_M_sex == 0) { // not sharing M = offset males from females as an exponent
+    M(0) = exp(ln_M(0)); // female M
+    M(1) = M(0) * exp(ln_M(1)); // Male M
+  } // if we are not sharing M 
+      
   Type sigmaRec = exp(ln_sigmaRec); // Recruiment sd in normal space
   Type sigmaRec2 = pow(sigmaRec, 2); // Recruitment Variability in normal Space
   vector<Type> q_fish = exp(ln_q_fish); // Fishery catchability in normal space
@@ -222,6 +230,7 @@ Type objective_function<Type>::operator() ()
         } // end s loop
       } // end f loop
     } // end y loop
+    REPORT(tmp_fishlens_slx);
   } // end if for length-based selectivity
   
   for(int y = 0; y < n_years; y++) {
@@ -352,6 +361,7 @@ Type objective_function<Type>::operator() ()
         } // end s loop
       } // end sf loop
     } // end y loop
+    REPORT(tmp_srvlens_slx);
   } // end if for length-based selectivity
   
   for(int sf = 0; sf < n_srv_fleets; sf++) {
@@ -743,35 +753,69 @@ Type objective_function<Type>::operator() ()
   // Calculate likelihoods for sex-ratios ages (fishery and survey)
   if(n_sexes > 1) {
     for(int y = 0; y < n_years; y++) {
-      for(int a = 0; a < n_ages; a ++) {
-        
-        for(int f = 0; f < n_fish_fleets; f++) { // fishery sex-ratios (ages)
-          // Pull out vector of age comps here
-          vector<Type> obs_fish_sexRatio = obs_fish_age_comps.col(f).transpose().col(y).col(a); 
-          Type sum_obs_fish_sexRatio = obs_fish_sexRatio.sum(); // get sum
-          obs_fem_sexRatio_fishage(y,a,f) = obs_fish_sexRatio(0) / sum_obs_fish_sexRatio;
+      
+      // If we are fitting sex ratio by age and year
+      if(sexRatio_al_or_y == 0) {
+        for(int a = 0; a < n_ages; a ++) {
+          for(int f = 0; f < n_fish_fleets; f++) { // fishery sex-ratios (ages)
+            // Pull out vector of age comps here
+            vector<Type> obs_fish_sexRatio = obs_fish_age_comps.col(f).transpose().col(y).col(a); 
+            Type sum_obs_fish_sexRatio = obs_fish_sexRatio.sum(); // get sum
+            obs_fem_sexRatio_fishage(y,a,f) = obs_fish_sexRatio(0) / sum_obs_fish_sexRatio;
+            // Pull out vector of predicted age comps here
+            vector<Type> pred_fish_sexRatio = CAA.col(f).transpose().col(y).col(a);
+            pred_fem_sexRatio_fishage(y,a,f) = pred_fish_sexRatio(0) / sum(pred_fish_sexRatio);
+            // evaluate sex ratios as a binomial likelihood
+            sexRatio_fishage_nLL(y,a,f) -= use_fish_sexRatio(y, f) * dbinom(obs_fish_sexRatio(0), 
+                                 sum_obs_fish_sexRatio, pred_fem_sexRatio_fishage(y,a,f), true);
+          } // end f loop
+          
+          for(int sf = 0; sf < n_srv_fleets; sf++) { // survey sex-ratios (ages)
+            // Pull out vector of age comps here
+            vector<Type> obs_srv_sexRatio = obs_srv_age_comps.col(sf).transpose().col(y).col(a); 
+            Type sum_obs_srv_sexRatio = obs_srv_sexRatio.sum(); // get sum
+            obs_fem_sexRatio_srvage(y,a,sf) = obs_srv_sexRatio(0) / sum_obs_srv_sexRatio;
+            // Pull out vector of predicted age comps here
+            vector<Type> pred_srv_sexRatio = Srv_AA.col(sf).transpose().col(y).col(a);
+            pred_fem_sexRatio_srvage(y,a,sf) = pred_srv_sexRatio(0) / sum(pred_srv_sexRatio);
+            // evaluate sex ratios as a binomial likelihood
+            sexRatio_srvage_nLL(y,a,sf) -= use_srv_sexRatio(y, sf) * dbinom(obs_srv_sexRatio(0), 
+                                sum_obs_srv_sexRatio, pred_fem_sexRatio_srvage(y,a,sf), true);
+          } // end sf loop
+        } // end a loop
+      } // end if for fitting sex ratio by age and year
+      
+      // Fitting sex ratio by year (don't include ratios within each age)
+      if(sexRatio_al_or_y == 1) {
+        for(int f = 0; f < n_fish_fleets; f++) { // fishery sex-ratios by year
+          // Pull out vector of age comps here and calculate sex ratios by year
+          vector<Type> obs_fish_all = obs_fish_age_comps.col(f).transpose().col(y); 
+          vector<Type> obs_fish_fem = obs_fish_age_comps.col(f).transpose().col(y).transpose().col(0); 
+          obs_fem_sexRatio_fishage(y,0,f) = obs_fish_fem.sum() / obs_fish_all.sum();
           // Pull out vector of predicted age comps here
-          vector<Type> pred_fish_sexRatio = CAA.col(f).transpose().col(y).col(a);
-          pred_fem_sexRatio_fishage(y,a,f) = pred_fish_sexRatio(0) / sum(pred_fish_sexRatio);
-          // evaluate sex ratios as a binomial likelihood
-          sexRatio_fishage_nLL(y,a,f) -= use_fish_sexRatio(y, f) * dbinom(obs_fish_sexRatio(0), 
-                                      sum_obs_fish_sexRatio, pred_fem_sexRatio_fishage(y,a,f), true);
+          vector<Type> pred_fish_all = CAA.col(f).transpose().col(y);
+          vector<Type> pred_fish_fem = CAA.col(f).transpose().col(y).transpose().col(0); 
+          pred_fem_sexRatio_fishage(y,0,f) = pred_fish_fem.sum() / pred_fish_all.sum();
+          // // evaluate sex ratios as a binomial likelihood
+          sexRatio_fishage_nLL(y,0,f) -= use_fish_sexRatio(y,f) * dbinom(obs_fish_fem.sum(),
+                                         obs_fish_all.sum(), pred_fem_sexRatio_fishage(y,0,f), true);
         } // end f loop
         
-        for(int sf = 0; sf < n_srv_fleets; sf++) { // survey sex-ratios (ages)
-          // Pull out vector of age comps here
-          vector<Type> obs_srv_sexRatio = obs_srv_age_comps.col(sf).transpose().col(y).col(a); 
-          Type sum_obs_srv_sexRatio = obs_srv_sexRatio.sum(); // get sum
-          obs_fem_sexRatio_srvage(y,a,sf) = obs_srv_sexRatio(0) / sum_obs_srv_sexRatio;
+        for(int sf = 0; sf < n_srv_fleets; sf++) { // survey sex-ratios by year
+          // Pull out vector of age comps here and calculate sex ratios by year
+          vector<Type> obs_srv_all = obs_srv_age_comps.col(sf).transpose().col(y); 
+          vector<Type> obs_srv_fem = obs_srv_age_comps.col(sf).transpose().col(y).transpose().col(0); 
+          obs_fem_sexRatio_srvage(y,0,sf) = obs_srv_fem.sum() / obs_srv_all.sum();
           // Pull out vector of predicted age comps here
-          vector<Type> pred_srv_sexRatio = Srv_AA.col(sf).transpose().col(y).col(a);
-          pred_fem_sexRatio_srvage(y,a,sf) = pred_srv_sexRatio(0) / sum(pred_srv_sexRatio);
-          // evaluate sex ratios as a binomial likelihood
-          sexRatio_srvage_nLL(y,a,sf) -= use_srv_sexRatio(y, sf) * dbinom(obs_srv_sexRatio(0), 
-                                      sum_obs_srv_sexRatio, pred_fem_sexRatio_srvage(y,a,sf), true);
+          vector<Type> pred_srv_all = Srv_AA.col(sf).transpose().col(y);
+          vector<Type> pred_srv_fem = Srv_AA.col(sf).transpose().col(y).transpose().col(0); 
+          pred_fem_sexRatio_srvage(y,0,sf) = pred_srv_fem.sum() / pred_srv_all.sum();
+          // // evaluate sex ratios as a binomial likelihood
+          sexRatio_srvage_nLL(y,0,sf) -= use_srv_sexRatio(y,sf) * dbinom(obs_srv_fem.sum(),
+                                         obs_srv_all.sum(), pred_fem_sexRatio_srvage(y,0,sf), true);
         } // end sf loop
-
-      } // end a loop
+      } // end if for fitting sex ratio by year only
+      
     } // end y loop
   } // if more than 1 sex
   
@@ -779,35 +823,68 @@ Type objective_function<Type>::operator() ()
   // Calculate likelihoods for sex-ratios lengths (fishery and survey)
   if(n_sexes > 1) {
     for(int y = 0; y < n_years; y++) {
-      for(int l = 0; l < n_lens; l++) {
-        
-        for(int f = 0; f < n_fish_fleets; f++) { // fishery sex-ratios (lengths)
-          // Pull out vector of age comps here
-          vector<Type> obs_fish_sexRatio = obs_fish_len_comps.col(f).transpose().col(y).col(l); 
-          Type sum_obs_fish_sexRatio = obs_fish_sexRatio.sum(); // get sum
-          obs_fem_sexRatio_fishlen(y,l,f) = obs_fish_sexRatio(0) / sum_obs_fish_sexRatio;
+      
+      if(sexRatio_al_or_y == 0) { // if sex ratio is by len and year
+        for(int l = 0; l < n_lens; l++) {
+          for(int f = 0; f < n_fish_fleets; f++) { // fishery sex-ratios (lengths)
+            // Pull out vector of age comps here
+            vector<Type> obs_fish_sexRatio = obs_fish_len_comps.col(f).transpose().col(y).col(l); 
+            Type sum_obs_fish_sexRatio = obs_fish_sexRatio.sum(); // get sum
+            obs_fem_sexRatio_fishlen(y,l,f) = obs_fish_sexRatio(0) / sum_obs_fish_sexRatio;
+            // Pull out vector of predicted len comps here
+            vector<Type> pred_fish_sexRatio = CAL.col(f).transpose().col(y).col(l);
+            pred_fem_sexRatio_fishlen(y,l,f) = pred_fish_sexRatio(0) / sum(pred_fish_sexRatio);
+            // evaluate sex ratios as a binomial likelihood
+            sexRatio_fishlen_nLL(y,l,f) -= use_fish_sexRatio(y, f) * dbinom(obs_fish_sexRatio(0), 
+                                 sum_obs_fish_sexRatio, pred_fem_sexRatio_fishlen(y,l,f), true);
+          } // end f loop
+          
+          for(int sf = 0; sf < n_srv_fleets; sf++) {
+            // Pull out vector of age comps here
+            vector<Type> obs_srv_sexRatio = obs_srv_len_comps.col(sf).transpose().col(y).col(l);
+            Type sum_obs_srv_sexRatio = obs_srv_sexRatio.sum(); // get sum
+            obs_fem_sexRatio_srvlen(y,l,sf) = obs_srv_sexRatio(0) / sum_obs_srv_sexRatio;
+            // Pull out vector of predicted age comps here
+            vector<Type> pred_srv_sexRatio = Srv_AL.col(sf).transpose().col(y).col(l);
+            pred_fem_sexRatio_srvlen(y,l,sf) = pred_srv_sexRatio(0) / sum(pred_srv_sexRatio);
+            // evaluate sex ratios as a binomial likelihood
+            sexRatio_srvlen_nLL(y,l,sf) -= use_srv_sexRatio(y, sf) * dbinom(obs_srv_sexRatio(0),
+                                sum_obs_srv_sexRatio, pred_fem_sexRatio_srvlen(y,l,sf), true);
+          } // end sf loop
+        } // end l loop
+      } // end if for fitting sex ratio by age and year
+      
+      // Fitting sex ratio by year (don't include ratios within each length)
+      if(sexRatio_al_or_y == 1) {
+        for(int f = 0; f < n_fish_fleets; f++) { // fishery sex-ratios by year
+          // Pull out vector of age comps here and calculate sex ratios by year
+          vector<Type> obs_fish_all = obs_fish_len_comps.col(f).transpose().col(y); 
+          vector<Type> obs_fish_fem = obs_fish_len_comps.col(f).transpose().col(y).transpose().col(0); 
+          obs_fem_sexRatio_fishlen(y,0,f) = obs_fish_fem.sum() / obs_fish_all.sum();
           // Pull out vector of predicted len comps here
-          vector<Type> pred_fish_sexRatio = CAL.col(f).transpose().col(y).col(l);
-          pred_fem_sexRatio_fishlen(y,l,f) = pred_fish_sexRatio(0) / sum(pred_fish_sexRatio);
-          // evaluate sex ratios as a binomial likelihood
-          sexRatio_fishlen_nLL(y,l,f) -= use_fish_sexRatio(y, f) * dbinom(obs_fish_sexRatio(0), 
-                               sum_obs_fish_sexRatio, pred_fem_sexRatio_fishlen(y,l,f), true);
+          vector<Type> pred_fish_all = CAL.col(f).transpose().col(y);
+          vector<Type> pred_fish_fem = CAL.col(f).transpose().col(y).transpose().col(0); 
+          pred_fem_sexRatio_fishlen(y,0,f) = pred_fish_fem.sum() / pred_fish_all.sum();
+          // // evaluate sex ratios as a binomial likelihood
+          sexRatio_fishlen_nLL(y,0,f) -= use_fish_sexRatio(y,f) * dbinom(obs_fish_fem.sum(),
+                                         obs_fish_all.sum(), pred_fem_sexRatio_fishlen(y,0,f), true);
         } // end f loop
         
-        for(int sf = 0; sf < n_srv_fleets; sf++) {
-          // Pull out vector of age comps here
-          vector<Type> obs_srv_sexRatio = obs_srv_len_comps.col(sf).transpose().col(y).col(l);
-          Type sum_obs_srv_sexRatio = obs_srv_sexRatio.sum(); // get sum
-          obs_fem_sexRatio_srvlen(y,l,sf) = obs_srv_sexRatio(0) / sum_obs_srv_sexRatio;
-          // Pull out vector of predicted age comps here
-          vector<Type> pred_srv_sexRatio = Srv_AL.col(sf).transpose().col(y).col(l);
-          pred_fem_sexRatio_srvlen(y,l,sf) = pred_srv_sexRatio(0) / sum(pred_srv_sexRatio);
-          // evaluate sex ratios as a binomial likelihood
-          sexRatio_srvlen_nLL(y,l,sf) -= use_srv_sexRatio(y, sf) * dbinom(obs_srv_sexRatio(0),
-                              sum_obs_srv_sexRatio, pred_fem_sexRatio_srvlen(y,l,sf), true);
+        for(int sf = 0; sf < n_srv_fleets; sf++) { // survey sex-ratios by year
+          // Pull out vector of age comps here and calculate sex ratios by year
+          vector<Type> obs_srv_all = obs_srv_len_comps.col(sf).transpose().col(y);
+          vector<Type> obs_srv_fem = obs_srv_len_comps.col(sf).transpose().col(y).transpose().col(0);
+          obs_fem_sexRatio_srvlen(y,0,sf) = obs_srv_fem.sum() / obs_srv_all.sum();
+          // Pull out vector of predicted len comps here
+          vector<Type> pred_srv_all = Srv_AL.col(sf).transpose().col(y);
+          vector<Type> pred_srv_fem = Srv_AL.col(sf).transpose().col(y).transpose().col(0);
+          pred_fem_sexRatio_srvlen(y,0,sf) = pred_srv_fem.sum() / pred_srv_all.sum();
+          // // evaluate sex ratios as a binomial likelihood
+          sexRatio_srvlen_nLL(y,0,sf) -= use_srv_sexRatio(y,sf) * dbinom(obs_srv_fem.sum(),
+                              obs_srv_all.sum(), pred_fem_sexRatio_srvlen(y,0,sf), true);
         } // end sf loop
-        
-      } // end l loop
+      } // end if for fitting sex ratio by year only
+      
     } // end y loop
   } // if more than 1 sex
 
@@ -840,6 +917,7 @@ Type objective_function<Type>::operator() ()
   REPORT(Total_Rec);
   REPORT(Total_Biom);
   REPORT(init_sexRatios); 
+  REPORT(M);
 
   // likelihoods
   REPORT(jnLL);
@@ -855,7 +933,7 @@ Type objective_function<Type>::operator() ()
   REPORT(sexRatio_srvage_nLL);
   REPORT(sexRatio_fishlen_nLL);
   REPORT(sexRatio_srvlen_nLL);
-  
+
   return(jnLL);
 } // end objective function
 

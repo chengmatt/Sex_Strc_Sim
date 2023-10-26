@@ -22,7 +22,7 @@ Type Logist_19(Type age, // age integer
   // Transform parameters
   Type a50 = exp(ln_pars(0));
   Type a95 = exp(ln_pars(1));
-  Type Selex = Type(1.0) / (Type(1.0) + pow(Type(19.0), (a50 - age) / a95));
+  Type Selex = Type(1) / (Type(1) + exp(-log(Type(19)) * ((age - a50) / (a95 - a50)) ));
   return Selex;
 } // end fxn
 

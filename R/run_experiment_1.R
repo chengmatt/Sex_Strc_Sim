@@ -7,6 +7,7 @@
 library(here)
 library(tidyverse)
 library(TMB)
+library(readxl)
 library(doSNOW)
 library(parallel)
 
@@ -31,12 +32,11 @@ for(i in 1:length(files)) source(here(fxn_path, files[i]))
 om_path = here("output", "Experiment 1")
 om_names = list.files(om_path)
 
-# Read in OMs for experiment 1 and set up
-oms_exp1 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp1")
-ems_exp1 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp1")
+# Read in OMs for experiment 1 and set śp
+oms_exp1 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp1", na = "NA")
+ems_exp1 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp1", na = "NA")
 
 # Run Experiment 1 --------------------------------------------------------
-
 for(n_om in 1:nrow(oms_exp1)) {
   
   # Specify the OM scenario folder
@@ -58,6 +58,7 @@ for(n_om in 1:nrow(oms_exp1)) {
     srv_age_prop_em = ems_exp1$srv_age_prop[n_em] # whether to do proportions across or within
     fish_len_prop_em = ems_exp1$fish_len_prop[n_em] # whether to do proportions across or within
     srv_len_prop_em = ems_exp1$srv_len_prop[n_em] # whether to do proportions across or within
+    sexRatio_al_or_y_em = ems_exp1$sexRatio_al_or_y[n_em] # if we want to fit sex ratio as within year only or both
     em_name = ems_exp1$EM_Name[n_em] # em name
     
 # Run Simulations here ----------------------------------------------------
@@ -84,7 +85,6 @@ for(n_om in 1:nrow(oms_exp1)) {
         sexRatio_em = c(0.5, 0.5)
       } # end if
       
-      
       # Prepare EM inputs into assessment
       em_inputs = prepare_EM_inputs(sim = sim,
                                     # EM_Parameterization
@@ -93,7 +93,8 @@ for(n_om in 1:nrow(oms_exp1)) {
                                     share_M_sex = share_M_sex_em,
                                     use_fish_sexRatio = use_fish_sexRatio_em,
                                     use_srv_sexRatio = use_srv_sexRatio_em,
-                                    fit_sexsp_catch = fit_sexsp_catch_em,
+                                    fit_sexsp_catch = fit_sexsp_catch_em, 
+                                    sexRatio_al_or_y = sexRatio_al_or_y_em,
                                     
                                     # Proportion treatment
                                     fish_age_prop = fish_age_prop_em,
@@ -122,7 +123,7 @@ for(n_om in 1:nrow(oms_exp1)) {
       # run model here
       model = run_model(data = em_inputs$data, 
                         parameters = em_inputs$parameters, 
-                        map = em_inputs$map, silent = TRUE, n.newton = 3)
+                        map = em_inputs$map, silent = FALSE, n.newton = 3)
       
       # extract quantities
       quants_df = get_quantities(biologicals = biologicals,

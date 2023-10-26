@@ -61,6 +61,7 @@ prepare_EM_inputs = function(sim,
                              use_srv_age_comps = TRUE,
                              use_srv_len_comps = TRUE,
                              use_srv_sexRatio = TRUE,
+                             sexRatio_al_or_y = NA,
                              fix_pars,
                              share_M_sex,
                              est_sexRatio_par, 
@@ -188,7 +189,12 @@ prepare_EM_inputs = function(sim,
   if(selex_type == "age") data$selex_type = 1 # age-based selectivity
   if(est_sexRatio_par == FALSE) data$est_sexRatio_par = 0 # don't estimate sex ratio and use data input
   if(est_sexRatio_par == TRUE) data$est_sexRatio_par = 1 # estiamte sex ratio as a free parameter
-  
+  if(share_M_sex == FALSE) data$share_M_sex = 0 # sharing M vs. not sharing M (not sharing M = 0)
+  if(share_M_sex == TRUE) data$share_M_sex = 1 # sharing M vs. not sharing M (sharing M = 1)
+  if(sexRatio_al_or_y == "None") data$sexRatio_al_or_y = 50 # If this is an NA - specify it at a random value
+  if(sexRatio_al_or_y == "within_agelen_and_year")  data$sexRatio_al_or_y = 0 # If sex ratios are fit to as within age or len and year 
+  if(sexRatio_al_or_y == "within_year_only")  data$sexRatio_al_or_y = 1 # If sex ratios are fit to as within year only
+
 # Parameters --------------------------------------------------------------
   parameters$logit_init_sexRatio = 0 # at 0.5 right now
   parameters$ln_M = vector(length = n_sexes)
@@ -203,8 +209,8 @@ prepare_EM_inputs = function(sim,
   parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
 
   if(selex_type == "length") {
-    parameters$ln_fish_selpars = array(log(c(0.25, 60)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
-    parameters$ln_srv_selpars = array(log(c(0.25, 55)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
+    parameters$ln_fish_selpars = array(log(c(0.35, 60)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
+    parameters$ln_srv_selpars = array(log(c(0.35, 50)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
     } # length-based selectivity
   
   if(selex_type == "age") {

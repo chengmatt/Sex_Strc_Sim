@@ -117,7 +117,7 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
   LAA_rel = bbmle::mle2(nLL_LAA,
                         start = list(ln_linf = log(80),
                                      ln_k = log(0.2),
-                                     ln_sigma = log(4),
+                                     ln_sigma = log(2),
                                      t0 = 0),
                         data = list(obs_age = LAA_obs_age,
                                     obs_lens = LAA_obs_len),

@@ -15,7 +15,7 @@
 #' @examples
 get_al_trans_matrix = function(age_bins, len_bins, mean_length, sd) {
   
-  # Get midpoint of length bins to make sure there are still probabilities left 
+  # Get midpoint of length bins 
   len_mids = len_bins[1:(length(len_bins) - 1)] + diff(len_bins) / 2
   # Construct age length matrix
   age_length = matrix(0.0, nrow = length(age_bins), ncol = length(len_mids))
@@ -48,7 +48,7 @@ get_al_trans_matrix = function(age_bins, len_bins, mean_length, sd) {
 #'
 #' @examples
 logist = function(slope, bins, midpoint) {
-  return(1 / (1 + exp(-slope * (bins - midpoint)) ))
+  return(  1 / (1 + exp(-slope * (bins - midpoint)) ))
 } # end function
 
 #' Title Logistic Function with a95 parameterization
@@ -63,7 +63,7 @@ logist = function(slope, bins, midpoint) {
 #' @examples
 
 logist_19 = function(a50, bins, a95) {
-  return(1 / (1 + 19 ^ ((a50 - bins) / a95) ))
+  return(1 / (1 + exp(-log(19) * ((bins - a50) / (a95 - a50)) )))
 } # end function
 
 #' Title Von Bertalannfy Growth Function
@@ -78,7 +78,7 @@ logist_19 = function(a50, bins, a95) {
 #' @export
 #'
 #' @examples
-vonB = function(age_bins, k , L_inf, t0, sd) {
+vonB_est = function(age_bins, k , L_inf, t0, sd) {
   return(L_inf * (1-exp(-k*(age_bins -t0)) ) + rnorm(1, 0, sd))
 } #end function
 
@@ -152,9 +152,9 @@ get_biologicals = function(n_sexes, n_ages, age_bins, len_mids, LAA, LW, sim) {
   } # end s loop
   
   return(list(waa_nosex = waa_nosex, al_matrix_sexagg = al_matrix_sexagg, 
-              waa_sex = waa_sex, al_matrix_sexsp = al_matrix_sexsp))
+              waa_sex = waa_sex, al_matrix_sexsp = al_matrix_sexsp,
+              sd_waa_sex_agg =  waa_sex_agg[[6]], sd_waa_sex_sp_m =  waa_sex_sp[[6]]))
 } # end function
-
 
 #' Title Take additional newton steps with TMB model
 #'

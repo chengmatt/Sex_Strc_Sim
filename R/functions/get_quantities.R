@@ -14,9 +14,10 @@
 get_quantities = function(biologicals, model, sim, om_name, em_name, n_sexes_em) {
   
 # Convergence -------------------------------------------------------------
-gradient = max(model$sd_rep$gradient.fixed)
+gradient = max(abs(model$sd_rep$gradient.fixed))
 pdHess = model$sd_rep$pdHess
-if(gradient < 0.01 & pdHess == TRUE) conv = "Converged"
+n_nans = sum(is.nan(model$sd_rep$cov.fixed))
+if(gradient <= 0.1 & pdHess == TRUE & n_nans == 0) conv = "Converged"
 else conv = "Not Converged"
 
 # Put into dataframe to output
@@ -128,7 +129,7 @@ if(n_sexes_em == 1) waa_ref_use = biologicals$waa_nosex
 if(n_sexes_em == 2) waa_ref_use = biologicals$waa_sex
 
 # Get natural mortality
-Mest = exp(model$sd_rep$par.fixed[names(model$sd_rep$par.fixed) == "ln_M"])
+Mest = model$rep$M
 M_df = data.frame(Pred = Mest, Truth = M, Type = c("M_F", "M_M"), Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name)
 
 # Get R0
@@ -154,7 +155,23 @@ init_sr_est = model$rep$init_sexRatios
 init_sr_df = data.frame(Pred = init_sr_est, Truth = sexRatio, Type = c("Female Sex Ratio", "Male Sex Ratio"), 
                         Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name)
 
-par_df = rbind(init_sr_df, bmsy_df, fmsy_df, r0_df, M_df)
+# get hcr catch
+hcr_catch = get_proj_catch(fmsy_val = fmsy_est,
+               bmsy_val = bmsy_est,
+               sex_ratio = model$rep$init_sexRatios,
+               n_ages = n_ages, n_sexes = n_sexes_em,
+               term_NAA = model$rep$NAA[n_years-1,,],
+               term_SSB = model$rep$SSB[n_years - 1],
+               term_F_Slx = model$rep$Fish_Slx[n_years-1,,,],
+               term_F = exp(model$sd_rep$par.fixed[names(model$sd_rep$par.fixed) == "ln_Fy"])[n_years - 1],
+               M_s = model$rep$M,
+               r0 = exp(model$sd_rep$par.fixed[names(model$sd_rep$par.fixed) == "RecPars"]),
+               WAA = waa_ref_use, MatAA = mat_at_age)
+
+hcr_catch_df = data.frame(Pred = hcr_catch, Truth = HCR_proj_catch[sim], Type = c("Tier 3 HCR Catch"), 
+                        Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name)
+
+par_df = rbind(init_sr_df, bmsy_df, fmsy_df, r0_df, M_df, hcr_catch_df)
 
   return(
     list(ts_df = ts_df, NAA_sr_female_df = NAA_sr_female_df,

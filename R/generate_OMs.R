@@ -43,7 +43,8 @@ for(i in 1:nrow(oms_exp1)) {
                 growth_control = "chg_males_rel_females",
                 natmort_control = "chg_males_rel_females",
                 growth_control_fct = oms_exp1$growth_control_fct[i], 
-                natmort_control_fct = oms_exp1$natmort_control_fct[i])
+                natmort_control_fct = oms_exp1$natmort_control_fct[i],  
+                force_grwth_same_yng = FALSE)
   
   # Save as RData file - ifelse for sensitivity tests
   save(oms, file = here(om_path, paste(oms_exp1$OM_Name[i], ".RData", sep = "")))
@@ -56,7 +57,7 @@ for(i in 1:nrow(oms_exp1)) {
 # Read in OMs for experiment 2
 oms_exp2 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp2")
 
-for(i in 1:nrow(oms_exp2)) {
+for(i in 5:nrow(oms_exp2)) {
   
   # Create file directory to save model outputs
   om_path = here("output", "Experiment 2", oms_exp2$OM_Name[i])
@@ -81,8 +82,9 @@ for(i in 1:nrow(oms_exp2)) {
                       sexRatio = sr, # keeping sex ratio at 50:50 here
                       growth_control = "chg_males_rel_females",
                       natmort_control = "chg_males_rel_females",
-                      growth_control_fct = 0.85, # holding constant at 15% difference 
-                      natmort_control_fct = 0.85) # holding constant at 15% difference 
+                      growth_control_fct = oms_exp2$growth_control_fct[i], # holding constant at 15% difference 
+                      natmort_control_fct = oms_exp2$natmort_control_fct[i], # holding constant at 15% difference 
+                      force_grwth_same_yng = FALSE) 
   
   # Save as RData file - ifelse for sensitivity tests
   save(oms, file = here(om_path, paste(oms_exp2$OM_Name[i], ".RData", sep = "")))

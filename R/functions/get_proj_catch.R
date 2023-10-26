@@ -55,8 +55,9 @@ get_proj_catch <- function(fmsy_val,
     } # end a (age) loop
   } # end s (sex) loop
   
-  # Get projected SSB
-  proj_SSB = sum(N_proj[,1] * WAA[,1] * MatAA[,1])
+  if(n_sexes == 1) proj_SSB = sum(N_proj[,1] * 0.5 * WAA[,1] * MatAA[,1])
+  if(n_sexes != 1) proj_SSB = sum(N_proj[,1] * WAA[,1] * MatAA[,1])
+  
   # Harvest control rule here
   bmsy_val_ratio = proj_SSB / bmsy_val # get b/bmsy_val
   if(bmsy_val_ratio < 1) Fval = ((proj_SSB / bmsy_val  - 0.05) / (1 - 0.05)) * fmsy_val
