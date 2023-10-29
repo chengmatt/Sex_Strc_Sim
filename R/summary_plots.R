@@ -15,7 +15,7 @@ theme_tj = function() {
     theme(legend.position = "none",
           axis.text = element_text(size = 18, color = "black"),
           axis.title = element_text(size = 20, color =  "black"),
-          strip.text = element_text(size = 18),
+          strip.text = element_text(size = 13),
           legend.title = element_text(size = 20),
           legend.text = element_text(size = 18),
           plot.title = element_text(size = 20))
@@ -29,27 +29,6 @@ exp1_growth_df = data.table::fread(here("output", "Experiment_1_Growth.csv"))
 exp1_param_df = data.table::fread(here("output", "Experiment_1_Param.csv"))
 exp1_ts_df = data.table::fread(here("output", "Experiment_1_TimeSeries.csv"))
 exp1_conv_df = data.table::fread(here("output", "Experiment_1_Convergence.csv"))
-
-# Do some residual munging here to left join convergence information
-exp1_selex_df = exp1_selex_df %>% 
-  select(!Convergence) %>% 
-  left_join(exp1_conv_df %>% select(OM, EM, sim, convergence) %>% 
-              rename(Convergence = convergence), by = c("OM", "EM", "sim"))
-
-exp1_growth_df = exp1_growth_df %>% 
-  select(!Convergence) %>% 
-  left_join(exp1_conv_df %>% select(OM, EM, sim, convergence) %>% 
-              rename(Convergence = convergence), by = c("OM", "EM", "sim"))
-
-exp1_param_df = exp1_param_df %>% 
-  select(!Convergence) %>% 
-  left_join(exp1_conv_df %>% select(OM, EM, sim, convergence) %>% 
-              rename(Convergence = convergence), by = c("OM", "EM", "sim"))
-
-exp1_ts_df = exp1_ts_df %>% 
-  select(!Convergence) %>% 
-  left_join(exp1_conv_df %>% select(OM, EM, sim, convergence) %>% 
-              rename(Convergence = convergence), by = c("OM", "EM", "sim"))
 
 ### Convergence Summary -----------------------------------------------------
 
@@ -207,7 +186,8 @@ prop_param_df = exp1_param_df %>%
            str_detect(EM, "MSex") ~ "Sex-Specific M"),
          Prop = case_when(
            str_detect(EM, "PropAcr") ~ "Proportions Across",
-           str_detect(EM, "PropWith") ~ "Proportions Within"),
+           str_detect(EM, "PropWith_SR_Y") ~ "Proportions Within (SR_Y)",
+           str_detect(EM, "PropWith_SR_ALY") ~ "Proportions Within (SR_ALY)"),
          Catch = case_when(
            str_detect(EM, "CatAgg") ~ "Aggregated Catch",
            str_detect(EM, "CatSex") ~ "Sex-Specific Catch")) %>% 
@@ -218,7 +198,22 @@ pdf(here("figs", "Experiment 1", "RE_Param_Acr_vs_With.pdf"), width = 17, height
 prop_param_df %>% 
   filter(Magg == "Sex-Specific M",
          Catch == "Aggregated Catch",
-         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch")) %>% 
+         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
+         Prop %in% c("Proportions Within (SR_Y)", "Proportions Within (SR_ALY)")) %>% 
+  ggplot(aes(x = RE, fill = Prop)) +
+  geom_density(alpha = 0.5) +
+  geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
+  labs(x = "Parameter", y = "Relative Error",
+       title = "Sex-Specific M, Aggregated Catch") +
+  theme_tj() +
+  facet_grid(Type~OM, scales = "free") +
+  theme(legend.position = "top")
+
+prop_param_df %>% 
+  filter(Magg == "Sex-Specific M",
+         Catch == "Aggregated Catch",
+         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
+         Prop %in% c("Proportions Across", "Proportions Within (SR_Y)")) %>% 
   ggplot(aes(x = RE, fill = Prop)) +
   geom_density(alpha = 0.5) +
   geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
@@ -231,7 +226,22 @@ prop_param_df %>%
 prop_param_df %>% 
   filter(Magg == "Sex-Specific M",
          Catch == "Sex-Specific Catch",
-         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch")) %>% 
+         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
+         Prop %in% c("Proportions Within (SR_Y)", "Proportions Within (SR_ALY)")) %>% 
+  ggplot(aes(x = RE, fill = Prop)) +
+  geom_density(alpha = 0.5) +
+  geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
+  labs(x = "Parameter", y = "Relative Error",
+       title = "Sex-Specific M, Sex-Specific Catch") +
+  theme_tj() +
+  facet_grid(Type~OM, scales = "free") +
+  theme(legend.position = "top")
+
+prop_param_df %>% 
+  filter(Magg == "Sex-Specific M",
+         Catch == "Sex-Specific Catch",
+         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
+         Prop %in% c("Proportions Within (SR_Y)", "Proportions Across")) %>% 
   ggplot(aes(x = RE, fill = Prop)) +
   geom_density(alpha = 0.5) +
   geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
@@ -244,7 +254,8 @@ prop_param_df %>%
 prop_param_df %>% 
   filter(Magg == "Aggregated M",
          Catch == "Aggregated Catch",
-         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch")) %>% 
+         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
+         Prop %in% c("Proportions Within (SR_Y)", "Proportions Within (SR_ALY)")) %>% 
   ggplot(aes(x = RE, fill = Prop)) +
   geom_density(alpha = 0.5) +
   geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
@@ -257,7 +268,8 @@ prop_param_df %>%
 prop_param_df %>% 
   filter(Magg == "Sex-Specific M",
          Catch == "Aggregated Catch",
-         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch")) %>% 
+         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
+         Prop %in% c("Proportions Within (SR_Y)", "Proportions Across")) %>% 
   ggplot(aes(x = RE, fill = Prop)) +
   geom_density(alpha = 0.5) +
   geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
@@ -266,102 +278,6 @@ prop_param_df %>%
   theme_tj() +
   facet_grid(Type~OM, scales = "free") +
   theme(legend.position = "top")
-
-dev.off()
-
-##### Sex-specific Catch ------------------------------------------------------
-
-pdf(here("figs", "Experiment 1", "RE_Param_Agg_vs_SS_Cat.pdf"), width = 15)
-print(
-  prop_param_df %>% 
-    filter(Magg == "Sex-Specific M",
-           Prop == "Proportions Within",
-           Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch")) %>% 
-    ggplot(aes(x = RE, fill = Catch)) +
-    geom_density(alpha = 0.5) +
-    geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
-    labs(x = "Parameter", y = "Relative Error",
-         title = "Sex-Specific M, Sex-Specific Catch, Proportions Within") +
-    theme_tj() +
-    facet_grid(Type~OM, scales = "free") +
-    theme(legend.position = "top")
-)
-print(
-  prop_param_df %>% 
-    filter(Magg == "Sex-Specific M",
-           Prop == "Proportions Across",
-           Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch")) %>% 
-    ggplot(aes(x = RE, fill = Catch)) +
-    geom_density(alpha = 0.5) +
-    geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
-    labs(x = "Parameter", y = "Relative Error",
-         title = "Sex-Specific M, Sex-Specific Catch, Proportions Across") +
-    theme_tj() +
-    facet_grid(Type~OM, scales = "free") +
-    theme(legend.position = "top")
-)
-print(
-  prop_param_df %>% 
-    filter(Magg == "Aggregated M",
-           Prop == "Proportions Within",
-           Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch")) %>% 
-    ggplot(aes(x = RE, fill = Catch)) +
-    geom_density(alpha = 0.5) +
-    geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
-    labs(x = "Parameter", y = "Relative Error",
-         title = "Aggregated M, Sex-Specific Catch, Proportions Within") +
-    theme_tj() +
-    facet_grid(Type~OM, scales = "free") +
-    theme(legend.position = "top")
-)
-print(
-  prop_param_df %>% 
-    filter(Magg == "Aggregated M",
-           Prop == "Proportions Across",
-           Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch")) %>% 
-    ggplot(aes(x = RE, fill = Catch)) +
-    geom_density(alpha = 0.5) +
-    geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
-    labs(x = "Parameter", y = "Relative Error",
-         title = "Aggregated M, Sex-Specific Catch, Proportions Across") +
-    theme_tj() +
-    facet_grid(Type~OM, scales = "free") +
-    theme(legend.position = "top")
-)
-
-print(
-  prop_param_df %>% 
-    filter(Magg == "Aggregated M",
-           Prop == "Proportions Within",
-           Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
-           OM == "Growth_M (0,10)",
-           Catch == "Aggregated Catch") %>% 
-    ggplot(aes(x = RE, fill = Catch)) +
-    geom_density(alpha = 0.5) +
-    geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
-    labs(x = "Parameter", y = "Relative Error",
-         title = "Aggregated M, Aggregated Catch, Proportions Within (Zoomed)") +
-    theme_tj() +
-    facet_wrap(Type~OM, scales = "free") +
-    theme(legend.position = "top")
-)
-
-print(
-  prop_param_df %>% 
-    filter(Magg == "Aggregated M",
-           Prop == "Proportions Within",
-           Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
-           OM == "Growth_M (0,10)",
-           Catch == "Sex-Specific Catch") %>% 
-    ggplot(aes(x = RE, fill = Catch)) +
-    geom_density(alpha = 0.5) +
-    geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
-    labs(x = "Parameter", y = "Relative Error",
-         title = "Aggregated M, Sex-Specific Catch, Proportions Within (Zoomed)") +
-    theme_tj() +
-    facet_wrap(Type~OM, scales = "free") +
-    theme(legend.position = "top")
-)
 
 dev.off()
 
@@ -377,8 +293,10 @@ exp1_param_sum = exp1_param_df %>%
             upr_95 = quantile(RE, 0.975))
 
 # plot (all EMs)
-pdf(here("figs", "Experiment 1", "RE_Param_allEMs.pdf"), width = 34, height = 14)
-print(ggplot(exp1_param_sum, aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95)) +
+pdf(here("figs", "Experiment 1", "RE_Param_allEMs.pdf"), width = 30, height = 14)
+print(ggplot(exp1_param_sum %>% 
+               filter(!str_detect(EM, "SR_ALY")), 
+             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95)) +
         geom_pointrange(position = position_dodge2(width = 0.65), 
                         size = 2, linewidth = 1) +       
         facet_grid(OM~EM, scales = "free") +
@@ -389,7 +307,8 @@ print(ggplot(exp1_param_sum, aes(x = Type, y = Median, ymin = lwr_95, ymax = upr
         coord_cartesian(ylim = c(-1.5,1.5)) )
 
 # Zoomed in version
-print(ggplot(exp1_param_sum, aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95)) +
+print(ggplot(exp1_param_sum %>% 
+               filter(!str_detect(EM, "SR_ALY")), aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95)) +
         geom_pointrange(position = position_dodge2(width = 0.65), 
                         size = 2, linewidth = 1) +       
         facet_grid(OM~EM, scales = "free") +
@@ -436,7 +355,8 @@ prop_exp1 = exp1_ts_df %>%
            str_detect(EM, "MSex") ~ "Sex-Specific M"),
          Prop = case_when(
            str_detect(EM, "PropAcr") ~ "Proportions Across",
-           str_detect(EM, "PropWith") ~ "Proportions Within"),
+           str_detect(EM, "PropWith_SR_Y") ~ "Proportions Within (SR_Y)",
+           str_detect(EM, "PropWith_SR_ALY") ~ "Proportions Within (SR_ALY)"),
          Catch = case_when(
            str_detect(EM, "CatAgg") ~ "Aggregated Catch",
            str_detect(EM, "CatSex") ~ "Sex-Specific Catch")) %>% 
@@ -449,7 +369,8 @@ print(
   ggplot(prop_exp1 %>% 
            filter(Magg == "Sex-Specific M",
                   Catch == "Aggregated Catch",
-                  Type != "Total Recruitment"), 
+                  Type != "Total Recruitment",
+                  Prop %in% c("Proportions Within (SR_Y)", "Proportions Within (SR_ALY)")), 
          aes(x = RE, fill = Prop)) +
     geom_density(alpha = 0.5) +
     geom_vline(xintercept = 0, lty = 2) +
@@ -459,11 +380,29 @@ print(
     theme_tj() +
     theme(legend.position = "top")
 )
+
+print(
+  ggplot(prop_exp1 %>% 
+           filter(Magg == "Sex-Specific M",
+                  Catch == "Aggregated Catch",
+                  Type != "Total Recruitment",
+                  Prop %in% c("Proportions Within (SR_Y)", "Proportions Across")), 
+         aes(x = RE, fill = Prop)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(xintercept = 0, lty = 2) +
+    facet_grid(Type~OM, scales = "free") +
+    labs(x = "RE", y = "Relative Error",
+         title = "Sex-Specific M, Aggregated Catch") +
+    theme_tj() +
+    theme(legend.position = "top")
+)
+
 print(
   ggplot(prop_exp1 %>% 
            filter(Magg == "Sex-Specific M",
                   Catch == "Sex-Specific Catch",
-                  Type != "Total Recruitment"), 
+                  Type != "Total Recruitment",
+                  Prop %in% c("Proportions Within (SR_Y)", "Proportions Within (SR_ALY)")), 
          aes(x = RE, fill = Prop)) +
     geom_density(alpha = 0.5) +
     geom_vline(xintercept = 0, lty = 2) +
@@ -473,11 +412,29 @@ print(
     theme_tj() +
     theme(legend.position = "top")
 )
+
+print(
+  ggplot(prop_exp1 %>% 
+           filter(Magg == "Sex-Specific M",
+                  Catch == "Sex-Specific Catch",
+                  Type != "Total Recruitment",
+                  Prop %in% c("Proportions Within (SR_Y)", "Proportions Across")), 
+         aes(x = RE, fill = Prop)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(xintercept = 0, lty = 2) +
+    facet_grid(Type~OM, scales = "free") +
+    labs(x = "RE", y = "Relative Error",
+         title = "Sex-Specific M, Sex-Specific Catch") +
+    theme_tj() +
+    theme(legend.position = "top")
+)
+
 print(
   ggplot(prop_exp1 %>% 
            filter(Magg == "Aggregated M",
                   Catch == "Aggregated Catch",
-                  Type != "Total Recruitment"), 
+                  Type != "Total Recruitment",
+                  Prop %in% c("Proportions Within (SR_Y)", "Proportions Within (SR_ALY)")), 
          aes(x = RE, fill = Prop)) +
     geom_density(alpha = 0.5) +
     geom_vline(xintercept = 0, lty = 2) +
@@ -487,11 +444,29 @@ print(
     theme_tj() +
     theme(legend.position = "top")
 )
+
+print(
+  ggplot(prop_exp1 %>% 
+           filter(Magg == "Aggregated M",
+                  Catch == "Aggregated Catch",
+                  Type != "Total Recruitment",
+                  Prop %in% c("Proportions Within (SR_Y)", "Proportions Across")), 
+         aes(x = RE, fill = Prop)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(xintercept = 0, lty = 2) +
+    facet_grid(Type~OM, scales = "free") +
+    labs(x = "RE", y = "Relative Error",
+         title = "Aggregated M, Aggregated Catch") +
+    theme_tj() +
+    theme(legend.position = "top")
+)
+
 print(
   ggplot(prop_exp1 %>% 
            filter(Magg == "Aggregated M",
                   Catch == "Sex-Specific Catch",
-                  Type != "Total Recruitment"), 
+                  Type != "Total Recruitment",
+                  Prop %in% c("Proportions Within (SR_Y)", "Proportions Within (SR_ALY)")), 
          aes(x = RE, fill = Prop)) +
     geom_density(alpha = 0.5) +
     geom_vline(xintercept = 0, lty = 2) +
@@ -501,6 +476,23 @@ print(
     theme_tj() +
     theme(legend.position = "top")
 )
+
+print(
+  ggplot(prop_exp1 %>% 
+           filter(Magg == "Aggregated M",
+                  Catch == "Sex-Specific Catch",
+                  Type != "Total Recruitment",
+                  Prop %in% c("Proportions Within (SR_Y)", "Proportions Across")), 
+         aes(x = RE, fill = Prop)) +
+    geom_density(alpha = 0.5) +
+    geom_vline(xintercept = 0, lty = 2) +
+    facet_grid(Type~OM, scales = "free") +
+    labs(x = "RE", y = "Relative Error",
+         title = "Aggregated M, Sex-Specific Catch") +
+    theme_tj() +
+    theme(legend.position = "top")
+)
+
 dev.off()
 
 ###### Relative error all EMs --------------------------------------------------
@@ -516,7 +508,8 @@ ts_exp1_sum = exp1_ts_df %>%
 # Plot time series EMs
 pdf(here("figs", "Experiment 1", "RE_TS_AllEMs.pdf"), width = 34, height = 20)
 print(
-  ggplot(ts_exp1_sum %>% filter(Type == "Total Biomass"), 
+  ggplot(ts_exp1_sum %>% filter(Type == "Total Biomass",
+                                !str_detect(EM, "ALY")), 
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
     geom_line(size = 2) +
     geom_ribbon(alpha = 0.5) +
@@ -528,7 +521,8 @@ print(
 )
 
 print(
-  ggplot(ts_exp1_sum %>% filter(Type == "Spawning Stock Biomass"), 
+  ggplot(ts_exp1_sum %>% filter(Type == "Spawning Stock Biomass",
+                                !str_detect(EM, "ALY")), 
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
     geom_line(size = 2) +
     geom_ribbon(alpha = 0.5) +
@@ -540,7 +534,8 @@ print(
 )
 
 print(
-  ggplot(ts_exp1_sum %>% filter(Type == "Total Fishing Mortality"), 
+  ggplot(ts_exp1_sum %>% filter(Type == "Total Fishing Mortality",
+                                !str_detect(EM, "ALY")), 
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
     geom_line(size = 2) +
     geom_ribbon(alpha = 0.5) +
@@ -552,7 +547,8 @@ print(
 )
 
 print(
-  ggplot(ts_exp1_sum %>% filter(Type == "Total Recruitment"), 
+  ggplot(ts_exp1_sum %>% filter(Type == "Total Recruitment",
+                                !str_detect(EM, "ALY")), 
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
     geom_line(size = 2) +
     geom_ribbon(alpha = 0.5) +
@@ -623,11 +619,10 @@ conv_df = exp2_growth_df %>%
 pdf(here("figs", "Experiment 2", "Convergence.pdf"), width = 15)
 ggplot(conv_df, aes(x = OM, y = sum)) +
   geom_point(size = 3) +
-  facet_wrap(~EM) +
+  facet_wrap(~EM, scales = "free_y") +
   theme_tj() +
   scale_x_discrete(guide = guide_axis(angle = 90)) +
-  labs(x = "Operating Models", y = "Convergence") +
-  ylim(0, 200)
+  labs(x = "Operating Models", y = "Convergence") 
 dev.off()
 
 
@@ -717,9 +712,26 @@ exp2_param_sum = exp2_param_df %>%
 pdf(here("figs", "Experiment 2", "RE_SexRatio.pdf"), width = 15, height = 10)
 exp2_param_df %>% 
   filter(Convergence == "Converged",
-         str_detect(Type, "Sex"),
-         EM %in% c("Est_PropAcr", "Est_PropWith")) %>% 
+         Type == "Female Sex Ratio",
+         EM %in% c("Est_PropWith_SR_Y", "Est_PropWith_SR_ALY")) %>% 
        mutate(RE = (as.numeric(Pred) - Truth) / Truth) %>% 
+  ggplot(aes(x = Type, y = RE, fill = EM)) +
+  geom_violin(alpha = 0.5) +
+  geom_boxplot(width = 0.1, outlier.color = NA,
+               position = position_dodge(width = 0.9)) +
+  geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+  labs(x = "Parameter", y = "Relative Error") +
+  theme_tj() +
+  facet_wrap(~OM, scales = "free_y") +
+  theme(legend.position = "top")
+
+# Comparing across vs. within for a given year
+exp2_param_df %>% 
+  filter(Convergence == "Converged",
+         Type == "Female Sex Ratio",
+         str_detect(Type, "Sex"),
+         EM %in% c("Est_PropAcr", "Est_PropWith_SR_Y")) %>% 
+  mutate(RE = (as.numeric(Pred) - Truth) / Truth) %>% 
   ggplot(aes(x = Type, y = RE, fill = EM)) +
   geom_violin(alpha = 0.5) +
   geom_boxplot(width = 0.1, outlier.color = NA,
@@ -733,8 +745,24 @@ dev.off()
   
 # plot all other parameters and EMs
 pdf(here("figs", "Experiment 2", "RE_ParamAllEMs.pdf"), width = 15, height = 10)
-print(ggplot(exp2_param_sum, aes(x = Type, y = Median, 
-                                 ymin = lwr_95, ymax = upr_95, color = EM)) +
+# Comparing proportions within variants
+print(ggplot(exp2_param_sum %>% 
+               filter(EM %in% c("Est_PropWith_SR_Y", "Est_PropWith_SR_ALY"),
+                      Type != "Male Sex Ratio"), 
+             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95, color = EM)) +
+        geom_pointrange(position = position_dodge2(width = 0.65), 
+                        size = 1, linewidth = 1) +
+        facet_wrap(~OM, scales = "free_y") +
+        geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+        labs(x = "Parameter", y = "Relative Error") +
+        theme_tj() +
+        theme(legend.position = "top") +
+        scale_x_discrete(guide = guide_axis(angle = 90))  )
+
+# comparing best proprotions within variant
+print(ggplot(exp2_param_sum %>% 
+               filter(EM != "Est_PropWith_SR_ALY", Type != "Male Sex Ratio", !str_detect(OM, "No")), 
+             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95, color = EM)) +
         geom_pointrange(position = position_dodge2(width = 0.65), 
                         size = 1, linewidth = 1) +
         facet_wrap(~OM, scales = "free_y") +
@@ -743,14 +771,12 @@ print(ggplot(exp2_param_sum, aes(x = Type, y = Median,
         theme_tj() +
         theme(legend.position = "top") +
         scale_x_discrete(guide = guide_axis(angle = 90)) +
-        coord_cartesian(ylim = c(-1,1)) )
-dev.off()  
+        coord_cartesian(ylim = c(-1, 1)))
 
-# plot only fixed EM
-pdf(here("figs", "Experiment 2", "RE_Param_FixEM.pdf"), width = 15, height = 10)
+# comparing EMs that are fixed for no diff OMs
 print(ggplot(exp2_param_sum %>% 
-               filter(EM == "Fix"), 
-             aes(x = Type, y = Median,  ymin = lwr_95, ymax = upr_95)) +
+               filter(Type != "Male Sex Ratio", str_detect(OM, "No")), 
+             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95, color = EM)) +
         geom_pointrange(position = position_dodge2(width = 0.65), 
                         size = 1, linewidth = 1) +
         facet_wrap(~OM, scales = "free_y") +
@@ -758,7 +784,7 @@ print(ggplot(exp2_param_sum %>%
         labs(x = "Parameter", y = "Relative Error") +
         theme_tj() +
         theme(legend.position = "top") +
-        scale_x_discrete(guide = guide_axis(angle = 90)) )
+        scale_x_discrete(guide = guide_axis(angle = 90))  )
 dev.off()  
 
 
@@ -774,9 +800,23 @@ ts_exp2_sum = exp2_ts_df %>%
 
 # Density plot of across vs.within
 pdf(here("figs", 'Experiment 2', "RE_TSDensity_Acr_vs_With.pdf"), width = 15, height = 12)
+# comparing within variants
 exp2_ts_df %>% 
   filter(Convergence == "Converged",
-         EM %in% c("Est_PropAcr", "Est_PropWith"),
+         EM %in% c("Est_PropWith_SR_Y", "Est_PropWith_SR_ALY"),
+         Years == 1) %>% 
+  mutate(RE = (as.numeric(Pred)-Truth)/Truth) %>% 
+  ggplot(aes(x = RE, fill = EM)) +
+  geom_density(alpha = 0.5) +
+  facet_grid(OM~Type, scales = "free") +
+  geom_vline(xintercept = 0, lty = 2) +
+  labs(x = "Year", y = "Relative Error") +
+  theme_tj() +
+  theme(legend.position = "top") 
+
+exp2_ts_df %>% 
+  filter(Convergence == "Converged",
+         EM %in% c("Est_PropWith_SR_Y", "Est_PropAcr"),
          Years == 1) %>% 
   mutate(RE = (as.numeric(Pred)-Truth)/Truth) %>% 
   ggplot(aes(x = RE, fill = EM)) +
@@ -790,9 +830,10 @@ dev.off()
 
 # plot RE as a time series
 pdf(here("figs", 'Experiment 2', "RE_TS_Acr_vs_With.pdf"), width = 15)
+# comparing within variants
 print(
   ggplot(ts_exp2_sum %>% filter(Type == "Total Biomass",
-                                EM %in% c("Est_PropAcr", "Est_PropWith")), 
+         EM %in% c("Est_PropWith_SR_Y", "Est_PropWith_SR_ALY")),
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
     geom_line(size = 1.3) +
     geom_ribbon(alpha = 0.5) +
@@ -802,42 +843,101 @@ print(
     theme_tj() +
     theme(legend.position = "top") 
 )
+
+print(
+  ggplot(ts_exp2_sum %>% filter(Type == "Total Biomass",
+                                EM %in% c("Est_PropWith_SR_Y", "Est_PropAcr")),
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
+    geom_line(size = 1.3) +
+    geom_ribbon(alpha = 0.5) +
+    facet_grid(~OM, scales = "free") +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Year", y = "Relative Error in Total Biomass") +
+    theme_tj() +
+    theme(legend.position = "top") 
+)
+
 print(
   ggplot(ts_exp2_sum %>% filter(Type == "Spawning Stock Biomass", 
-                                EM %in% c("Est_PropAcr", "Est_PropWith")), 
+                                EM %in% c("Est_PropWith_SR_Y", "Est_PropWith_SR_ALY")),
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
     geom_line(size = 1.3) +
     geom_ribbon(alpha = 0.5) +
     facet_grid(~OM, scales = "free") +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
     labs(x = "Year", y = "Relative Error in Spawning Stock Biomass") +
-    theme_tj() 
+    theme_tj() +
+    theme(legend.position = "top") 
+  
 )
+
+print(
+  ggplot(ts_exp2_sum %>% filter(Type == "Spawning Stock Biomass", 
+                                EM %in% c("Est_PropWith_SR_Y", "Est_PropAcr")),
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
+    geom_line(size = 1.3) +
+    geom_ribbon(alpha = 0.5) +
+    facet_grid(~OM, scales = "free") +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Year", y = "Relative Error in Spawning Stock Biomass") +
+    theme_tj() +
+    theme(legend.position = "top") 
+)
+
 print(ggplot(ts_exp2_sum %>% filter(Type == "Total Fishing Mortality",
-                                    EM %in% c("Est_PropAcr", "Est_PropWith")), 
+              EM %in% c("Est_PropWith_SR_Y", "Est_PropWith_SR_ALY")),
              aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
         geom_line(size = 1.3) +
         geom_ribbon(alpha = 0.5) +
         facet_grid(~OM, scales = "free") +
         geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
         labs(x = "Year", y = "Relative Error in Total Fishing Mortality") +
-        theme_tj() )
+        theme_tj() +
+        theme(legend.position = "top") )
+
+print(ggplot(ts_exp2_sum %>% filter(Type == "Total Fishing Mortality",
+                                    EM %in% c("Est_PropWith_SR_Y", "Est_PropAcr")),
+             aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
+        geom_line(size = 1.3) +
+        geom_ribbon(alpha = 0.5) +
+        facet_grid(~OM, scales = "free") +
+        geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+        labs(x = "Year", y = "Relative Error in Total Fishing Mortality") +
+        theme_tj() +
+        theme(legend.position = "top") )
+
 print(
   ggplot(ts_exp2_sum %>% filter(Type == "Total Recruitment",
-                                EM %in% c("Est_PropAcr", "Est_PropWith")), 
+                                EM %in% c("Est_PropWith_SR_Y", "Est_PropWith_SR_ALY")),
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
     geom_line(size = 1.3) +
     geom_ribbon(alpha = 0.5) +
     facet_grid(~OM, scales = "free") +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
     labs(x = "Year", y = "Relative Error in Total Recruitment") +
-    theme_tj() 
+    theme_tj() +
+    theme(legend.position = "top") 
 )
+
+print(
+  ggplot(ts_exp2_sum %>% filter(Type == "Total Recruitment",
+                                EM %in% c("Est_PropWith_SR_Y", "Est_PropAcr")),
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
+    geom_line(size = 1.3) +
+    geom_ribbon(alpha = 0.5) +
+    facet_grid(~OM, scales = "free") +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Year", y = "Relative Error in Total Recruitment") +
+    theme_tj() +
+    theme(legend.position = "top") 
+)
+
 dev.off()
 
 
 # Only plot RE time series for Fixed EM
 pdf(here("figs", 'Experiment 2', "RE_TS_FixEM.pdf"), width = 13, height = 15)
+
 print(
   ggplot(ts_exp2_sum %>% filter(EM == "Fix", !str_detect(OM, "No")), 
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +

@@ -39,7 +39,7 @@ ssbs_all = data.frame()
 M_all = data.frame()
 total_biom_all = data.frame()
 naa_store_all = data.frame()
-
+sr_store_all = data.frame()
 
 # Loop through to extract values
 for(i in 1:length(experiment_1_files)) {
@@ -102,6 +102,19 @@ for(i in 1:length(experiment_1_files)) {
   naa_store$OM = experiment_1_files[i]
   naa_store_all = rbind(naa_store, naa_store_all)
   
+  # Get Sex ratio information over time
+  sr_store = naa_store %>% 
+    group_by(Years, Sim) %>% 
+    mutate(Total_N = sum(Numbers)) %>% # get total numbers
+    ungroup()
+  
+  # summarize across ages (need to take unique for some odd reason...)
+  sr_store = sr_store %>% 
+    group_by(Years, Sim, Sex, OM) %>% 
+    summarize(Total_Sex = sum(Numbers) / Total_N) %>% 
+    unique()
+  sr_store_all = rbind(sr_store_all, sr_store)
+
 } # end i loop
 
 
@@ -217,9 +230,29 @@ naa_plot = ggplot(naa_sum, aes(x = Years, y = Median,
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
+# plot sex ratios changing over time
+sr_sum = sr_store_all %>% 
+  group_by(Years, Sex, OM) %>% 
+  summarize(median = median(Total_Sex),
+            lwr_95 = quantile(Total_Sex, 0.025),
+            upr_95 = quantile(Total_Sex, 0.975))
+
+# sex ratio across time summary
+sr_sum_plot = ggplot(sr_sum %>% filter(!str_detect(OM, "No")), 
+                     aes(x = Years, y = median, color = factor(Sex), fill = factor(Sex), 
+                         ymin = lwr_95, ymax = upr_95)) +
+  geom_line(size = 1.5) +
+  geom_ribbon(alpha = 0.35) +
+  facet_wrap(~OM, ncol = 1) +
+  labs(x = "Years", y = "", color = "Sex", fill = "Sex", title = "Population Sex Ratio") +
+  theme_tj() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
 pdf(here("figs", "OM_Exp1.pdf"), width = 30, height = 10)
 ggarrange(vonB_plot, waa_plot, fishageselex_plot, 
-          srvageselex_plot, natmort_plot, naa_plot, catch_plot, ssb_plot, biomass_plot,
+          srvageselex_plot, natmort_plot, sr_sum_plot, 
+          naa_plot, catch_plot, ssb_plot, biomass_plot,
           nrow = 1)
 dev.off()
 
@@ -241,6 +274,7 @@ total_biom_all = data.frame()
 naa_store_all = data.frame()
 vonB_all = data.frame()
 waa_all = data.frame()
+sr_store_all = data.frame()
 
 # Loop through to extract values
 for(i in 1:length(experiment_2_files)) {
@@ -296,9 +330,23 @@ for(i in 1:length(experiment_2_files)) {
   names(naa_store) = c("Years", "Age", "Sex", "Sim", "Numbers")
   naa_store$OM = experiment_2_files[i]
   naa_store_all = rbind(naa_store, naa_store_all)
+
+  # Get Sex ratio information over time
+  sr_store = naa_store %>% 
+    group_by(Years, Sim) %>% 
+    mutate(Total_N = sum(Numbers)) %>% # get total numbers
+    ungroup()
+  
+  # summarize across ages (need to take unique for some odd reason...)
+  sr_store = sr_store %>% 
+    group_by(Years, Sim, Sex, OM) %>% 
+    summarize(Total_Sex = sum(Numbers) / Total_N) %>% 
+    unique()
+  sr_store_all = rbind(sr_store_all, sr_store)
   
 } # end i loop
 
+# length at age plot
 (vonB_plot = ggplot(vonB_all %>% 
                       filter(!str_detect(OM, "No")) %>% 
                       mutate(Sex = ifelse(Sex == 1, "Female", 'Male')), 
@@ -310,6 +358,7 @@ for(i in 1:length(experiment_2_files)) {
     theme(plot.title = element_text(hjust = 0.5),
           legend.position = c(0.75,0.85)))
 
+# weight at age plot
 waa_plot = ggplot(waa_all %>% 
                     filter(!str_detect(OM, "No")), 
                   aes(x = Age, y = Value, color = factor(Sex))) +
@@ -319,6 +368,7 @@ waa_plot = ggplot(waa_all %>%
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
+# fishery selex age plot
 fishageselex_plot = ggplot(fishageselex_all %>% 
                              filter(!str_detect(OM, "No")) %>% 
                              mutate(Sex = ifelse(Sex == 1, "Female", 'Male')), 
@@ -329,6 +379,7 @@ fishageselex_plot = ggplot(fishageselex_all %>%
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
+# sumamrize catch
 catch_sex_all_sum = catch_sex_all %>% 
   filter(Catch != 0) %>% 
   group_by(Years, Sex, OM) %>% 
@@ -336,6 +387,7 @@ catch_sex_all_sum = catch_sex_all %>%
             lwr_95 = quantile(Catch, 0.025),
             upr_95 = quantile(Catch, 0.975))
 
+# catch plot
 catch_plot = ggplot(catch_sex_all_sum %>% 
                       filter(!str_detect(OM, "No")),
                     aes(x = Years, y = Median, color = factor(Sex), fill = factor(Sex),
@@ -347,6 +399,7 @@ catch_plot = ggplot(catch_sex_all_sum %>%
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
+# summarize ssb
 ssb_sum = ssbs_all %>% 
   filter(Years != max(Years)) %>% 
   group_by(Years, OM) %>% 
@@ -354,6 +407,7 @@ ssb_sum = ssbs_all %>%
             lwr_95 = quantile(SSB, 0.025),
             upr_95 = quantile(SSB, 0.975))
 
+# ssb plot
 (ssb_plot = ggplot(ssb_sum %>% 
                      filter(!str_detect(OM, "No")),
                    aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
@@ -364,6 +418,7 @@ ssb_sum = ssbs_all %>%
     theme_tj() +
     theme(plot.title = element_text(hjust = 0.5)))
 
+# summarize biomass
 total_biom_sum = total_biom_all %>% 
   filter(Years != max(Years)) %>% 
   group_by(Years, OM) %>% 
@@ -371,6 +426,7 @@ total_biom_sum = total_biom_all %>%
             lwr_95 = quantile(Biomass, 0.025),
             upr_95 = quantile(Biomass, 0.975))
 
+# biomass plot
 (biomass_plot = ggplot(total_biom_sum %>% 
                          filter(!str_detect(OM, "No")),
                        aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
@@ -382,6 +438,7 @@ total_biom_sum = total_biom_all %>%
     theme_tj() +
     theme(plot.title = element_text(hjust = 0.5)))
 
+# summarize total numbers
 naa_sum = naa_store_all %>% 
   filter(Years != max(Years)) %>% 
   group_by(Years, Sex, OM, Sim) %>% 
@@ -391,6 +448,7 @@ naa_sum = naa_store_all %>%
             lwr_95 = quantile(naa_sum, 0.025),
             upr_95 = quantile(naa_sum, 0.975))
 
+# total numbers plot
 naa_plot = ggplot(naa_sum %>% 
                     filter(!str_detect(OM, "No")), aes(x = Years, y = Median,
                     ymin = lwr_95, ymax = upr_95, color = factor(Sex),
@@ -403,8 +461,8 @@ naa_plot = ggplot(naa_sum %>%
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
-sr_plot = ggplot(sr_all %>% 
-                   filter(!str_detect(OM, "No")), 
+# plot initial sex ratio
+sr_plot = ggplot(sr_all %>% filter(!str_detect(OM, "No")), 
                  aes(x = year, y = sr, color = factor(sex))) +
   geom_line(size = 1.5) +
   facet_wrap(~OM, ncol = 1) +
@@ -414,7 +472,25 @@ sr_plot = ggplot(sr_all %>%
   ylim(0,1) +
   theme(plot.title = element_text(hjust = 0.5))
 
+# plot sex ratios changing over time
+sr_sum = sr_store_all %>% 
+  group_by(Years, Sex, OM) %>% 
+  summarize(median = median(Total_Sex),
+            lwr_95 = quantile(Total_Sex, 0.025),
+            upr_95 = quantile(Total_Sex, 0.975))
+
+# sex ratio across time summary
+sr_sum_plot = ggplot(sr_sum %>% filter(!str_detect(OM, "No")), 
+       aes(x = Years, y = median, color = factor(Sex), fill = factor(Sex), 
+           ymin = lwr_95, ymax = upr_95)) +
+  geom_line(size = 1.5) +
+  geom_ribbon(alpha = 0.35) +
+  facet_wrap(~OM, ncol = 1) +
+  labs(x = "Years", y = "", color = "Sex", fill = "Sex", title = "Population Sex Ratio") +
+  theme_tj() +
+  theme(plot.title = element_text(hjust = 0.5))
+
 pdf(here("figs", "OM_Exp2.pdf"), width = 32, height = 12)
-ggarrange(vonB_plot, waa_plot, fishageselex_plot, sr_plot, 
+ggarrange(vonB_plot, waa_plot, fishageselex_plot, sr_plot, sr_sum_plot,
           naa_plot, catch_plot, ssb_plot, biomass_plot, nrow = 1)
 dev.off()
