@@ -57,7 +57,7 @@ for(i in 1:nrow(oms_exp1)) {
 # Read in OMs for experiment 2
 oms_exp2 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp2")
 
-for(i in 5:nrow(oms_exp2)) {
+for(i in 1:nrow(oms_exp2)) {
   
   # Create file directory to save model outputs
   om_path = here("output", "Experiment 2", oms_exp2$OM_Name[i])

@@ -318,13 +318,6 @@ for(i in 1:length(experiment_2_files)) {
   total_biom$OM = experiment_2_files[i]
   total_biom_all = rbind(total_biom, total_biom_all)
   
-  # Get sex ratio
-  sr_store = data.frame(sr = rep(oms$sexRatio, (oms$n_years-1)), 
-                       year = rep(1:(oms$n_years-1), rep(2, (oms$n_years-1))),
-                       sex = c(1, 2), OM = experiment_2_files[i])
-  
-  sr_all = rbind(sr_store, sr_all)
-  
   # Get numbers at age
   naa_store = reshape2::melt(oms$NAA)
   names(naa_store) = c("Years", "Age", "Sex", "Sim", "Numbers")

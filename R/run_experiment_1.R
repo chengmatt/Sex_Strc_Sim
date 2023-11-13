@@ -34,7 +34,7 @@ om_names = list.files(om_path)
 
 # Read in OMs for experiment 1 and set śp
 oms_exp1 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp1", na = "NA")
-ems_exp1 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp1", na = "NA")
+ems_exp1 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp1", na = "NA") 
 
 # Run Experiment 1 --------------------------------------------------------
 for(n_om in 1:nrow(oms_exp1)) {
@@ -66,6 +66,7 @@ for(n_om in 1:nrow(oms_exp1)) {
     sim_models <- foreach(sim = 1:n_sims, .packages = c("TMB", "here", "tidyverse")) %dopar% {
       
       TMB::compile("Sex_Str_EM.cpp")
+      # dyn.unload(dynlib('Sex_Str_EM'))
       dyn.load(dynlib('Sex_Str_EM'))
       
       # estimate biological weight at age
@@ -115,10 +116,11 @@ for(n_om in 1:nrow(oms_exp1)) {
                                     agg_srv_age = FALSE, 
                                     agg_fish_len = FALSE,
                                     agg_srv_len = FALSE,
-                                    catch_cv = c(1e-2),
+                                    catch_cv = c(0.025), 
                                     use_fish_index = FALSE,
                                     # Parameter fixing
                                     fix_pars = c("h", "ln_sigmaRec", "ln_q_fish"))
+      
       
       # run model here
       model = run_model(data = em_inputs$data, 

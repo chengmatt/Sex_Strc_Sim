@@ -17,7 +17,7 @@ get_quantities = function(biologicals, model, sim, om_name, em_name, n_sexes_em)
 gradient = max(abs(model$sd_rep$gradient.fixed))
 pdHess = model$sd_rep$pdHess
 n_nans = sum(is.nan(model$sd_rep$cov.fixed))
-if(gradient <= 0.1 & pdHess == TRUE & n_nans == 0) conv = "Converged"
+if(gradient <= 0.01 & pdHess == TRUE & n_nans == 0) conv = "Converged"
 else conv = "Not Converged"
 
 # Put into dataframe to output

@@ -19,6 +19,7 @@ growth_all_list = list()
 param_all_list = list()
 ts_all_list = list()
 conv_all_list = list()
+naa_all_list = list()
 
 for(i in 1:length(exp1_oms)) {
   
@@ -26,6 +27,13 @@ for(i in 1:length(exp1_oms)) {
   om_folder = here(exp1_path, exp1_oms[i])
   em_folders = list.files(om_folder) # list out em folders
   em_folders = em_folders[!str_detect(em_folders, "RData|pdf")] # remove these
+  load(here(om_folder, paste(exp1_oms[i], ".RData", sep = ""))) # load in OMs
+  
+  # Read in OM NAA dataframe
+  om_NAA = reshape2::melt(oms$NAA) 
+  names(om_NAA) = c("Year", "Age", "Sex", "sim", "Truth") # rename df
+  om_NAA = om_NAA %>% filter(Year != max(Year)) # remove last year
+  om_NAA$OM = exp1_oms[i] # denote OM
   
   # storage containers for ems - reset for every om
   selex_em_list = list()
@@ -33,6 +41,7 @@ for(i in 1:length(exp1_oms)) {
   param_em_list = list()
   ts_em_list = list()
   conv_em_list = list()
+  naa_em_list = list()
   
   for(n_em in 1:length(em_folders)) {
     em_path = here(om_folder, em_folders[n_em]) # list out ems
@@ -41,6 +50,30 @@ for(i in 1:length(exp1_oms)) {
     param_df =  data.table::fread(here(em_path, "Parameters.csv")) # read in parameters
     ts_df =  data.table::fread(here(em_path, "Time_Series.csv")) # read in time series
     conv_df =  data.table::fread(here(em_path, "Convergence.csv")) # read in time series
+    load(here(em_path, paste(em_folders[n_em], ".RData", sep = ""))) # load in EMs
+    em_NAA_store = data.frame() # storage dataframe
+    
+    for(k in 1:length(model_list)) { # loop through model list
+      em_NAA = model_list[[k]]$rep$NAA # read in numbers at age
+      em_NAA_df = reshape2::melt(em_NAA) # munge into dataframe
+      names(em_NAA_df) = c("Year", "Age", "Sex", "Pred") # rename columns
+      em_NAA_df$sim = k  # denote simulation number
+      
+      # if this is an age-structured assessment only
+      if(em_folders[n_em] == "Age") {
+        em_NAA_df$Pred = em_NAA_df$Pred * 0.5 # Duplicating dataframe and multiply by 0.5 because that's how sexes are denoted
+        em_NAA_df_m = em_NAA_df # denote a new dataframe for males
+        em_NAA_df_m$Sex = 2 # denote males
+        em_NAA_df = rbind(em_NAA_df, em_NAA_df_m) # rbind to males 
+      } # if age structured assessment only 
+      
+      em_NAA_df$EM = em_folders[n_em] # denote EM
+      
+      # Now left_join to OM dataframe
+      em_NAA_df = em_NAA_df %>% left_join(om_NAA, by = c("Year", "Age", "Sex", "sim"))
+      em_NAA_df = em_NAA_df %>% left_join(conv_df %>% select(OM, EM, sim, convergence), by = c("OM", "EM", "sim"))
+      em_NAA_store = rbind(em_NAA_df, em_NAA_store) # rbind to store
+    } # end i
     
     # input into our list
     selex_em_list[[n_em]] = selex_df
@@ -48,6 +81,7 @@ for(i in 1:length(exp1_oms)) {
     param_em_list[[n_em]] = param_df
     ts_em_list[[n_em]] = ts_df
     conv_em_list[[n_em]] = conv_df
+    naa_em_list[[n_em]] = em_NAA_store
     
   } # end n_em loop
   
@@ -57,6 +91,7 @@ for(i in 1:length(exp1_oms)) {
   param_em_df = data.table::rbindlist(param_em_list)
   ts_em_df = data.table::rbindlist(ts_em_list)
   conv_em_df = data.table::rbindlist(conv_em_list)
+  naa_em_df = data.table::rbindlist(naa_em_list)
   
   # Input dataframes into our list
   selex_all_list[[i]] = selex_em_df
@@ -64,7 +99,9 @@ for(i in 1:length(exp1_oms)) {
   param_all_list[[i]] = param_em_df
   ts_all_list[[i]] = ts_em_df
   conv_all_list[[i]] = conv_em_df
+  naa_all_list[[i]] = naa_em_df
 
+  print(i)
 } # end i loop
 
 # Now output these into our environment as csvs
@@ -73,6 +110,7 @@ data.table::fwrite(data.table::rbindlist(growth_all_list), file = here("output",
 data.table::fwrite(data.table::rbindlist(param_all_list), file = here("output", "Experiment_1_Param.csv"))
 data.table::fwrite(data.table::rbindlist(ts_all_list), file = here("output", "Experiment_1_TimeSeries.csv"))
 data.table::fwrite(data.table::rbindlist(conv_all_list), file = here("output", "Experiment_1_Convergence.csv"))
+data.table::fwrite(data.table::rbindlist(naa_all_list), file = here("output", "Experiment_1_NAA.csv"))
 
 
 # Experiment 2 ------------------------------------------------------------

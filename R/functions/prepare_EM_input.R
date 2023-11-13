@@ -93,8 +93,13 @@ prepare_EM_inputs = function(sim,
   data$n_srv_fleets = n_srv_fleets
 
 # Fishery Data Inputs -----------------------------------------------------
+  # Catch quantities
+  catch_sd = sqrt(log(catch_cv^2 + 1)) # cv to sd for catch
   data$obs_catch_agg = as.matrix(Total_Catch[-n_years,,sim], dim = c(n_years-1, n_fish_fleets))
   data$obs_catch_sexsp = array(Total_Catch_Sex[-n_years,,,sim], dim = c(n_years-1, n_sexes, n_fish_fleets))
+  # Add random variability corresponding to input catch CV here
+  data$obs_catch_agg = data$obs_catch_agg * exp(rnorm(prod(dim(data$obs_catch_agg)), -catch_sd^2/2, catch_sd))
+  data$obs_catch_sexsp = data$obs_catch_sexsp * exp(rnorm(prod(dim(data$obs_catch_sexsp)), -catch_sd^2/2, catch_sd))
   data$obs_fish_index = array(Fish_Index[-n_years,,sim], dim = c(n_years-1, n_fish_fleets))
   data$fish_age_comps_inputN = array(Fish_Neff_Age[-n_years,], dim = c(n_years-1, n_fish_fleets))
   data$fish_len_comps_inputN = array(Fish_Neff_Len[-n_years,], dim = c(n_years-1, n_fish_fleets))
@@ -202,12 +207,12 @@ prepare_EM_inputs = function(sim,
   if(share_M_sex == TRUE) for(s in 1:n_sexes) parameters$ln_M[s] = mean(log(M[s])) 
   parameters$ln_InitDevs = log(InitDevs[,sim])
   parameters$ln_RecDevs = log(RecDevs[-50,sim])
-  parameters$RecPars = c(log(r0),h)
+  parameters$RecPars = c(log(r0), h)
   parameters$ln_sigmaRec = log(sigma_rec)
   parameters$ln_q_fish = log(q_Fish)
   parameters$ln_q_srv = log(q_Srv)
   parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
-
+  
   if(selex_type == "length") {
     parameters$ln_fish_selpars = array(log(c(0.35, 60)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
     parameters$ln_srv_selpars = array(log(c(0.35, 50)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
