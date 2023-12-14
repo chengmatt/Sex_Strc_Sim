@@ -17,14 +17,14 @@ Type objective_function<Type>::operator() ()
   // Model Dimensions ------------------------
   DATA_VECTOR(years); // Vector of years
   DATA_VECTOR(ages); // Vector of age bins
-  DATA_VECTOR(len_mids); // Vector of length bins (using midpoints)
+  DATA_VECTOR(len_bins); // Vector of length bins 
   DATA_INTEGER(n_sexes); // Number of sexes
   DATA_INTEGER(n_fish_fleets); // Number of fishery fleets
   DATA_INTEGER(n_srv_fleets); // Number of survey fleets
   
   int n_years = years.size(); // Number of years
   int n_ages = ages.size(); // Number of age bins
-  int n_lens = len_mids.size(); // Number of length bins
+  int n_lens = len_bins.size(); // Number of length bins
   
   // Observations ----------------------------
   // Fishery Observations --------------------
@@ -223,7 +223,7 @@ Type objective_function<Type>::operator() ()
     for(int y = 0; y < n_years; y++) {
       for(int f = 0; f < n_fish_fleets; f++) {
         vector <Type> tmp_fish_selpars = ln_fish_selpars.transpose().col(f);
-        for(int l = 0; l < n_lens; l++) tmp_fishlens_slx(l) = Logist(len_mids(l), tmp_fish_selpars);
+        for(int l = 0; l < n_lens; l++) tmp_fishlens_slx(l) = Logist(len_bins(l), tmp_fish_selpars);
         for(int s = 0; s < n_sexes; s++) {
           tmp_fishage_slx = age_len_transition.col(s).matrix() * tmp_fishlens_slx.matrix();
           for(int a = 0; a < n_ages; a++) Fish_Slx(y,a,s,f) = tmp_fishage_slx(a);
@@ -354,7 +354,7 @@ Type objective_function<Type>::operator() ()
     for(int y = 0; y < n_years; y++) {
       for(int sf = 0; sf < n_srv_fleets; sf++) {
         vector <Type> tmp_srv_selpars = ln_srv_selpars.transpose().col(sf);
-        for(int l = 0; l < n_lens; l++) tmp_srvlens_slx(l) = Logist(len_mids(l), tmp_srv_selpars);
+        for(int l = 0; l < n_lens; l++) tmp_srvlens_slx(l) = Logist(len_bins(l), tmp_srv_selpars);
         for(int s = 0; s < n_sexes; s++) {
           tmp_srvage_slx = age_len_transition.col(s).matrix() * tmp_srvlens_slx.matrix();
           for(int a = 0; a < n_ages; a++) Srv_Slx(y,a,s,sf) = tmp_srvage_slx(a);

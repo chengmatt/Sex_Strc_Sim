@@ -24,12 +24,18 @@ theme_tj = function() {
 # Experiment 1 ------------------------------------------------------------
 
 # Read in files
-exp1_selex_df = data.table::fread(here("output", "Experiment_1_Selex.csv"))
-exp1_growth_df = data.table::fread(here("output", "Experiment_1_Growth.csv"))
-exp1_param_df = data.table::fread(here("output", "Experiment_1_Param.csv"))
-exp1_ts_df = data.table::fread(here("output", "Experiment_1_TimeSeries.csv"))
-exp1_conv_df = data.table::fread(here("output", "Experiment_1_Convergence.csv"))
-exp1_naa_df = data.table::fread(here("output", "Experiment_1_NAA.csv"))
+exp1_selex_df = data.table::fread(here("output", "Experiment_1_Selex.csv")) %>% 
+  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
+exp1_growth_df = data.table::fread(here("output", "Experiment_1_Growth.csv")) %>% 
+  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
+exp1_param_df = data.table::fread(here("output", "Experiment_1_Param.csv")) %>% 
+  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
+exp1_ts_df = data.table::fread(here("output", "Experiment_1_TimeSeries.csv"))  %>% 
+  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
+exp1_conv_df = data.table::fread(here("output", "Experiment_1_Convergence.csv")) %>% 
+  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
+exp1_naa_df = data.table::fread(here("output", "Experiment_1_NAA.csv")) %>% 
+  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
 
 ### Convergence Summary -----------------------------------------------------
 
@@ -133,13 +139,13 @@ dev.off()
 pdf(here("figs", "Experiment 1", "RE_Fish_Selex_AgeEM.pdf"), width = 10)
 print(
   exp1_selex_df %>% 
-    filter(Convergence == "Converged", EM == "Age",
+    filter(Convergence == "Converged", EM %in% c("Age", "Age_AgeSelex") ,
            Type == "Fishery Selectivity") %>% 
     mutate(Sex = ifelse(Sex == 1, "Female", "Male")) %>% 
     ggplot() +
     geom_line(aes(x = Age, y = Pred, group = sim)) +
     geom_line(aes(x = Age, y = True, color = factor(Sex)), size = 1.3) +
-    facet_wrap(~OM) +
+    facet_grid(EM~OM) +
     labs(x = "Age", y = "Fishery Selectivity", color = "Sex") +
     theme_tj() +
     theme(legend.position = "top")
@@ -167,13 +173,13 @@ dev.off()
 pdf(here("figs", "Experiment 1", "RE_Srv_Selex_AgeEM.pdf"), width = 10)
 print(
   exp1_selex_df %>% 
-    filter(Convergence == "Converged", EM == "Age",
+    filter(Convergence == "Converged", EM %in% c("Age", "Age_AgeSelex"),
            Type == "Survey Selectivity") %>% 
     mutate(Sex = ifelse(Sex == 1, "Female", "Male")) %>% 
     ggplot() +
     geom_line(aes(x = Age, y = Pred, group = sim)) +
     geom_line(aes(x = Age, y = True, color = factor(Sex)), size = 1.3) +
-    facet_wrap(~OM) +
+    facet_grid(EM~OM) +
     labs(x = "Age", y = "Survey Selectivity", color = "Sex") +
     theme_tj() +
     theme(legend.position = "top")
@@ -187,12 +193,12 @@ dev.off()
 pdf(here("figs", "Experiment 1", "RE_Growth_Age.pdf"))
 print(
   exp1_growth_df %>% 
-    filter(Convergence == "Converged", EM == "Age") %>% 
+    filter(Convergence == "Converged", EM %in% c("Age", "Age_AgeSelex")) %>% 
     mutate(Sex = ifelse(Sex == 1, "Female", "Male")) %>% 
     ggplot() +
     geom_line(aes(x = Age, y = Pred, group = sim)) +
     geom_line(aes(x = Age, y = True, color = factor(Sex)), size = 1.3) +
-    facet_wrap(~OM) +
+    facet_grid(EM~OM) +
     labs(x = "Age", y = "WAA", color = "Sex") +
     theme_tj() +
     theme(legend.position = "top")
@@ -344,7 +350,7 @@ prop_param_df %>%
   ggplot(aes(x = RE, fill = Catch)) +
   geom_density(alpha = 0.5) +
   geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Parameter", y = "Relative Error",
+  labs(x = "Relative Error", y = "Value",
        title = "Sex-Specific M, Sex-Specific Catch (Proportions Across)") +
   theme_tj() +
   facet_grid(Type~OM) +
@@ -357,7 +363,7 @@ prop_param_df %>%
   ggplot(aes(x = RE, fill = Catch)) +
   geom_density(alpha = 0.5) +
   geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Parameter", y = "Relative Error",
+  labs(x = "Relative Error", y = "Value",
        title = "Aggregated M, Sex-Specific Catch (Proportions Across)") +
   theme_tj() +
   facet_grid(Type~OM, scales = "free") +
@@ -371,7 +377,7 @@ prop_param_df %>%
   ggplot(aes(x = RE, fill = Catch)) +
   geom_density(alpha = 0.5) +
   geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Parameter", y = "Relative Error",
+  labs(x = "Relative Error", y = "Value",
        title = "Aggregated M, Sex-Specific Catch (Proportions Across), OM = Growth_M (0,10)") +
   theme_tj() +
   facet_grid(Type~Catch, scales = "free") +
@@ -428,8 +434,8 @@ dev.off()
 
 # plot (Age only EM)
 pdf(here("figs", "Experiment 1", "RE_Param_Age.pdf"), width = 13)
-print(ggplot(exp1_param_sum %>% filter(EM == "Age"), 
-             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95)) +
+print(ggplot(exp1_param_sum %>% filter(EM %in% c("Age", "Age_AgeSelex")), 
+             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95, color = EM)) +
         geom_pointrange(position = position_dodge2(width = 0.65), 
                         size = 1, linewidth = 1) +       
         facet_wrap(~OM, scales = "free_y") +
@@ -437,9 +443,10 @@ print(ggplot(exp1_param_sum %>% filter(EM == "Age"),
         labs(x = "Parameter", y = "Relative Error") +
         theme_tj() +
         scale_x_discrete(guide = guide_axis(angle = 90)) +
-        coord_cartesian(ylim = c(-1,1)) )
-print(ggplot(exp1_param_sum %>% filter(EM == "Age"), 
-             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95)) +
+        coord_cartesian(ylim = c(-1,1)) +
+        theme(legend.position = "top"))
+print(ggplot(exp1_param_sum %>% filter(EM %in% c("Age", "Age_AgeSelex")), 
+             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95, color = EM)) +
         geom_pointrange(position = position_dodge2(width = 0.65), 
                         size = 1, linewidth = 1) +       
         facet_wrap(~OM, scales = "free_y") +
@@ -763,8 +770,9 @@ dev.off()
 # Age only EM
 pdf(here("figs", "Experiment 1", "RE_TS_AgeEM.pdf"), width = 15, height = 13)
 print(
-  ggplot(ts_exp1_sum %>% filter(EM == "Age"), 
-         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
+  ggplot(ts_exp1_sum %>% filter(EM %in% c("Age", "Age_AgeSelex")), 
+         aes(x = Years, y = Median, ymin = lwr_95, 
+             ymax = upr_95, fill = EM, color = EM)) +
     geom_line(size = 1.3) +
     geom_ribbon(alpha = 0.5) +
     facet_grid(Type~OM, scales = "free") +
@@ -777,28 +785,73 @@ dev.off()
 
 pdf(here("figs", "Experiment 1", "RE_TS_AgeEM_ZoomBiom.pdf"), width = 18, height = 6.5)
 print(
-  ggplot(ts_exp1_sum %>% filter(EM == "Age",Type == "Spawning Stock Biomass"), 
-         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
+  ggplot(ts_exp1_sum %>% filter(EM %in% c("Age", "Age_AgeSelex"), Type == "Spawning Stock Biomass"), 
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM, color = EM)) +
     geom_line(size = 1.3) +
     geom_ribbon(alpha = 0.5) +
     facet_wrap(~OM, scales = "free", nrow = 1) +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
     labs(x = "Year", y = "Relative Error in Spawning Stock Biomass") +
-    theme_tj() 
+    theme_tj() +
+    theme(legend.position = "top")
 )
 print(
-  ggplot(ts_exp1_sum %>% filter(EM == "Age",Type == "Total Biomass"), 
-         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
+  ggplot(ts_exp1_sum %>% filter(EM %in% c("Age", "Age_AgeSelex"), Type == "Total Biomass"), 
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM, color = EM)) +
     geom_line(size = 1.3) +
     geom_ribbon(alpha = 0.5) +
     facet_wrap(~OM, scales = "free", nrow = 1) +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
     labs(x = "Year", y = "Relative Error in Total Biomass") +
-    theme_tj() 
+    theme_tj() +
+    theme(legend.position = "top")
+)
+print(
+  ggplot(ts_exp1_sum %>% filter(EM %in% c("Age", "Age_AgeSelex"), Type == "Total Fishing Mortality"), 
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM, color = EM)) +
+    geom_line(size = 1.3) +
+    geom_ribbon(alpha = 0.5) +
+    facet_wrap(~OM, scales = "free", nrow = 1) +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Year", y = "Relative Error in Total Fishing Mortality") +
+    theme_tj() +
+    theme(legend.position = "top")
 )
 dev.off()
 
+pdf(here("figs", "Experiment 1", "RE_TS_CatchComparison.pdf"), width = 13, height = 13)
 
+print(
+  ggplot(ts_exp1_sum %>% filter(Type == "Total Biomass",
+                                !str_detect(EM, "Age"),
+                                str_detect(EM, "PropAcr")), 
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95,
+             fill = Catch, color = Catch)) +
+    geom_line(size = 2) +
+    geom_ribbon(alpha = 0.5) +
+    facet_grid(OM~EM, scales = "free") +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Year", y = "Relative Error in Total Biomass") +
+    theme_tj() +
+    coord_cartesian(ylim = c(-0.85,0.85)) 
+)
+
+print(
+  ggplot(ts_exp1_sum %>% filter(Type == "Spawning Stock Biomass",
+                                !str_detect(EM, "Age"),
+                                str_detect(EM, "PropAcr")), 
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95,
+             fill = Catch, color = Catch)) +
+    geom_line(size = 2) +
+    geom_ribbon(alpha = 0.5) +
+    facet_grid(OM~EM, scales = "free") +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Year", y = "Relative Error in Spawning Stock Biomass") +
+    theme_tj() +
+    coord_cartesian(ylim = c(-0.85,0.85)) 
+)
+
+dev.off()
 
 # Numbers at age ----------------------------------------------------------
 

@@ -59,19 +59,21 @@ for(n_om in 1:nrow(oms_exp1)) {
     fish_len_prop_em = ems_exp1$fish_len_prop[n_em] # whether to do proportions across or within
     srv_len_prop_em = ems_exp1$srv_len_prop[n_em] # whether to do proportions across or within
     sexRatio_al_or_y_em = ems_exp1$sexRatio_al_or_y[n_em] # if we want to fit sex ratio as within year only or both
+    selex_type_em = ems_exp1$selex_type[n_em] # selectivity type (age or length based)
     em_name = ems_exp1$EM_Name[n_em] # em name
     
 # Run Simulations here ----------------------------------------------------
 
     sim_models <- foreach(sim = 1:n_sims, .packages = c("TMB", "here", "tidyverse")) %dopar% {
-      
+
       TMB::compile("Sex_Str_EM.cpp")
       # dyn.unload(dynlib('Sex_Str_EM'))
       dyn.load(dynlib('Sex_Str_EM'))
       
       # estimate biological weight at age
-      biologicals = get_biologicals(n_sexes, n_ages, age_bins, len_mids, Srv_LAA, Srv_LW, sim = sim)
-      
+      biologicals = get_biologicals(n_sexes, n_ages, age_bins, len_bins, Srv_LAA, Srv_LW, sim = sim)
+      plot(biologicals$al_matrix_sexagg[3,,1])
+
       # If single sex model
       if(n_sexes_em == 1) {
         waa_em = biologicals$waa_nosex
@@ -120,8 +122,7 @@ for(n_om in 1:nrow(oms_exp1)) {
                                     use_fish_index = FALSE,
                                     # Parameter fixing
                                     fix_pars = c("h", "ln_sigmaRec", "ln_q_fish"))
-      
-      
+
       # run model here
       model = run_model(data = em_inputs$data, 
                         parameters = em_inputs$parameters, 

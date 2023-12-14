@@ -33,11 +33,11 @@ simulate_data = function(spreadsheet_path,
   
   # Create objects for storage
   NAA = array(0, dim = c(n_years, n_ages, n_sexes, n_sims)) # Numbers at age
-  NAL = array(0, dim = c(n_years, length(len_mids), n_sexes, n_sims)) # Numbers at length
+  NAL = array(0, dim = c(n_years, length(len_bins), n_sexes, n_sims)) # Numbers at length
   FAA = array(0, dim = c(n_years, n_ages, n_sexes, n_fish_fleets, n_sims)) # Fishery Mortality at Age
   ZAA = array(0, dim = c(n_years, n_ages, n_sexes, n_sims)) # Total Mortality at Age
   CAA = array(0, dim = c(n_years, n_ages, n_sexes, n_fish_fleets, n_sims)) # Catch at Age
-  CAL = array(0, dim = c(n_years, length(len_mids), n_sexes, n_fish_fleets, n_sims)) # Catch at Length
+  CAL = array(0, dim = c(n_years, length(len_bins), n_sexes, n_fish_fleets, n_sims)) # Catch at Length
   Total_Catch_Sex = array(0, dim = c(n_years, n_sexes, n_fish_fleets, n_sims)) # Sex-Specific Catch
   Total_Catch = array(0, dim = c(n_years, n_fish_fleets, n_sims)) # Aggregated Catch
   SSB = array(0, dim = c(n_years, n_sims)) # Spawning stock biomass
@@ -48,7 +48,7 @@ simulate_data = function(spreadsheet_path,
   # Fishery Containers
   Fish_AgeComps = array(0, dim = c(n_years, n_ages, n_sexes, n_fish_fleets, n_sims)) 
   Fish_Neff_Age = array(Fish_Neff_Age, dim = c(n_years, n_fish_fleets)) # Age Effective Sample Size
-  Fish_LenComps = array(0, dim = c(n_years, length(len_mids), n_sexes, n_fish_fleets, n_sims)) 
+  Fish_LenComps = array(0, dim = c(n_years, length(len_bins), n_sexes, n_fish_fleets, n_sims)) 
   Fish_Neff_Len= array(Fish_Neff_Len, dim = c(n_years, n_fish_fleets)) # Length Effective Sample Size
   Fish_Index = array(0, dim = c(n_years, n_fish_fleets, n_sims))
   FishAge_Selex = array(0, dim = c(n_ages, n_sexes, n_fish_fleets))
@@ -58,7 +58,7 @@ simulate_data = function(spreadsheet_path,
   # Survey Containers
   Srv_AgeComps = array(0, dim = c(n_years, n_ages, n_sexes, n_srv_fleets, n_sims)) 
   Srv_Neff_Age = array(Srv_Neff_Age, dim = c(n_years, n_srv_fleets)) # Age Effective Sample Size
-  Srv_LenComps = array(0, dim = c(n_years, length(len_mids), n_sexes, n_srv_fleets, n_sims)) 
+  Srv_LenComps = array(0, dim = c(n_years, length(len_bins), n_sexes, n_srv_fleets, n_sims)) 
   Srv_Neff_Len= array(Srv_Neff_Len, dim = c(n_years, n_srv_fleets)) # Length Effective Sample Size
   Srv_Index = array(0, dim = c(n_years, n_srv_fleets, n_sims))
   SrvAge_Selex = array(0, dim = c(n_ages, n_sexes, n_srv_fleets))
@@ -85,8 +85,8 @@ simulate_data = function(spreadsheet_path,
 # Construct Length, Weight, and Age-Length Matrix Relationships -----------
   
   # Construct Weight-Length relationship
-  wl_female = alpha_wl[1] * len_mids^beta_wl[1]
-  wl_male = alpha_wl[1] * len_mids^beta_wl[1]
+  wl_female = alpha_wl[1] * len_bins^beta_wl[1]
+  wl_male = alpha_wl[1] * len_bins^beta_wl[1]
   wl <<- matrix(c(wl_female, wl_male), ncol = n_sexes)
   
   # Construct vonB LAA 
@@ -120,13 +120,23 @@ simulate_data = function(spreadsheet_path,
   waa_Male = winf_Male * (1 - exp(-k[2] * (age_bins - t0[2])))^beta_wl[2]
   waa <<- matrix(c(waa_Female, waa_Male), ncol = n_sexes)
   
+  # Get vonB sd with linear interpolation
+  vonBf_sd_vec = vonB_sd1[1] + (((vonB_Female - vonB_Female[1]) / (L_inf[1] - vonB_Female[1])) * (vonB_sd2[1] - vonB_sd1[1]))
+  
+  # make sd constant between sex for males if no diff in growth
+  if(growth_control_fct == 1) vonBm_sd_vec = vonB_sd1[1] + (((vonB_Male - vonB_Male[1]) / (L_inf[1] - vonB_Male[1])) * (vonB_sd2[1] - vonB_sd1[1]))
+  if(growth_control_fct != 1) vonBm_sd_vec = vonB_sd1[2] + (((vonB_Male - vonB_Male[1]) / (L_inf[2] - vonB_Male[1])) * (vonB_sd2[2] - vonB_sd1[2]))
+  
+  # Bind together to make a matrix
+  vonB_sd = matrix(cbind(vonBf_sd_vec, vonBm_sd_vec), ncol = n_sexes) # females then males
+  
   # Construct age-length transition matrices 
   al_matrix_Female <<- get_al_trans_matrix(age_bins = age_bins, len_bins = len_bins,
-                                         mean_length = vonB_Female, sd = vonB_sd[1]) # Female
+                                         mean_length = vonB_Female, sd = vonBf_sd_vec) # Female
   al_matrix_Male <<- get_al_trans_matrix(age_bins = age_bins, len_bins = len_bins, 
-                                       mean_length = vonB_Male, sd = vonB_sd[2]) # Male
+                                       mean_length = vonB_Male, sd = vonBm_sd_vec) # Male
   al_matrix <<- array(c(al_matrix_Female, al_matrix_Male), 
-                    dim = c(length(age_bins), length(len_mids), n_sexes)) # combine age-length matrices
+                    dim = c(length(age_bins), length(len_bins), n_sexes)) # combine age-length matrices
   
 
 # Selectivity Parameterization --------------------------------------------
@@ -135,8 +145,8 @@ simulate_data = function(spreadsheet_path,
   if(selex_type == "length") {
     # fishery selex
     fish_len_selex = matrix(logist(slope = fish_len_slope,
-                                   bins = rep(len_mids,n_fish_fleets), midpoint = fish_len_midpoint),
-                            nrow = length(len_mids), ncol = n_fish_fleets)
+                                   bins = rep(len_bins,n_fish_fleets), midpoint = fish_len_midpoint),
+                            nrow = length(len_bins), ncol = n_fish_fleets)
     for(f in 1:n_fish_fleets) { # convert length to age
       for(s in 1:n_sexes) { 
         FishAge_Selex[,s,f] = al_matrix[,,s] %*% fish_len_selex[,f] 
@@ -145,8 +155,8 @@ simulate_data = function(spreadsheet_path,
     
     # survey selex
     srv_len_selex = matrix(logist(slope = srv_len_slope,
-                                  bins = rep(len_mids,n_fish_fleets), midpoint = srv_len_midpoint),
-                           nrow = length(len_mids), ncol = n_srv_fleets)
+                                  bins = rep(len_bins,n_fish_fleets), midpoint = srv_len_midpoint),
+                           nrow = length(len_bins), ncol = n_srv_fleets)
     for(sf in 1:n_srv_fleets) { # convert length to age
       for(s in 1:n_sexes) { # standardize to 1
         SrvAge_Selex[,s,sf] = al_matrix[,,s] %*% srv_len_selex[,sf]
@@ -265,7 +275,7 @@ simulate_data = function(spreadsheet_path,
           # Get Probability of sampling length bins
           Prob_FishLen = as.vector(CAL[y-1,,,f,sim]/sum(CAL[y-1,,,f,sim]))
           Fish_LenComps[y-1,,,f,sim] = matrix(rmultinom(1, size = Fish_Neff_Len[y,f] * n_sexes, 
-                                                        Prob_FishLen), nrow = length(len_mids), ncol = n_sexes)
+                                                        Prob_FishLen), nrow = length(len_bins), ncol = n_sexes)
         } # if fishery comps are simulated across sexes
         
         ### Simulate Fishery Index --------------------------------------------------
@@ -315,7 +325,7 @@ simulate_data = function(spreadsheet_path,
           
           Prob_Len = Prob_SrvLen / sum(Prob_SrvLen) # compute prob of len sampling
           Srv_LenComps[y-1,,,sf,sim] = matrix(rmultinom(1, size = Srv_Neff_Len[y,sf] * n_sexes, # sampling
-                                                        Prob_SrvLen), nrow = length(len_mids), ncol = n_sexes)
+                                                        Prob_SrvLen), nrow = length(len_bins), ncol = n_sexes)
         } # if survey comps are simulated across sexes
         
         ### Simulate Survey Index --------------------------------------------------
@@ -337,14 +347,14 @@ simulate_data = function(spreadsheet_path,
           # Get survey length at age
           Srv_LAA_tmp <- lapply(non_zero_age, function(a) {
             n_age_samples <- ageCompValue[a]
-            sampled_srv_lens <- rnorm(n = n_age_samples, mean = vonB[a, s], sd = as.numeric(vonB_sd[s]))
+            sampled_srv_lens <- rnorm(n = n_age_samples, mean = vonB[a, s], sd = as.numeric(vonB_sd[a,s]))
             data.frame(lens = sampled_srv_lens, ages = age_bins[a], sex = s, srv_fleet = sf, sim = sim)
           })
           
           # Get survey length weight relationship
           Srv_LW_tmp = lapply(non_zero_len, function(l) {
             n_len_samples <- lenCompValue[l]
-            sampled_srv_wts = rnorm(n = n_len_samples, mean = wl[l,s], sd = as.numeric(wl_sd[s]))
+            sampled_srv_wts = wl[l,s] * exp(rnorm(n_len_samples, -sqrt(log(wl_sd[s]^2 +1 ))^2/2, sqrt(log(wl_sd[s]^2 +1 )) ))
             data.frame(wts = sampled_srv_wts, lens = len_bins[l], sex = s, srv_fleet = sf, sim = sim)
           })
           
@@ -437,7 +447,7 @@ simulate_data = function(spreadsheet_path,
   oms <- list(
     n_fish_fleets = n_fish_fleets,
     n_srv_fleets = n_srv_fleets,
-    len_mids = len_mids,
+    len_bins = len_bins,
     n_ages = n_ages,
     n_sexes = n_sexes,
     age_bins = age_bins,
@@ -482,6 +492,8 @@ simulate_data = function(spreadsheet_path,
     al_matrix = al_matrix,
     FishAge_Selex = FishAge_Selex,
     SrvAge_Selex = SrvAge_Selex,
+    srv_len_selex = srv_len_selex,
+    fish_len_selex = fish_len_selex,
     Fmort = Fmort,
     cv_Srv_Index = cv_Srv_Index,
     cv_Fish_Index = cv_Fish_Index,
@@ -496,6 +508,8 @@ simulate_data = function(spreadsheet_path,
     n_sims = n_sims,
     n_years = n_years,
     L_inf = L_inf,
+    vonBf_sd_vec = vonBf_sd_vec,
+    vonBm_sd_vec = vonBm_sd_vec,
     SBPR_MSY = SBPR_MSY,
     HCR_proj_catch = HCR_proj_catch)
   

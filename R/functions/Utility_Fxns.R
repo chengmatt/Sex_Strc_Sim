@@ -15,23 +15,20 @@
 #' @examples
 get_al_trans_matrix = function(age_bins, len_bins, mean_length, sd) {
   
-  # Get midpoint of length bins 
-  len_mids = len_bins[1:(length(len_bins) - 1)] + diff(len_bins) / 2
   # Construct age length matrix
-  age_length = matrix(0.0, nrow = length(age_bins), ncol = length(len_mids))
+  age_length = matrix(0.0, nrow = length(age_bins), ncol = length(len_bins))
 
   for(a in 1:length(age_bins)) {
-    for(l in 2:length(len_bins)) {
+    for(l in 1:length(len_bins)) {
       
-      if (l == 2) { # Probability of being between 1st and 2nd length bin given age a
-        age_length[a, l - 1] = pnorm(len_bins[2], mean_length[a], sd)
+      if (l == 1) { # Probability of being between 1st and 2nd length bin given age a
+        age_length[a, l] = pnorm(len_bins[2], mean_length[a], sd[a])
       } else if (l == length(len_bins)) { # Probability of being larger than the last length bin given age a
-        age_length[a, l - 1] = 1 - pnorm(len_bins[length(len_bins) - 1], mean_length[a], sd)
+        age_length[a, l] = 1 - pnorm(len_bins[length(len_bins)], mean_length[a], sd[a])
       } else { # a of being in between length bins given age a
-        age_length[a, l - 1] = pnorm(len_bins[l], mean_length[a], sd) -  
-                               pnorm(len_bins[l - 1], mean_length[a], sd)
+        age_length[a, l] = pnorm(len_bins[l+1], mean_length[a], sd[a]) -  
+                               pnorm(len_bins[l], mean_length[a], sd[a])
       }
-      
     } # end l loop
   } # end a loop
   return(age_length)
@@ -111,7 +108,7 @@ add_newton = function(n.newton, ad_model, mle_optim) {
 #' @param n_sexes Number of sexes
 #' @param n_ages Number of ages
 #' @param age_bins Vector of ages
-#' @param len_mids Vector of length midpoints
+#' @param len_bins Vector of length 
 #' @param LAA Dataframe with length-at-age data
 #' @param LW Dataframe with weight-length data
 #' @param sim Simulation number
@@ -120,31 +117,36 @@ add_newton = function(n.newton, ad_model, mle_optim) {
 #' @export
 #'
 #' @examples
-get_biologicals = function(n_sexes, n_ages, age_bins, len_mids, LAA, LW, sim) {
+get_biologicals = function(n_sexes, n_ages, age_bins, len_bins, LAA, LW, sim) {
   
   # Get WAA values from data
   waa_sex = matrix(0, ncol = n_sexes, nrow = n_ages)
   waa_nosex = matrix(0, ncol = 1, nrow = n_ages)
-  al_matrix_sexsp = array(0, dim = c(c(length(age_bins), length(len_mids), n_sexes)))
-  al_matrix_sexagg = array(0, dim = c(c(length(age_bins), length(len_mids), 1)))
-  
+  al_matrix_sexsp = array(0, dim = c(c(length(age_bins), length(len_bins), n_sexes)))
+  al_matrix_sexagg = array(0, dim = c(c(length(age_bins), length(len_bins), 1)))
+  iter = sim
   for(s in 1:n_sexes) {
     
+    LAA_obs = LAA[LAA$sim == iter & LAA$sex == s, ]
+    WL_obs = LW[LW$sim == iter & LW$sex == s, ]
+
     # Get sex-specific WAA
-    waa_sex_sp = get_WAA(LAA_obs_age = LAA$ages[LAA$sim == sim & LAA$sex == s], 
-                         LAA_obs_len = LAA$lens[LAA$sim == sim & LAA$sex == s],
-                         WL_obs_len = LW$lens[LW$sim == sim & LAA$sex == s],
-                         WL_obs_wt = LW$wts[LW$sim == sim & LAA$sex == s],
+    waa_sex_sp = get_WAA(LAA_obs_age = LAA_obs$ages, 
+                         LAA_obs_len = LAA_obs$lens,
+                         WL_obs_len = WL_obs$lens,
+                         WL_obs_wt = WL_obs$wts,
                          ages = age_bins)
     
     waa_sex[,s] = waa_sex_sp[[1]] # waa
     al_matrix_sexsp[,,s] = get_al_trans_matrix(age_bins, len_bins, waa_sex_sp[[2]], waa_sex_sp[[6]]) # get al transition matrix
     
     if(s == n_sexes) { # sex-aggregated waa
-      waa_sex_agg = get_WAA(LAA_obs_age = LAA$ages[LAA$sim == sim], 
-                            LAA_obs_len = LAA$lens[LAA$sim == sim],
-                            WL_obs_len = LW$lens[LW$sim == sim],
-                            WL_obs_wt = LW$wts[LW$sim == sim],
+      LAA_obs = LAA[LAA$sim == iter, ]
+      WL_obs = LW[LW$sim == iter, ]
+      waa_sex_agg = get_WAA(LAA_obs_age = LAA_obs$ages, 
+                            LAA_obs_len = LAA_obs$lens,
+                            WL_obs_len = WL_obs$lens,
+                            WL_obs_wt = WL_obs$wts,
                             ages = age_bins)
       waa_nosex[,1] = waa_sex_agg[[1]] # get waa
       al_matrix_sexagg[,,1] = get_al_trans_matrix(age_bins, len_bins, waa_sex_agg[[2]], waa_sex_agg[[6]])

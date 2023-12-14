@@ -57,7 +57,7 @@ nLL_WL = function(obs_len, obs_wt, ln_alpha, ln_beta, ln_sigma) {
   
   # Get predicted weights
   pred_wts = pred_wl(length = obs_len, alpha = alpha, beta = beta)
-  nLL = -1 * sum(dnorm(obs_wt, pred_wts, sd = sigma, log = TRUE)) # Get nLL
+  nLL = -1 * sum(dnorm(log(obs_wt), log(pred_wts)-sigma^2/2, sd = sigma, log = TRUE)) # Get nLL
   return(nLL)
 } # end function
 
@@ -74,16 +74,19 @@ nLL_WL = function(obs_len, obs_wt, ln_alpha, ln_beta, ln_sigma) {
 #' @export
 #'
 #' @examples
-nLL_LAA = function(obs_lens, obs_age, ln_linf, ln_k, t0, ln_sigma) {
+nLL_LAA = function(obs_lens, obs_age, ln_linf, ln_k, t0, ln_sigma1, ln_sigma2) {
   
   # Exponentiate parameters
   linf = exp(ln_linf)
   k = exp(ln_k)
-  sigma = exp(ln_sigma)
+  sigma1 = exp(ln_sigma1)
+  sigma2 = exp(ln_sigma2)
   
   # Get predicted lengths
   pred_lens = pred_laa(age = obs_age, linf = linf, k = k, t0 = t0)
-  nLL = -1 * sum(dnorm(obs_lens, pred_lens, sd = sigma, log = TRUE)) # Get nLL
+  sigma_vec = sigma1 + (((pred_lens - min(pred_lens)) / (linf[1] - min(pred_lens))) * (sigma2 - sigma1))
+  
+  nLL = -1 * sum(dnorm(obs_lens, pred_lens, sd = sigma_vec, log = TRUE)) # Get nLL
   return(nLL)
 } # end function
 
@@ -104,7 +107,7 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
   # Get weight-length relationship
   WL_rel = bbmle::mle2(nLL_WL,
                         start = list(ln_alpha = log(1e-05),
-                                     ln_sigma = log(3)),
+                                     ln_sigma = log(0.1)),
                         data = list(obs_len = WL_obs_len,
                                     obs_wt = WL_obs_wt,
                                     ln_beta = log(beta_wl[1])), # fix beta
@@ -117,8 +120,9 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
   LAA_rel = bbmle::mle2(nLL_LAA,
                         start = list(ln_linf = log(80),
                                      ln_k = log(0.2),
-                                     ln_sigma = log(2),
-                                     t0 = 0),
+                                     ln_sigma1 = log(3),
+                                     ln_sigma2 = log(7),
+                                     t0 = -3),
                         data = list(obs_age = LAA_obs_age,
                                     obs_lens = LAA_obs_len),
                         method="Nelder-Mead",
@@ -129,13 +133,19 @@ get_WAA = function(LAA_obs_age, LAA_obs_len, WL_obs_len, WL_obs_wt, ages) {
   linf = exp(LAA_rel@coef[1])
   k = exp(LAA_rel@coef[2])
   t0 = LAA_rel@coef[3]
-  laa_sd = exp(LAA_rel@coef[4])
+  wl_sd = exp(WL_rel@coef[2])
   alpha = exp(WL_rel@coef[1])
+  sigma1 = exp(LAA_rel@coef[4])
+  sigma2 = exp(LAA_rel@coef[5])
   beta = beta_wl[1] # fixing beta here
   
   # Get weight at age now
   winf = (alpha * linf^beta)
   waa = winf * (1 - exp(-k * (ages - t0)))^beta
   laa = linf * (1 - exp(-k * (ages - t0)))
-  return(list(waa, laa, linf, k, t0, laa_sd, alpha, beta))
+
+  # Calculate sd for vonB
+  laa_sd = sigma1 + (((laa - laa[1]) / (linf[1] - laa[1])) * (sigma2 - sigma1))
+  
+  return(list(waa, laa, linf, k, t0, laa_sd, alpha, beta, wl_sd))
 } # end function

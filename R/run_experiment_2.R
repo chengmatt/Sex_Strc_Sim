@@ -73,7 +73,7 @@ for(n_om in 1:nrow(oms_exp2)) {
       dyn.load(dynlib('Sex_Str_EM'))
       
       # estimate biological weight at age
-      biologicals = get_biologicals(n_sexes, n_ages, age_bins, len_mids, Srv_LAA, Srv_LW, sim = sim)
+      biologicals = get_biologicals(n_sexes, n_ages, age_bins, len_bins, Srv_LAA, Srv_LW, sim = sim)
       
       # Prepare EM inputs into assessment
       em_inputs = prepare_EM_inputs(sim = sim,

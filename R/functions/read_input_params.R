@@ -44,8 +44,9 @@ read_params <- function(spreadsheet_path) {
   t0 <<- as.numeric(as.vector(grwth[3,1:2])) # t0 parameter
   beta_wl <<- as.numeric(as.vector(grwth[4,1:2])) # beta parameter
   alpha_wl <<- as.numeric(as.vector(grwth[5,1:2])) # alpha parameter
-  vonB_sd <<- as.numeric(as.vector(grwth[6,1:2])) # vonbert sd
-  wl_sd <<- as.numeric(as.vector(grwth[7,1:2])) # weight length sd
+  vonB_sd1 <<- as.numeric(as.vector(grwth[6,1:2])) # vonbert sd1 min len
+  vonB_sd2 <<- as.numeric(as.vector(grwth[7,1:2])) # vonbert sd max len
+  wl_sd <<- as.numeric(as.vector(grwth[8,1:2])) # weight length sd
   
 # Recruitment + Mortality-------------------------------------------------------------
   recruitment_pars <- read_xlsx(spreadsheet_path, sheet = "Recruitment_Mortality")
