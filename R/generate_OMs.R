@@ -44,13 +44,14 @@ for(i in 1:nrow(oms_exp1)) {
                 natmort_control = "chg_males_rel_females",
                 growth_control_fct = oms_exp1$growth_control_fct[i], 
                 natmort_control_fct = oms_exp1$natmort_control_fct[i],  
-                force_grwth_same_yng = FALSE)
+                force_grwth_same_yng = TRUE) # force minimum age to be similar
   
   # Save as RData file - ifelse for sensitivity tests
   save(oms, file = here(om_path, paste(oms_exp1$OM_Name[i], ".RData", sep = "")))
   plot_OMs(oms, path = om_path)
 
 } # end i loop
+
 
 # Experiment 2 ------------------------------------------------------------
 
@@ -84,7 +85,7 @@ for(i in 1:nrow(oms_exp2)) {
                       natmort_control = "chg_males_rel_females",
                       growth_control_fct = oms_exp2$growth_control_fct[i], # holding constant at 15% difference 
                       natmort_control_fct = oms_exp2$natmort_control_fct[i], # holding constant at 15% difference 
-                      force_grwth_same_yng = FALSE) 
+                      force_grwth_same_yng = TRUE)  # force minimum age to be similar
   
   # Save as RData file - ifelse for sensitivity tests
   save(oms, file = here(om_path, paste(oms_exp2$OM_Name[i], ".RData", sep = "")))

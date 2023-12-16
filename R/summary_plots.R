@@ -25,17 +25,17 @@ theme_tj = function() {
 
 # Read in files
 exp1_selex_df = data.table::fread(here("output", "Experiment_1_Selex.csv")) %>% 
-  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
+  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
 exp1_growth_df = data.table::fread(here("output", "Experiment_1_Growth.csv")) %>% 
-  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
+  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
 exp1_param_df = data.table::fread(here("output", "Experiment_1_Param.csv")) %>% 
-  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
+  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
 exp1_ts_df = data.table::fread(here("output", "Experiment_1_TimeSeries.csv"))  %>% 
-  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
+  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
 exp1_conv_df = data.table::fread(here("output", "Experiment_1_Convergence.csv")) %>% 
-  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
+  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
 exp1_naa_df = data.table::fread(here("output", "Experiment_1_NAA.csv")) %>% 
-  filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
+  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
 
 ### Convergence Summary -----------------------------------------------------
 
@@ -373,12 +373,12 @@ prop_param_df %>%
   filter(Magg == "Aggregated M",
          Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
          Prop == "Proportions Across",
-         OM == "Growth_M (0,10)") %>% 
+         OM == "Growth_M (0,15)") %>% 
   ggplot(aes(x = RE, fill = Catch)) +
   geom_density(alpha = 0.5) +
   geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
   labs(x = "Relative Error", y = "Value",
-       title = "Aggregated M, Sex-Specific Catch (Proportions Across), OM = Growth_M (0,10)") +
+       title = "Aggregated M, Sex-Specific Catch (Proportions Across), OM = Growth_M (0,15)") +
   theme_tj() +
   facet_grid(Type~Catch, scales = "free") +
   theme(legend.position = "top") 

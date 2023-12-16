@@ -28,7 +28,7 @@ theme_tj = function() {
 exp1_path = here("output", "Experiment 1")
 # Read in scenarios
 experiment_1_files = list.files(exp1_path)
-
+experiment_1_files = experiment_1_files[!str_detect(experiment_1_files, "(30,15)|(15,30)")]
 # Storage containers
 vonB_all = data.frame()
 waa_all = data.frame()
@@ -454,16 +454,6 @@ naa_plot = ggplot(naa_sum %>%
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
-# plot initial sex ratio
-sr_plot = ggplot(sr_all %>% filter(!str_detect(OM, "No")), 
-                 aes(x = year, y = sr, color = factor(sex))) +
-  geom_line(size = 1.5) +
-  facet_wrap(~OM, ncol = 1) +
-  labs(x = "Years", y = "", color = "Sex", fill = "Sex",
-       title = "Initial Sex Ratio") +
-  theme_tj() +
-  ylim(0,1) +
-  theme(plot.title = element_text(hjust = 0.5))
 
 # plot sex ratios changing over time
 sr_sum = sr_store_all %>% 
@@ -484,6 +474,7 @@ sr_sum_plot = ggplot(sr_sum %>% filter(!str_detect(OM, "No")),
   theme(plot.title = element_text(hjust = 0.5))
 
 pdf(here("figs", "OM_Exp2.pdf"), width = 32, height = 12)
-ggarrange(vonB_plot, waa_plot, fishageselex_plot, sr_plot, sr_sum_plot,
+ggarrange(vonB_plot, waa_plot, fishageselex_plot, sr_sum_plot,
           naa_plot, catch_plot, ssb_plot, biomass_plot, nrow = 1)
 dev.off()
+

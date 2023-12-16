@@ -92,20 +92,19 @@ simulate_data = function(spreadsheet_path,
   # Construct vonB LAA 
   vonB_Female = vonB_est(age_bins = age_bins, k = k[1], L_inf = L_inf[1], t0 = t0[1], sd = 0) # females
   vonB_Male = vonB_est(age_bins = age_bins, k = k[2], L_inf = L_inf[2], t0 = t0[2], sd = 0) # males
-
-  if(force_grwth_same_yng == TRUE) {
+  
+  if(force_grwth_same_yng == TRUE) { # to minimze t0
     
     # set up
-    k_trial = seq(0.01, 0.5, 0.001) # define trial values to search through
-    young_ages = 1:3 # define young ages for whcih growth should be similar
+    t0_trial = seq(-6, -3, 0.001) # define trial values to search through
     minimize = vector()
 
-    for(i in 1:length(k_trial)) {
-      vonB_Male = vonB_est(age_bins = age_bins, k = k_trial[i], L_inf = L_inf[2], t0 = t0[2], sd = 0) # males
-      minimize[i] = sum(vonB_Female[1:3] - vonB_Male[1:3])^2 # minimize using ssq
+    for(i in 1:length(t0_trial)) {
+      vonB_Male = vonB_est(age_bins = age_bins, k = k[2], L_inf = L_inf[2], t0 = t0_trial[i], sd = 0) # males
+      minimize[i] = sum(vonB_Female[1] - vonB_Male[1])^2 # minimize using ssq
     } # end i loop
     
-    k[2] = k_trial[which.min(minimize)] # redefine the k for males 
+    t0[2] = t0_trial[which.min(minimize)] # redefine the k for males 
     vonB_Male = vonB_est(age_bins = age_bins, k = k[2], L_inf = L_inf[2], t0 = t0[2], sd = 0) # males - now redfine this and bind
     
   } # end if forcing young individuals to similar growth 
