@@ -34,7 +34,8 @@ om_names = list.files(om_path)
 
 # Read in OMs for experiment 1 and set śp
 oms_exp1 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp1", na = "NA")
-ems_exp1 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp1", na = "NA") 
+ems_exp1 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp1", na = "NA") %>% 
+  filter(str_detect(EM_Name, "Age"))
 
 # Run Experiment 1 --------------------------------------------------------
 for(n_om in 1:nrow(oms_exp1)) {
@@ -72,7 +73,6 @@ for(n_om in 1:nrow(oms_exp1)) {
       
       # estimate biological weight at age
       biologicals = get_biologicals(n_sexes, n_ages, age_bins, len_bins, Srv_LAA, Srv_LW, sim = sim)
-      plot(biologicals$al_matrix_sexagg[3,,1])
 
       # If single sex model
       if(n_sexes_em == 1) {
@@ -110,7 +110,7 @@ for(n_om in 1:nrow(oms_exp1)) {
                                     age_len_transition = al_matrix_em,
                                     
                                     # Fixed controls
-                                    selex_type = "length",
+                                    selex_type = selex_type_em,
                                     est_sexRatio_par = FALSE,
                                     sexRatio = sexRatio_em,
                                     # Aggregating comps

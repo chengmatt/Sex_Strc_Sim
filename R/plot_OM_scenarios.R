@@ -28,7 +28,7 @@ theme_tj = function() {
 exp1_path = here("output", "Experiment 1")
 # Read in scenarios
 experiment_1_files = list.files(exp1_path)
-experiment_1_files = experiment_1_files[!str_detect(experiment_1_files, "(30,15)|(15,30)")]
+experiment_1_files = experiment_1_files[!str_detect(experiment_1_files, "(30,10)|(10,30)")]
 # Storage containers
 vonB_all = data.frame()
 waa_all = data.frame()
