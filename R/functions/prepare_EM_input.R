@@ -206,13 +206,13 @@ prepare_EM_inputs = function(sim,
   for(s in 1:n_sexes) parameters$ln_M[s] = log(M[s])
   if(share_M_sex == TRUE) for(s in 1:n_sexes) parameters$ln_M[s] = mean(log(M[s])) 
   parameters$ln_InitDevs = log(InitDevs[,sim])
-  parameters$ln_RecDevs = log(RecDevs[-50,sim])
+  parameters$ln_RecDevs = log(RecDevs[-n_years,sim])
   parameters$RecPars = c(log(r0), h)
   parameters$ln_sigmaRec = log(sigma_rec)
   parameters$ln_q_fish = log(q_Fish)
   parameters$ln_q_srv = log(q_Srv)
   parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
-  
+
   if(selex_type == "length") {
     parameters$ln_fish_selpars = array(log(c(0.35, 60)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
     parameters$ln_srv_selpars = array(log(c(0.35, 50)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)

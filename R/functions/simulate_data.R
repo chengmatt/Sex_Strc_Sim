@@ -96,7 +96,7 @@ simulate_data = function(spreadsheet_path,
   if(force_grwth_same_yng == TRUE) { # to minimze t0
     
     # set up
-    t0_trial = seq(-6, -3, 0.001) # define trial values to search through
+    t0_trial = seq(-10, -3, 0.001) # define trial values to search through
     minimize = vector()
 
     for(i in 1:length(t0_trial)) {
@@ -504,6 +504,7 @@ simulate_data = function(spreadsheet_path,
     beta_wl = beta_wl,
     alpha_wl = alpha_wl,
     k = k,
+    t0 = t0,
     n_sims = n_sims,
     n_years = n_years,
     L_inf = L_inf,

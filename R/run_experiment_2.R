@@ -25,14 +25,14 @@ registerDoSNOW(cl)
 fxn_path <- here("R", "functions")
 # Load in all functions from the functions folder
 files <- list.files(fxn_path)
-for(i in 1:length(files)) source(here(fxn_path, files[i]))
+for(f in 1:length(files)) source(here(fxn_path, files[f]))
 
 # Set up paths to OMs
 om_path = here("output", "Experiment 2")
 om_names = list.files(om_path)
 
 # Read in OMs for experiment 1 and set up
-oms_exp2 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp2")
+oms_exp2 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp2") 
 
 # Run Experiment 2 --------------------------------------------------------
 
@@ -45,7 +45,8 @@ for(n_om in 1:nrow(oms_exp2)) {
   list2env(oms,globalenv()) # output into global environment
   
   # read in EM experiments
-  ems_exp2 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp2", na = "NA")
+  ems_exp2 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp2", na = "NA") %>% 
+    filter(str_detect(EM_Name, "Fix_PropAcr"))
   
   # If these are variants we are testing to understand model behavior
   if(str_detect(om_name, "No") == TRUE) ems_exp2 = ems_exp2 %>% filter(str_detect(EM_Name, "Fix"))
@@ -109,11 +110,13 @@ for(n_om in 1:nrow(oms_exp2)) {
                                     # Parameter fixing
                                     fix_pars = c("h", "ln_sigmaRec", "ln_q_fish"))
       
+
       # run model here
       model = run_model(data = em_inputs$data, 
                         parameters = em_inputs$parameters, 
                         map = em_inputs$map, silent = TRUE, n.newton = 3)
       
+
       # extract quantities
       quants_df = get_quantities(biologicals = biologicals,
                                  model = model, sim = sim, om_name = om_name,
