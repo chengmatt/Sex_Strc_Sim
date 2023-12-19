@@ -575,39 +575,28 @@ Type objective_function<Type>::operator() ()
   // Fishery Age Compositions
   for(int f = 0; f < n_fish_fleets; f++) {
     for(int y = 0 ; y < n_years; y++) {
-
-      // Age-Compositions Proportions across sex
-      if(p_ow_sex_fish_age == 1) {
-        vector<Type> obs_fish_age_as = obs_fish_age_comps.col(f).transpose().col(y).transpose().vec(); // Pull out observed vector
-        vector<Type> pred_fish_age_as = pred_fish_age_comps.col(f).transpose().col(y).transpose().vec(); // Pull out observed vector
-        fish_age_comp_nLL(y,0,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_as, pred_fish_age_as, true); // Get likelihood here
-      } // if proportions across sex for fishery ages
-
-        if(p_ow_sex_fish_age == 0) {
-          for(int s = 0; s < n_sexes; s++) {
-            
-            // Sex-specific comps
-            if(agg_sex_fish_age == 0) {
-              vector<Type> obs_fish_age_ws = obs_fish_age_comps.col(f).col(s).transpose().col(y); // Pull out observed vector
-              vector<Type> pred_fish_age_ws = pred_fish_age_comps.col(f).col(s).transpose().col(y); // Pull out predicted vector
-              fish_age_comp_nLL(y,s,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_ws, pred_fish_age_ws, true); // Get likelihood here
-            } // if sex-specific comps
-          } // s loop
+      
+     // Sex-specific comps
+     if(agg_sex_fish_age == 0) {
+       for(int s = 0; s < n_sexes; s++) {
+         vector<Type> obs_fish_age_ws = obs_fish_age_comps.col(f).col(s).transpose().col(y); // Pull out observed vector
+         vector<Type> pred_fish_age_ws = pred_fish_age_comps.col(f).col(s).transpose().col(y); // Pull out predicted vector
+         fish_age_comp_nLL(y,s,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_ws, pred_fish_age_ws, true); // Get likelihood here
+       } // if sex-specific comps
+     } // s loop
+     
+     // Sex-aggregated comps
+     if(agg_sex_fish_age == 1) {
+       obs_fish_age_agg.setZero(); // set zero storage containers for aggregated comps
+       pred_fish_age_agg.setZero();// set zero storage containers for aggregated comps
+       matrix<Type> obs_fish_age_mat = obs_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+       matrix<Type> pred_fish_age_mat = pred_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+       obs_fish_age_agg = obs_fish_age_mat.rowwise().sum(); // Sum across rows
+       pred_fish_age_agg = pred_fish_age_mat.rowwise().sum(); // Sum across rows
+       pred_fish_age_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
+       fish_age_comp_nLL(y,0,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_agg, pred_fish_age_agg, true); // Get likelihood here
+     } // Aggregated comps
           
-          // Sex-aggregated comps
-          if(agg_sex_fish_age == 1) {
-            obs_fish_age_agg.setZero(); // set zero storage containers for aggregated comps
-            pred_fish_age_agg.setZero();// set zero storage containers for aggregated comps
-            matrix<Type> obs_fish_age_mat = obs_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-            matrix<Type> pred_fish_age_mat = pred_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-            obs_fish_age_agg = obs_fish_age_mat.rowwise().sum(); // Sum across rows
-            pred_fish_age_agg = pred_fish_age_mat.rowwise().sum(); // Sum across rows
-            pred_fish_age_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
-            fish_age_comp_nLL(y,0,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_agg, pred_fish_age_agg, true); // Get likelihood here
-          } // Aggregated comps
-          
-        } // if proportions within sex for fishery ages
-        
     } // y loop
   } // f loop
   
@@ -618,16 +607,6 @@ Type objective_function<Type>::operator() ()
   
   for(int f = 0; f < n_fish_fleets; f++) {
     for(int y = 0 ; y < n_years; y++) {
-
-      // Length-Compositions Proportions across sex
-      if(p_ow_sex_fish_len == 1) {
-        vector<Type> obs_fish_len_as = obs_fish_len_comps.col(f).transpose().col(y).transpose().vec(); // Pull out observed vector
-        vector<Type> pred_fish_len_as = pred_fish_len_comps.col(f).transpose().col(y).transpose().vec(); // Pull out observed vector
-        fish_len_comp_nLL(y,0,f) -= use_fish_len_comps(y,f) * dmultinom(obs_fish_len_as, pred_fish_len_as, true); // Get likelihood here
-      } // if proportions across sex for fishery lengths
-      
-      // Proportions within sexes for fishery ages or lengths
-      if(p_ow_sex_fish_len == 0) {
         
         // if sex-specific length comps for fishery
         if(agg_sex_fish_len == 0) {
@@ -650,8 +629,6 @@ Type objective_function<Type>::operator() ()
           fish_len_comp_nLL(y,0,f) -= use_fish_len_comps(y,f) * dmultinom(obs_fish_len_agg, pred_fish_len_agg, true); // Get likelihood here
         } // Aggregated length comps
         
-      } // if proportions within sex for fishery lengths
-        
       } // y loop
     } // f loop
 
@@ -663,18 +640,10 @@ Type objective_function<Type>::operator() ()
   
   for(int sf = 0; sf < n_srv_fleets; sf++) {
     for(int y = 0 ; y < n_years; y++) {
-      
-      // Age-Compositions Proportions across sexes
-      if(p_ow_sex_srv_age == 1) {
-        vector<Type> obs_srv_age_as = obs_srv_age_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
-        vector<Type> pred_srv_age_as = pred_srv_age_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
-        srv_age_comp_nLL(y,0,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_as, pred_srv_age_as, true); // Get likelihood here
-      } // if proportions across sex for fishery ages
-      
-      if(p_ow_sex_srv_age == 0) {
-        for(int s = 0; s < n_sexes; s++) {
-          // Sex-specific comps
-          if(agg_sex_srv_age == 0) {
+
+        // Sex-specific comps
+        if(agg_sex_srv_age == 0) {
+          for(int s = 0; s < n_sexes; s++) {
             vector<Type> obs_srv_age_ws = obs_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
             vector<Type> pred_srv_age_ws = pred_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
             srv_age_comp_nLL(y,s,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_ws, pred_srv_age_ws, true); // Get likelihood here
@@ -693,8 +662,6 @@ Type objective_function<Type>::operator() ()
           srv_age_comp_nLL(y,0,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_agg, pred_srv_age_agg, true); // Get likelihood here
         } // Aggregated comps
         
-      } // if proportions within sex for fishery ages
-
     } // y loop
   } // sf loop
   
@@ -705,15 +672,6 @@ Type objective_function<Type>::operator() ()
   
   for(int sf = 0; sf < n_srv_fleets; sf++) {
     for(int y = 0 ; y < n_years; y++) {
-      
-      // Length-Compositions Proportions across sexes
-      if(p_ow_sex_srv_len == 1) {
-        vector<Type> obs_srv_len_as = obs_srv_len_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
-        vector<Type> pred_srv_len_as = pred_srv_len_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
-        srv_len_comp_nLL(y,0,sf) -= use_srv_len_comps(y,sf) * dmultinom(obs_srv_len_as, pred_srv_len_as, true); // Get likelihood here
-      } // if proportions across sex for fishery lengths
-      
-      if(p_ow_sex_srv_len == 0) {
         
         // If sex-specific length comps for survey
         if(agg_sex_srv_len == 0) {
@@ -736,8 +694,7 @@ Type objective_function<Type>::operator() ()
           pred_srv_len_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
           srv_len_comp_nLL(y,0,sf) -= use_srv_len_comps(y,sf) * dmultinom(obs_srv_len_agg, pred_srv_len_agg, true); // Get likelihood here
         } // Aggregated length comps
-      } // if proportions within sex for survey lengths
-         
+
     } // y loop
   } // sf loop
  

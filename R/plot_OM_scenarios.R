@@ -249,11 +249,10 @@ sr_sum_plot = ggplot(sr_sum %>% filter(!str_detect(OM, "No")),
   theme(plot.title = element_text(hjust = 0.5))
 
 
-pdf(here("figs", "OM_Exp1.pdf"), width = 30, height = 10)
+pdf(here("figs", "OM_Exp1.pdf"), width = 32, height = 12)
 ggarrange(vonB_plot, waa_plot, fishageselex_plot, 
-          srvageselex_plot, natmort_plot, sr_sum_plot, 
-          naa_plot, catch_plot, ssb_plot, biomass_plot,
-          nrow = 1)
+          natmort_plot, sr_sum_plot, 
+          naa_plot, catch_plot, ssb_plot, nrow = 1)
 dev.off()
 
 
@@ -475,6 +474,6 @@ sr_sum_plot = ggplot(sr_sum %>% filter(!str_detect(OM, "No")),
 
 pdf(here("figs", "OM_Exp2.pdf"), width = 32, height = 12)
 ggarrange(vonB_plot, waa_plot, fishageselex_plot, sr_sum_plot,
-          naa_plot, catch_plot, ssb_plot, biomass_plot, nrow = 1)
+          naa_plot, catch_plot, ssb_plot, nrow = 1)
 dev.off()
 

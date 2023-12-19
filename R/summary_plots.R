@@ -38,7 +38,21 @@ exp1_naa_df = data.table::fread(here("output", "Experiment_1_NAA.csv")) %>%
   filter(!OM %in% c("Growth_M (10,30)", "Growth_M (30,10)"))
 
 ### Convergence Summary -----------------------------------------------------
-
+exp1_conv_df = exp1_conv_df %>% 
+  mutate(convergence = 
+           case_when( # munging gradient stuff
+             (pdHess == TRUE & 
+                gradient <= 0.001 &
+                sdNA == FALSE &
+                convergence == "Not Converged") ~ "Converged",
+             (pdHess == TRUE & 
+                gradient <= 0.001 &
+                sdNA == FALSE &
+                convergence == "Converged") ~ "Converged",
+             (pdHess == FALSE |
+                gradient > 0.001 |
+                sdNA == TRUE) ~ "Not Converged"
+           )) 
 # Convergence summary
 conv_df = exp1_conv_df %>% 
   filter(convergence == "Converged") %>% 
@@ -47,20 +61,22 @@ conv_df = exp1_conv_df %>%
 
 # Plot convergence
 pdf(here("figs", "Experiment 1", "Convergence.pdf"), width = 15)
-ggplot(conv_df, aes(x = OM, y = sum)) +
+ggplot(conv_df %>% filter(!str_detect(EM, "ALY")),
+       aes(x = OM, y =sum)) +
   geom_point(size = 3) +
   facet_wrap(~EM) +
   theme_tj() +
   scale_x_discrete(guide = guide_axis(angle = 90)) +
-  labs(x = "Operating Models", y = "Convergence") +
-  ylim(150, 200)
+  labs(x = "Operating Models", y = "Convergence")
 dev.off()
 
 ### Selectivity Summary -----------------------------------------------------
 
 # summarize relative error in selectivity
 exp1_selex_sum = exp1_selex_df %>% 
-  filter(Convergence == "Converged") %>% 
+  select(-Convergence) %>% 
+  left_join(exp1_conv_df %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
+  filter(convergence == "Converged") %>% 
   mutate(RE = (Pred - True) / True,
          Magg = case_when( 
            str_detect(EM, "MAgg") ~ "Aggregated M",
@@ -136,10 +152,10 @@ dev.off()
 
 
 # fishery selectivity for age only EM
-pdf(here("figs", "Experiment 1", "RE_Fish_Selex_AgeEM.pdf"), width = 10)
+pdf(here("figs", "Experiment 1", "RE_Fish_Selex_AgeEM.pdf"), width = 15)
 print(
   exp1_selex_df %>% 
-    filter(Convergence == "Converged", EM %in% c("Age", "Age_AgeSelex") ,
+    filter(Convergence == "Converged", EM %in% c("Age") ,
            Type == "Fishery Selectivity") %>% 
     mutate(Sex = ifelse(Sex == 1, "Female", "Male")) %>% 
     ggplot() +
@@ -190,10 +206,10 @@ dev.off()
 ### Growth Summary ----------------------------------------------------------
 
 # Plot growth curves and estimates
-pdf(here("figs", "Experiment 1", "RE_Growth_Age.pdf"))
+pdf(here("figs", "Experiment 1", "RE_Growth_Age.pdf"), width = 15)
 print(
   exp1_growth_df %>% 
-    filter(Convergence == "Converged", EM %in% c("Age", "Age_AgeSelex")) %>% 
+    filter(Convergence == "Converged", EM %in% c("Age")) %>% 
     mutate(Sex = ifelse(Sex == 1, "Female", "Male")) %>% 
     ggplot() +
     geom_line(aes(x = Age, y = Pred, group = sim)) +
@@ -207,7 +223,9 @@ dev.off()
   
 # summarize relative error in growth
 exp1_growth_sum = exp1_growth_df %>% 
-  filter(Convergence == "Converged") %>% 
+  select(-Convergence) %>% 
+  left_join(exp1_conv_df %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
+  filter(convergence == "Converged") %>% 
   mutate(RE = (Pred - True) / True) %>% 
   group_by(OM, EM, Age, Sex) %>% 
   summarize(Median = median(RE),
@@ -235,7 +253,10 @@ dev.off()
 ##### Proportions across vs. within -------------------------------------------
 # proportions within vs. across summarize and munge to get em components
 prop_param_df = exp1_param_df %>% 
-  filter(Convergence == "Converged",
+  select(-Convergence) %>% 
+  left_join(exp1_conv_df %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
+  filter(convergence == "Converged") %>% 
+  filter(
          !str_detect(Type, "Ratio")) %>% 
   mutate(RE = (as.numeric(Pred)-Truth)/Truth,
          Magg = case_when( 
@@ -268,37 +289,9 @@ prop_param_df %>%
 
 prop_param_df %>% 
   filter(Magg == "Sex-Specific M",
-         Catch == "Aggregated Catch",
-         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
-         Prop %in% c("Proportions Across", "Proportions Within (SR_Y)")) %>% 
-  ggplot(aes(x = RE, fill = Prop)) +
-  geom_density(alpha = 0.5) +
-  geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Parameter", y = "Relative Error",
-       title = "Sex-Specific M, Aggregated Catch") +
-  theme_tj() +
-  facet_grid(Type~OM, scales = "free") +
-  theme(legend.position = "top")
-
-prop_param_df %>% 
-  filter(Magg == "Sex-Specific M",
          Catch == "Sex-Specific Catch",
          Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
          Prop %in% c("Proportions Within (SR_Y)", "Proportions Within (SR_ALY)")) %>% 
-  ggplot(aes(x = RE, fill = Prop)) +
-  geom_density(alpha = 0.5) +
-  geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Parameter", y = "Relative Error",
-       title = "Sex-Specific M, Sex-Specific Catch") +
-  theme_tj() +
-  facet_grid(Type~OM, scales = "free") +
-  theme(legend.position = "top")
-
-prop_param_df %>% 
-  filter(Magg == "Sex-Specific M",
-         Catch == "Sex-Specific Catch",
-         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
-         Prop %in% c("Proportions Within (SR_Y)", "Proportions Across")) %>% 
   ggplot(aes(x = RE, fill = Prop)) +
   geom_density(alpha = 0.5) +
   geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
@@ -332,6 +325,49 @@ prop_param_df %>%
   geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
   labs(x = "Parameter", y = "Relative Error",
        title = "Sex-Specific M, Aggregated Catch") +
+  theme_tj() +
+  facet_grid(Type~OM, scales = "free") +
+  theme(legend.position = "top")
+
+prop_param_df %>% 
+  filter(Magg == "Sex-Specific M",
+         Catch == "Sex-Specific Catch",
+         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
+         Prop %in% c("Proportions Within (SR_Y)", "Proportions Across")) %>% 
+  ggplot(aes(x = RE, fill = Prop)) +
+  geom_density(alpha = 0.5) +
+  geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
+  labs(x = "Parameter", y = "Relative Error",
+       title = "Sex-Specific M, Sex-Specific Catch") +
+  theme_tj() +
+  facet_grid(Type~OM, scales = "free") +
+  theme(legend.position = "top")
+
+prop_param_df %>% 
+  filter(Magg == "Aggregated M",
+         Catch == "Aggregated Catch",
+         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
+         Prop %in% c("Proportions Across", "Proportions Within (SR_Y)")) %>% 
+  ggplot(aes(x = RE, fill = Prop)) +
+  geom_density(alpha = 0.5) +
+  geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
+  labs(x = "Parameter", y = "Relative Error",
+       title = "Aggregated M, Aggregated Catch") +
+  theme_tj() +
+  facet_grid(Type~OM, scales = "free") +
+  theme(legend.position = "top")
+
+
+prop_param_df %>% 
+  filter(Magg == "Aggregated M",
+         Catch == "Sex-Specific Catch",
+         Type %in% c("Bmsy", "Fmsy", "Tier 3 HCR Catch"),
+         Prop %in% c("Proportions Within (SR_Y)", "Proportions Across")) %>% 
+  ggplot(aes(x = RE, fill = Prop)) +
+  geom_density(alpha = 0.5) +
+  geom_vline(xintercept = 0, lty = 2, size = 1.3) + 
+  labs(x = "Parameter", y = "Relative Error",
+       title = "Aggregated M, Sex-Specific Catch") +
   theme_tj() +
   facet_grid(Type~OM, scales = "free") +
   theme(legend.position = "top")
@@ -387,8 +423,10 @@ dev.off()
 ##### Other parameters --------------------------------------------------------
 # summarize re for parameters
 exp1_param_sum = exp1_param_df %>% 
-  filter(Convergence == "Converged",
-         !str_detect(Type, "Ratio")) %>% 
+  select(-Convergence) %>% 
+  left_join(exp1_conv_df %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
+  filter(convergence == "Converged") %>% 
+  filter( !str_detect(Type, "Ratio")) %>% 
   mutate(RE = (as.numeric(Pred) - Truth) / Truth,
          Magg = case_when(
            str_detect(EM, "MAgg") ~ "Aggregated M",
@@ -520,9 +558,10 @@ dev.off()
 
 ### Time Series Summary -----------------------------------------------------
 ###### Proportions within vs. across -------------------------------------------
-
 prop_exp1 = exp1_ts_df %>% 
-  filter(Convergence == "Converged") %>% 
+  select(-Convergence) %>% 
+  left_join(exp1_conv_df %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
+  filter(convergence == "Converged") %>% 
   mutate(RE = (as.numeric(Pred)-Truth)/Truth,
          Magg = case_when(
            str_detect(EM, "MAgg") ~ "Aggregated M",
@@ -672,7 +711,9 @@ dev.off()
 ###### Relative error all EMs --------------------------------------------------
 # time series summary in relative error
 ts_exp1_sum = exp1_ts_df %>% 
-  filter(Convergence == "Converged") %>%
+  select(-Convergence) %>% 
+  left_join(exp1_conv_df %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
+  filter(convergence == "Converged") %>% 
   mutate(RE = (as.numeric(Pred)-Truth)/Truth,
          Magg = case_when(
            str_detect(EM, "MAgg") ~ "Aggregated M",
@@ -785,7 +826,7 @@ dev.off()
 
 pdf(here("figs", "Experiment 1", "RE_TS_AgeEM_ZoomBiom.pdf"), width = 18, height = 6.5)
 print(
-  ggplot(ts_exp1_sum %>% filter(EM %in% c("Age", "Age_AgeSelex"), Type == "Spawning Stock Biomass"), 
+  ggplot(ts_exp1_sum %>% filter(EM %in% c("Age"), Type == "Spawning Stock Biomass"), 
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM, color = EM)) +
     geom_line(size = 1.3) +
     geom_ribbon(alpha = 0.5) +
@@ -796,7 +837,7 @@ print(
     theme(legend.position = "top")
 )
 print(
-  ggplot(ts_exp1_sum %>% filter(EM %in% c("Age", "Age_AgeSelex"), Type == "Total Biomass"), 
+  ggplot(ts_exp1_sum %>% filter(EM %in% c("Age"), Type == "Total Biomass"), 
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM, color = EM)) +
     geom_line(size = 1.3) +
     geom_ribbon(alpha = 0.5) +
@@ -807,7 +848,7 @@ print(
     theme(legend.position = "top")
 )
 print(
-  ggplot(ts_exp1_sum %>% filter(EM %in% c("Age", "Age_AgeSelex"), Type == "Total Fishing Mortality"), 
+  ggplot(ts_exp1_sum %>% filter(EM %in% c("Age"), Type == "Total Fishing Mortality"), 
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM, color = EM)) +
     geom_line(size = 1.3) +
     geom_ribbon(alpha = 0.5) +
@@ -857,6 +898,8 @@ dev.off()
 
 # Get summary of relative error and simulation intervals, etc.
 exp1_naa_sum = exp1_naa_df %>% 
+  select(-convergence) %>% 
+  left_join(exp1_conv_df %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
   filter(convergence == "Converged") %>% 
   mutate(Pred = as.numeric(Pred),
          Truth = as.numeric(Truth),
@@ -890,6 +933,7 @@ dev.off()
 # Experiment 2 ------------------------------------------------------------
 
 # Read in files
+exp2_conv = data.table::fread(here("output", "Experiment_2_Convergence.csv")) %>% filter(!str_detect(EM, "Magg"))
 exp2_selex_df = data.table::fread(here("output", "Experiment_2_Selex.csv")) %>% filter(!str_detect(EM, "Magg"))
 exp2_growth_df = data.table::fread(here("output", "Experiment_2_Growth.csv")) %>% filter(!str_detect(EM, "Magg"))
 exp2_param_df = data.table::fread(here("output", "Experiment_2_Param.csv")) %>% filter(!str_detect(EM, "Magg"))
@@ -897,17 +941,34 @@ exp2_ts_df = data.table::fread(here("output", "Experiment_2_TimeSeries.csv")) %>
 exp2_sr_df = data.table::fread(here("output", "Experiment_2_SexRatio.csv")) %>% filter(!str_detect(EM, "Magg"))
 
 ##### Convergence summary -----------------------------------------------------
+exp2_conv = exp2_conv %>% 
+  mutate(convergence = 
+           case_when( # munging gradient stuff
+             (pdHess == TRUE & 
+                gradient <= 0.001 &
+                sdNA == FALSE &
+                convergence == "Not Converged") ~ "Converged",
+             (pdHess == TRUE & 
+                gradient <= 0.001 &
+                sdNA == FALSE &
+                convergence == "Converged") ~ "Converged",
+             (pdHess == FALSE |
+                gradient > 0.001 |
+                sdNA == TRUE) ~ "Not Converged"
+           ))
+
 # Convergence summary
-conv_df = exp2_growth_df %>% 
-  filter(Convergence == "Converged", Age == 1, Sex == 1) %>% 
+conv_df = exp2_conv %>% 
+  filter(convergence == "Converged") %>% 
   group_by(OM, EM) %>% 
   summarize(sum = n())
 
 # Plot convergence
-pdf(here("figs", "Experiment 2", "Convergence.pdf"), width = 15)
-ggplot(conv_df, aes(x = OM, y = sum)) +
+pdf(here("figs", "Experiment 2", "Convergence.pdf"), height = 10, width = 15)
+ggplot(conv_df, aes(x = OM, y = sum, group = 1)) +
   geom_point(size = 3) +
-  facet_wrap(~EM, scales = "free_y") +
+  geom_line() +
+  facet_wrap(~EM) +
   theme_tj() +
   scale_x_discrete(guide = guide_axis(angle = 90)) +
   labs(x = "Operating Models", y = "Convergence") 
@@ -917,7 +978,9 @@ dev.off()
 ### Selectivity Summary -----------------------------------------------------
 # summarize relative error
 exp2_selex_sum = exp2_selex_df %>% 
-  filter(Convergence == "Converged") %>% 
+  select(-Convergence) %>% 
+  left_join(exp2_conv %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
+  filter(convergence == "Converged") %>% 
   mutate(RE = (Pred - True) / True) %>% 
   group_by(OM, EM, Age, Sex, Type) %>% 
   summarize(Median = median(RE),
@@ -963,7 +1026,9 @@ dev.off()
 
 # summarize relative error
 exp2_growth_sum = exp2_growth_df %>% 
-  filter(Convergence == "Converged") %>% 
+  select(-Convergence) %>% 
+  left_join(exp2_conv %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
+  filter(convergence == "Converged") %>% 
   mutate(RE = (Pred - True) / True) %>% 
   group_by(OM, EM, Age, Sex) %>% 
   summarize(Median = median(RE),
@@ -988,7 +1053,9 @@ dev.off()
 ### Parameter Summary -------------------------------------------------------
 # summarize re
 exp2_param_sum = exp2_param_df %>% 
-  filter(Convergence == "Converged") %>% 
+  select(-Convergence) %>% 
+  left_join(exp2_conv %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
+  filter(convergence == "Converged") %>% 
   mutate(RE = (as.numeric(Pred) - Truth) / Truth) %>% 
   group_by(OM, EM, Type) %>% 
   summarize(Median = median(RE),
@@ -1061,6 +1128,36 @@ print(ggplot(exp2_param_sum %>%
         scale_x_discrete(guide = guide_axis(angle = 90)) +
         coord_cartesian(ylim = c(-1, 1)))
 
+# comparing best proprotions fixed variant
+print(ggplot(exp2_param_sum %>% 
+               filter(EM != "Est_PropWith_SR_ALY", Type != "Male Sex Ratio", !str_detect(OM, "No"),
+                      str_detect(EM, "Fix")), 
+             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95, color = EM)) +
+        geom_pointrange(position = position_dodge2(width = 0.65), 
+                        size = 1, linewidth = 1) +
+        facet_wrap(~OM, scales = "free_y") +
+        geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+        labs(x = "Parameter", y = "Relative Error") +
+        theme_tj() +
+        theme(legend.position = "top") +
+        scale_x_discrete(guide = guide_axis(angle = 90)) +
+        coord_cartesian(ylim = c(-1, 1)))
+
+# comparing best proprotions fixed variant
+print(ggplot(exp2_param_sum %>% 
+               filter(EM != "Est_PropWith_SR_ALY", Type != "Male Sex Ratio", !str_detect(OM, "No"),
+                      str_detect(EM, "Fix")), 
+             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95, color = EM)) +
+        geom_pointrange(position = position_dodge2(width = 0.65), 
+                        size = 1, linewidth = 1) +
+        facet_wrap(~OM, scales = "free_y") +
+        geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+        labs(x = "Parameter", y = "Relative Error") +
+        theme_tj() +
+        theme(legend.position = "top") +
+        scale_x_discrete(guide = guide_axis(angle = 90)) +
+        coord_cartesian(ylim = c(-0.5, 0.5)))
+
 # comparing EMs that are fixed for no diff OMs
 print(ggplot(exp2_param_sum %>% 
                filter(Type != "Male Sex Ratio", str_detect(OM, "No")), 
@@ -1079,7 +1176,9 @@ dev.off()
 ### Time Series Summary -----------------------------------------------------
 # time series summary
 ts_exp2_sum = exp2_ts_df %>% 
-  filter(Convergence == "Converged") %>% 
+  select(-Convergence) %>%
+  left_join(exp2_conv %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>%
+  filter(convergence == "Converged") %>% 
   mutate(RE = (as.numeric(Pred)-Truth)/Truth) %>% 
   group_by(Years, Type, OM, EM) %>% 
   summarize(Median = median(RE),
@@ -1122,6 +1221,19 @@ pdf(here("figs", 'Experiment 2', "RE_TS_Acr_vs_With.pdf"), width = 15)
 print(
   ggplot(ts_exp2_sum %>% filter(Type == "Total Biomass",
          EM %in% c("Est_PropWith_SR_Y", "Est_PropWith_SR_ALY")),
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
+    geom_line(size = 1.3) +
+    geom_ribbon(alpha = 0.5) +
+    facet_grid(~OM, scales = "free") +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Year", y = "Relative Error in Total Biomass") +
+    theme_tj() +
+    theme(legend.position = "top") 
+)
+
+print(
+  ggplot(ts_exp2_sum %>% filter(Type == "Total Biomass",
+                                EM %in% c("Est_PropWith_SR_Y", "Est_PropWith_SR_ALY")),
          aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
     geom_line(size = 1.3) +
     geom_ribbon(alpha = 0.5) +
@@ -1227,27 +1339,28 @@ dev.off()
 pdf(here("figs", 'Experiment 2', "RE_TS_FixEM.pdf"), width = 13, height = 15)
 
 print(
-  ggplot(ts_exp2_sum %>% filter(EM == "Fix", !str_detect(OM, "No")), 
-         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
+  ggplot(ts_exp2_sum %>% filter(str_detect(EM, "Fix"), !str_detect(OM, "No")), 
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM, color = EM)) +
     geom_line(size = 1.3) +
     geom_ribbon(alpha = 0.5) +
     facet_grid(Type~OM, scales = "free") +
+    coord_cartesian(ylim = c(-1, 6)) +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
     labs(x = "Year", y = "Relative Error") +
     theme_tj() +
     theme(legend.position = "top") 
 )
 
-ggplot(ts_exp2_sum %>% filter(EM == "Fix", !str_detect(OM, "No")), 
-       aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
+ggplot(ts_exp2_sum %>% filter(str_detect(EM, "Fix"), !str_detect(OM, "No")), 
+       aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM, color = EM)) +
   geom_line(size = 1.3) +
   geom_ribbon(alpha = 0.5) +
+  coord_cartesian(ylim = c(-0.85, 1)) +
   facet_grid(Type~OM, scales = "free") +
   geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
   labs(x = "Year", y = "Relative Error", title = "Zoom") +
   theme_tj() +
-  theme(legend.position = "top") +
-  coord_cartesian(ylim = c(-1.5, 1.5))
+  theme(legend.position = "top")
 
 dev.off()
 

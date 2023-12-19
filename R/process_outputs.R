@@ -73,6 +73,8 @@ for(i in 1:length(exp1_oms)) {
       em_NAA_df = em_NAA_df %>% left_join(om_NAA, by = c("Year", "Age", "Sex", "sim"))
       em_NAA_df = em_NAA_df %>% left_join(conv_df %>% select(OM, EM, sim, convergence), by = c("OM", "EM", "sim"))
       em_NAA_store = rbind(em_NAA_df, em_NAA_store) # rbind to store
+      if(sum(summary(model_list[[k]]$sd_rep)[,2] >= 100, na.rm = TRUE)) sdNA = TRUE else sdNA = FALSE
+      conv_df$sdNA[k] = sdNA
     } # end i
     
     # input into our list
@@ -132,6 +134,7 @@ for(i in 1:length(exp2_oms)) {
   om_folder = here(exp2_path, exp2_oms[i])
   em_folders = list.files(om_folder) # list out em folders
   em_folders = em_folders[!str_detect(em_folders, "RData|pdf")] # remove these
+  load(here(om_folder, paste(exp2_oms[i], ".RData", sep = ""))) # load in OMs
   
   # storage containers for ems - reset for every om
   selex_em_list = list()
@@ -143,6 +146,7 @@ for(i in 1:length(exp2_oms)) {
   
   for(n_em in 1:length(em_folders)) {
     em_path = here(om_folder, em_folders[n_em]) # list out ems
+    load(here(em_path, paste(em_folders[n_em], ".RData", sep = ""))) # load in EMs
     selex_df = data.table::fread(here(em_path, "Selectivity.csv")) # read in selectivity
     growth_df =  data.table::fread(here(em_path, "Growth.csv")) # read in growth
     param_df =  data.table::fread(here(em_path, "Parameters.csv")) # read in parameters
@@ -150,6 +154,11 @@ for(i in 1:length(exp2_oms)) {
     sr_df = data.table::fread(here(em_path, "NAA_SexRatios.csv")) # read in sex ratio stuff
     conv_df = data.table::fread(here(em_path, "Convergence.csv")) # read in sex ratio stuff
     
+    for(k in 1:length(model_list)) { # loop through model list
+      if(sum(summary(model_list[[k]]$sd_rep)[,2] >= 100, na.rm = TRUE)) sdNA = TRUE else sdNA = FALSE
+      conv_df$sdNA[k] = sdNA
+    } # get se bounds into convergence
+      
     # input into our list
     selex_em_list[[n_em]] = selex_df
     growth_em_list[[n_em]] = growth_df

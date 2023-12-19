@@ -13,6 +13,7 @@ library(parallel)
 # Compile
 # setwd("src")
 TMB::compile("Sex_Str_EM.cpp")
+dyn.unload(dynlib("Sex_Str_EM"))
 dyn.load(dynlib('Sex_Str_EM'))
 
 rm(list=ls()) # remove objects prior to running
@@ -46,7 +47,7 @@ for(n_om in 1:nrow(oms_exp2)) {
   
   # read in EM experiments
   ems_exp2 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp2", na = "NA") %>% 
-    filter(str_detect(EM_Name, "Fix_PropAcr"))
+    filter(str_detect(EM_Name, "Fix_PropWith"))
   
   # If these are variants we are testing to understand model behavior
   if(str_detect(om_name, "No") == TRUE) ems_exp2 = ems_exp2 %>% filter(str_detect(EM_Name, "Fix"))
@@ -110,7 +111,6 @@ for(n_om in 1:nrow(oms_exp2)) {
                                     # Parameter fixing
                                     fix_pars = c("h", "ln_sigmaRec", "ln_q_fish"))
       
-
       # run model here
       model = run_model(data = em_inputs$data, 
                         parameters = em_inputs$parameters, 

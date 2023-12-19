@@ -34,8 +34,7 @@ om_names = list.files(om_path)
 
 # Read in OMs for experiment 1 and set śp
 oms_exp1 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp1", na = "NA")
-ems_exp1 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp1", na = "NA") %>% 
-  filter(str_detect(EM_Name, "Age"))
+ems_exp1 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp1", na = "NA") 
 
 # Run Experiment 1 --------------------------------------------------------
 for(n_om in 1:nrow(oms_exp1)) {
@@ -126,7 +125,7 @@ for(n_om in 1:nrow(oms_exp1)) {
       # run model here
       model = run_model(data = em_inputs$data, 
                         parameters = em_inputs$parameters, 
-                        map = em_inputs$map, silent = FALSE, n.newton = 3)
+                        map = em_inputs$map, silent = TRUE, n.newton = 3)
       
       # extract quantities
       quants_df = get_quantities(biologicals = biologicals,

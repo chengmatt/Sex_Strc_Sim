@@ -35,8 +35,8 @@ plot_EMs = function(time_series,
       geom_line(size = 1.5) +
       geom_ribbon(alpha = 0.5) +
       geom_hline(yintercept = 0, lty = 2) +
-      facet_wrap(~Type) +
-      coord_cartesian(ylim = c(-0.75, 0.75))
+      facet_wrap(~Type) 
+      # coord_cartesian(ylim = c(-0.75, 0.75))
   )
   
 
