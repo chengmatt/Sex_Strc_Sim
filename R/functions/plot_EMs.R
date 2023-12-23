@@ -25,9 +25,9 @@ plot_EMs = function(time_series,
   time_series_sum = time_series %>% 
     mutate(RE = (Pred - Truth) / Truth) %>% 
     group_by(Years, Type) %>% 
-    summarize(median = median(RE),
-              lwr_95 = quantile(RE, 0.025),
-              upr_95 = quantile(RE, 0.975))
+    summarize(median = median(RE,na.rm=T),
+              lwr_95 = quantile(RE, 0.025,na.rm=T),
+              upr_95 = quantile(RE, 0.975,na.rm=T))
   
   print(
     ggplot(time_series_sum, aes(x = Years, y = median,
@@ -35,8 +35,8 @@ plot_EMs = function(time_series,
       geom_line(size = 1.5) +
       geom_ribbon(alpha = 0.5) +
       geom_hline(yintercept = 0, lty = 2) +
-      facet_wrap(~Type) 
-      # coord_cartesian(ylim = c(-0.75, 0.75))
+      facet_wrap(~Type) +
+      coord_cartesian(ylim = c(-0.75, 0.75))
   )
   
 
@@ -130,6 +130,7 @@ plot_EMs = function(time_series,
       geom_violin() +
       geom_boxplot(width = 0.1, outlier.colour = NA) +
       facet_wrap(~Type, scales = "free") +
+      coord_cartesian(ylim = c(-1,1)) + 
       geom_hline(yintercept = 0, lty = 2)
   )
   
