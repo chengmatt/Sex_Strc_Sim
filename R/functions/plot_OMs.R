@@ -31,9 +31,8 @@ plot_OMs = function(oms, path) {
   # Plot Catch By Sex -------------------------------------------------------
   Catch_Sex = reshape2::melt(oms$Total_Catch_Sex)
   print(
-    ggplot(Catch_Sex %>% filter(value != 0), aes(x = Var1, y = value, 
-                                                 color = factor(Var2),
-                                                 group = factor(Var4))) +
+    ggplot(Catch_Sex %>% filter(value != 0, Var3 == 1), aes(x = Var1, y = value, 
+                                                 color = factor(Var2), group = Var4)) +
       geom_line(size = 1.8, alpha = 0.5) +
       facet_wrap(~Var2) +
       labs(x = "Year", y = "Catch", color = "Sex")
@@ -156,7 +155,7 @@ plot_OMs = function(oms, path) {
   
   Srv_Index = reshape2::melt(oms$Srv_Index)
   print(
-    ggplot(Srv_Index, aes(x = Var1, y = value, group = factor(Var3))) +
+    ggplot(Srv_Index %>% filter(value != 0), aes(x = Var1, y = value, group = factor(Var3))) +
       geom_line() +
       labs(x = "Year", y = "Survey Index")
   )

@@ -46,8 +46,8 @@ for(n_om in 1:nrow(oms_exp2)) {
   list2env(oms,globalenv()) # output into global environment
   
   # read in EM experiments
-  ems_exp2 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp2", na = "NA") %>% 
-    filter(str_detect(EM_Name, "Fix_PropWith"))
+  ems_exp2 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp2", na = "NA")
+    # filter(str_detect(EM_Name, "Fix_PropWith"))
   
   # If these are variants we are testing to understand model behavior
   if(str_detect(om_name, "No") == TRUE) ems_exp2 = ems_exp2 %>% filter(str_detect(EM_Name, "Fix"))

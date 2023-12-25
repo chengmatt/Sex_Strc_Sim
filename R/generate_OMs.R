@@ -14,6 +14,7 @@ files <- list.files(fxn_path)
 for(i in 1:length(files)) source(here(fxn_path, files[i]))
 dir.create(here("output", "Experiment 1"))
 dir.create(here("output", "Experiment 2"))
+dir.create(here("output", "Experiment 3"))
 
 # Experiment 1 ------------------------------------------------------------
 
@@ -89,6 +90,47 @@ for(i in 1:nrow(oms_exp2)) {
 
   # Save as RData file - ifelse for sensitivity tests
   save(oms, file = here(om_path, paste(oms_exp2$OM_Name[i], ".RData", sep = "")))
+  plot_OMs(oms, path = om_path)
+  
+} # end i loop
+
+
+# Experiment 3 ------------------------------------------------------------
+
+# Read in OMs for experiment 2
+oms_exp3 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp3")
+
+for(i in 1:nrow(oms_exp3)) {
+  
+  # Create file directory to save model outputs
+  om_path = here("output", "Experiment 3", oms_exp3$OM_Name[i])
+  dir.create(om_path)
+  
+  # Define sex ratios here
+  sr = as.numeric(strsplit(oms_exp3$Sex_Ratios[i], ",")[[1]]) # females then males
+  
+  # simulate data
+  oms = simulate_data(spreadsheet_path = here("input", "Sablefish_Inputs.xlsx"),
+                      Fish_Neff_Age = 50, # 50 * 2
+                      Fish_Neff_Len = 50,
+                      Srv_Neff_Age = 50,
+                      Srv_Neff_Len = 50,
+                      F_pattern = "Contrast",
+                      comp_across_sex = "within",
+                      selex_type = "length",
+                      q_Fish = 0.025,
+                      cv_Fish_Index = 0.25,
+                      q_Srv = 0.025,
+                      cv_Srv_Index = 0.25, 
+                      sexRatio = sr, # keeping sex ratio at 50:50 here
+                      growth_control = "chg_males_rel_females",
+                      natmort_control = "chg_males_rel_females",
+                      growth_control_fct = oms_exp3$growth_control_fct[i], # holding constant at 15% difference 
+                      natmort_control_fct = oms_exp3$natmort_control_fct[i], # holding constant at 15% difference 
+                      force_grwth_same_yng = TRUE)  # force minimum age to be similar
+  
+  # Save as RData file - ifelse for sensitivity tests
+  save(oms, file = here(om_path, paste(oms_exp3$OM_Name[i], ".RData", sep = "")))
   plot_OMs(oms, path = om_path)
   
 } # end i loop

@@ -252,18 +252,25 @@ simulate_data = function(spreadsheet_path,
           CAL[y-1,,s,f,sim] = t(al_matrix[,,s]) %*% CAA[y-1,,s,f,sim]
           # Get Total Catch by Sex
           Total_Catch_Sex[y-1,s,f,sim] = CAA[y-1,,s,f,sim] %*% waa[,s]
-          
+        } # end third sex loop
+
           ### Simulate Fishery Compositions (Within sexes) ---------------------------------------
           if(comp_across_sex == 1) {
-            Fish_AgeComps[y-1,,s,f,sim] = rmultinom(1, size = Fish_Neff_Age[y,f], 
-                                                    prob = CAA[y-1,,s,f,sim]/sum(CAA[y-1,,s,f,sim]))
+            
+            # Get sex-ratios (age-comps)
+            p_af = sum(CAA[y-1,,1,f,sim]) / sum(CAA[y-1,,,f,sim])
+            pa = rbinom(Fish_Neff_Age[y,f] * n_sexes, 1 ,p_af)
+            Fish_AgeComps[y-1,,1,f,sim] = rmultinom(1, size = sum(pa),  prob = CAA[y-1,,1,f,sim])
+            Fish_AgeComps[y-1,,2,f,sim] = rmultinom(1, size = (Fish_Neff_Age[y,f] * n_sexes) - sum(pa), prob = CAA[y-1,,2,f,sim])
             
             # Fishery Length Compositions
-            Fish_LenComps[y-1,,s,f,sim] = rmultinom(1, size = Fish_Neff_Len[y,f] * n_sexes, 
-                                                    CAL[y-1,,s,f,sim]/sum(CAL[y-1,,s,f,sim]))
+            p_lf = sum(CAL[y-1,,1,f,sim]) / sum(CAL[y-1,,,f,sim])
+            pl = rbinom(Fish_Neff_Len[y,f] * n_sexes, 1 ,p_lf)
+            Fish_LenComps[y-1,,1,f,sim] = rmultinom(1, size = sum(pl),  prob = CAL[y-1,,1,f,sim])
+            Fish_LenComps[y-1,,2,f,sim] = rmultinom(1, size = (Fish_Neff_Len[y,f] * n_sexes) - sum(pl), prob = CAL[y-1,,1,f,sim])
+
           } # if fishery comps are simulated within sexes
-        } # end third sex loop
-        
+
         ### Simulate Fishery Compositions (Across sexes) ---------------------------------------
         if(comp_across_sex == 0) {
           Prob_FishAge = as.vector(CAA[y-1,,,f,sim]/sum(CAA[y-1,,,f,sim]))
@@ -292,21 +299,26 @@ simulate_data = function(spreadsheet_path,
       
       # Observation Model (Survey) ----------------------------------------------
       for(sf in 1:n_srv_fleets) {
-        for(s in 1:n_sexes) {
-          
         ### Simulate Survey Compositions (Within Sexes) ---------------------------------------
         if(comp_across_sex == 1) {
+          
             # Survey Age Compositions
-            Prob_SrvAge = (NAA[y-1,,s,sim] * SrvAge_Selex[,s,sf]) / sum((NAA[y-1,,s,sim] * SrvAge_Selex[,s,sf])) # Get probability of sampling ages
-            Srv_AgeComps[y-1,,s,sf,sim] = rmultinom(1, size = Srv_Neff_Age[y,sf], Prob_SrvAge)
+            p_af = sum(NAA[y-1,,1,sim] * SrvAge_Selex[,1,sf]) / sum((NAA[y-1,,,sim] * SrvAge_Selex[,,sf])) # Get probability of sampling ages
+            pa = rbinom(Srv_Neff_Age[y,sf] * n_sexes, 1 ,p_af)
+            Srv_AgeComps[y-1,,1,sf,sim] = rmultinom(1, size = sum(pa), NAA[y-1,,1,sim] * SrvAge_Selex[,1,sf])
+            Srv_AgeComps[y-1,,2,sf,sim] = rmultinom(1, size = (Srv_Neff_Age[y,sf] * n_sexes) - sum(pa), NAA[y-1,,2,sim] * SrvAge_Selex[,2,sf])
             
             # Survey Length Compositions
             # Get probability of sampling lengths
-            Prob_SrvLen = (t(al_matrix[,,s]) %*% Prob_SrvAge) 
-            Srv_LenComps[y-1,,s,sf,sim] = rmultinom(1, size = Srv_Neff_Len[y,sf], Prob_SrvLen)
+            Prob_SrvLen_F = (t(al_matrix[,,1]) %*% (NAA[y-1,,1,sim] * SrvAge_Selex[,1,sf])) 
+            Prob_SrvLen_M = (t(al_matrix[,,2]) %*% (NAA[y-1,,2,sim] * SrvAge_Selex[,2,sf])) 
+            p_lf = sum(Prob_SrvLen_F) / sum(Prob_SrvLen_M, Prob_SrvLen_F)
+            pl = rbinom(Srv_Neff_Len[y,sf] * n_sexes, 1 , p_lf)
+            Srv_LenComps[y-1,,1,sf,sim] = rmultinom(1, size = sum(pl), Prob_SrvLen_F)
+            Srv_LenComps[y-1,,2,sf,sim] = rmultinom(1, size = (Srv_Neff_Len[y,sf] * n_sexes) - sum(pl), Prob_SrvLen_M)
+            
           } # if survey comps are simulated within sexes
-        } # end fourth sex loop
-        
+
         ### Simulate Survey Compositions (Across Sexes) ---------------------------------------
         if(comp_across_sex == 0) {
           # Survey Age Compositions
