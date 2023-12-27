@@ -115,7 +115,6 @@ for(n_om in 1:nrow(oms_exp2)) {
       model = run_model(data = em_inputs$data, 
                         parameters = em_inputs$parameters, 
                         map = em_inputs$map, silent = TRUE, n.newton = 3)
-      
 
       # extract quantities
       quants_df = get_quantities(biologicals = biologicals,

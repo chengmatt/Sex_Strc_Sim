@@ -194,3 +194,85 @@ data.table::fwrite(data.table::rbindlist(param_all_list), file = here("output", 
 data.table::fwrite(data.table::rbindlist(ts_all_list), file = here("output", "Experiment_2_TimeSeries.csv"))
 data.table::fwrite(data.table::rbindlist(sr_all_list), file = here("output", "Experiment_2_SexRatio.csv"))
 data.table::fwrite(data.table::rbindlist(conv_all_list), file = here("output", "Experiment_2_Convergence.csv"))
+
+
+# Exp 3 -------------------------------------------------------------------
+
+exp3_path = here("output", "Experiment 3")
+exp3_oms = list.files(exp3_path)
+
+# storage containers
+selex_all_list = list()
+growth_all_list = list()
+param_all_list = list()
+ts_all_list = list()
+sr_all_list = list()
+conv_all_list = list()
+
+for(i in 1:length(exp3_oms)) {
+  
+  # Go into a given OM folder
+  om_folder = here(exp3_path, exp3_oms[i])
+  em_folders = list.files(om_folder) # list out em folders
+  em_folders = em_folders[!str_detect(em_folders, "RData|pdf")] # remove these
+  load(here(om_folder, paste(exp3_oms[i], ".RData", sep = ""))) # load in OMs
+  
+  # storage containers for ems - reset for every om
+  selex_em_list = list()
+  growth_em_list = list()
+  param_em_list = list()
+  ts_em_list = list()
+  sr_em_list = list()
+  conv_em_list = list()
+  
+  for(n_em in 1:length(em_folders)) {
+    em_path = here(om_folder, em_folders[n_em]) # list out ems
+    load(here(em_path, paste(em_folders[n_em], ".RData", sep = ""))) # load in EMs
+    selex_df = data.table::fread(here(em_path, "Selectivity.csv")) # read in selectivity
+    growth_df =  data.table::fread(here(em_path, "Growth.csv")) # read in growth
+    param_df =  data.table::fread(here(em_path, "Parameters.csv")) # read in parameters
+    ts_df =  data.table::fread(here(em_path, "Time_Series.csv")) # read in time series
+    sr_df = data.table::fread(here(em_path, "NAA_SexRatios.csv")) # read in sex ratio stuff
+    conv_df = data.table::fread(here(em_path, "Convergence.csv")) # read in sex ratio stuff
+    
+    for(k in 1:length(model_list)) { # loop through model list
+      if(sum(summary(model_list[[k]]$sd_rep)[,2] >= 100, na.rm = TRUE)) sdNA = TRUE else sdNA = FALSE
+      conv_df$sdNA[k] = sdNA
+    } # get se bounds into convergence
+    
+    # input into our list
+    selex_em_list[[n_em]] = selex_df
+    growth_em_list[[n_em]] = growth_df
+    param_em_list[[n_em]] = param_df
+    ts_em_list[[n_em]] = ts_df
+    sr_em_list[[n_em]] = sr_df
+    conv_em_list[[n_em]] = conv_df
+    
+  } # end n_em loop
+  
+  # Output into our "all om" list
+  selex_em_df = data.table::rbindlist(selex_em_list)
+  growth_em_df = data.table::rbindlist(growth_em_list)
+  param_em_df = data.table::rbindlist(param_em_list)
+  ts_em_df = data.table::rbindlist(ts_em_list)
+  sr_em_df = data.table::rbindlist(sr_em_list)
+  conv_em_df = data.table::rbindlist(conv_em_list)
+  
+  # Input dataframes into our list
+  selex_all_list[[i]] = selex_em_df
+  growth_all_list[[i]] = growth_em_df
+  param_all_list[[i]] = param_em_df
+  ts_all_list[[i]] = ts_em_df
+  sr_all_list[[i]] = sr_em_df
+  conv_all_list[[i]] = conv_em_df
+  
+} # end i loop
+
+# Now output these into our environment as csvs
+data.table::fwrite(data.table::rbindlist(selex_all_list), file = here("output", "Experiment_3_Selex.csv"))
+data.table::fwrite(data.table::rbindlist(growth_all_list), file = here("output", "Experiment_3_Growth.csv"))
+data.table::fwrite(data.table::rbindlist(param_all_list), file = here("output", "Experiment_3_Param.csv"))
+data.table::fwrite(data.table::rbindlist(ts_all_list), file = here("output", "Experiment_3_TimeSeries.csv"))
+data.table::fwrite(data.table::rbindlist(sr_all_list), file = here("output", "Experiment_3_SexRatio.csv"))
+data.table::fwrite(data.table::rbindlist(conv_all_list), file = here("output", "Experiment_3_Convergence.csv"))
+
