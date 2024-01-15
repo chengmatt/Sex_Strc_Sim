@@ -18,7 +18,7 @@ dir.create(here("output", "Experiment 3"))
 
 # Experiment 1 ------------------------------------------------------------
 
-# Read in OMs for experiment 1
+# Read in OMs for experiment 1 (consequences of ignoring sex in parameters and model structure)
 oms_exp1 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp1")
 
 for(i in 1:nrow(oms_exp1)) {
@@ -56,7 +56,7 @@ for(i in 1:nrow(oms_exp1)) {
 
 # Experiment 2 ------------------------------------------------------------
 
-# Read in OMs for experiment 2
+# Read in OMs for experiment 2 (estimability of sex-ratios and consequences of mis-specifying)
 oms_exp2 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp2")
 
 for(i in 1:nrow(oms_exp2)) {
@@ -65,7 +65,7 @@ for(i in 1:nrow(oms_exp2)) {
   om_path = here("output", "Experiment 2", oms_exp2$OM_Name[i])
   dir.create(om_path)
   
-  # Define sex ratios here
+  # get sex-ratio here
   sr = as.numeric(strsplit(oms_exp2$Sex_Ratios[i], ",")[[1]]) # females then males
   
   # simulate data
@@ -81,7 +81,7 @@ for(i in 1:nrow(oms_exp2)) {
                       cv_Fish_Index = 0.25,
                       q_Srv = 0.025,
                       cv_Srv_Index = 0.25, 
-                      sexRatio = sr, # keeping sex ratio at 50:50 here
+                      sexRatio = sr, 
                       growth_control = "chg_males_rel_females",
                       natmort_control = "chg_males_rel_females",
                       growth_control_fct = oms_exp2$growth_control_fct[i], # holding constant at 15% difference 
@@ -97,7 +97,7 @@ for(i in 1:nrow(oms_exp2)) {
 
 # Experiment 3 ------------------------------------------------------------
 
-# Read in OMs for experiment 2
+# Read in OMs for experiment 3 (Varying Neff and looking at impact of simulating proportions within vs. across)
 oms_exp3 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp3")
 
 for(i in 1:nrow(oms_exp3)) {
@@ -106,23 +106,24 @@ for(i in 1:nrow(oms_exp3)) {
   om_path = here("output", "Experiment 3", oms_exp3$OM_Name[i])
   dir.create(om_path)
   
-  # Define sex ratios here
-  sr = as.numeric(strsplit(oms_exp3$Sex_Ratios[i], ",")[[1]]) # females then males
-  
+  # Get specified effective sample size (constant for survey and fishery)
+  Neff = oms_exp3$Neff[i] 
+  comp_across_sex = oms_exp3$comp_across_sex[i] # composition parameterization
+
   # simulate data
   oms = simulate_data(spreadsheet_path = here("input", "Sablefish_Inputs.xlsx"),
-                      Fish_Neff_Age = 50, # 50 * 2
-                      Fish_Neff_Len = 50,
-                      Srv_Neff_Age = 50,
-                      Srv_Neff_Len = 50,
+                      Fish_Neff_Age = Neff, # Neff * 2
+                      Fish_Neff_Len = Neff,
+                      Srv_Neff_Age = Neff,
+                      Srv_Neff_Len = Neff,
                       F_pattern = "Contrast",
-                      comp_across_sex = "within",
-                      selex_type = "length",
+                      comp_across_sex = comp_across_sex,
+                      selex_type = "length", 
                       q_Fish = 0.025,
                       cv_Fish_Index = 0.25,
                       q_Srv = 0.025,
                       cv_Srv_Index = 0.25, 
-                      sexRatio = sr, # keeping sex ratio at 50:50 here
+                      sexRatio = c(0.5, 0.5), # keeping sex ratio at 50:50 here
                       growth_control = "chg_males_rel_females",
                       natmort_control = "chg_males_rel_females",
                       growth_control_fct = oms_exp3$growth_control_fct[i], # holding constant at 15% difference 

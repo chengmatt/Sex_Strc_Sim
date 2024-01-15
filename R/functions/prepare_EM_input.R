@@ -101,8 +101,8 @@ prepare_EM_inputs = function(sim,
   data$obs_catch_agg = data$obs_catch_agg * exp(rnorm(prod(dim(data$obs_catch_agg)), -catch_sd^2/2, catch_sd))
   data$obs_catch_sexsp = data$obs_catch_sexsp * exp(rnorm(prod(dim(data$obs_catch_sexsp)), -catch_sd^2/2, catch_sd))
   data$obs_fish_index = array(Fish_Index[-n_years,,sim], dim = c(n_years-1, n_fish_fleets))
-  data$fish_age_comps_inputN = array(Fish_Neff_Age[-n_years,], dim = c(n_years-1, n_fish_fleets))
-  data$fish_len_comps_inputN = array(Fish_Neff_Len[-n_years,], dim = c(n_years-1, n_fish_fleets))
+  data$fish_age_comps_inputN = array(Fish_Neff_Age_mat[-n_years,], dim = c(n_years-1, n_fish_fleets))
+  data$fish_len_comps_inputN = array(Fish_Neff_Len_mat[-n_years,], dim = c(n_years-1, n_fish_fleets))
   data$catch_cv = catch_cv
   data$fish_index_cv = cv_Fish_Index
   
@@ -118,8 +118,8 @@ prepare_EM_inputs = function(sim,
 
 # Survey Data Inputs ------------------------------------------------------
   data$obs_srv_index = array(Srv_Index[-n_years,,sim], dim = c(n_years-1, n_srv_fleets))
-  data$srv_age_comps_inputN = array(Srv_Neff_Age[-n_years,], dim = c(n_years-1, n_srv_fleets))
-  data$srv_len_comps_inputN = array(Srv_Neff_Len[-n_years,], dim = c(n_years-1, n_srv_fleets))
+  data$srv_age_comps_inputN = array(Srv_Neff_Age_mat[-n_years,], dim = c(n_years-1, n_srv_fleets))
+  data$srv_len_comps_inputN = array(Srv_Neff_Len_mat[-n_years,], dim = c(n_years-1, n_srv_fleets))
   data$srv_index_cv = cv_Srv_Index
   
   # Sex-Specific Asessment with sex-specific comps
@@ -200,6 +200,7 @@ prepare_EM_inputs = function(sim,
   if(sexRatio_al_or_y == "within_agelen_and_year")  data$sexRatio_al_or_y = 0 # If sex ratios are fit to as within age or len and year 
   if(sexRatio_al_or_y == "within_year_only")  data$sexRatio_al_or_y = 1 # If sex ratios are fit to as within year only
 
+
 # Parameters --------------------------------------------------------------
   parameters$logit_init_sexRatio = 0 # at 0.5 right now
   parameters$ln_M = vector(length = n_sexes)
@@ -213,15 +214,15 @@ prepare_EM_inputs = function(sim,
   parameters$ln_q_srv = log(q_Srv) 
   parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
   if(selex_type == "length") {
-    parameters$ln_fish_selpars = array(log(c(0.4, 60)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
-    parameters$ln_srv_selpars = array(log(c(0.5, 50)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
+    parameters$ln_fish_selpars = array(log(c(0.6, 62.5)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
+    parameters$ln_srv_selpars = array(log(c(0.8, 52.5)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
     } # length-based selectivity
   
   if(selex_type == "age") {
     parameters$ln_fish_selpars = array(log(2), dim = c(n_sexes, n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
     parameters$ln_srv_selpars = array(log(2), dim = c(n_sexes, n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
   } # age-based selectivity
-  
+
 # Mapping -----------------------------------------------------------------
   # fixing steepness
   if(sum(fix_pars %in% c("h")) == 1) {
