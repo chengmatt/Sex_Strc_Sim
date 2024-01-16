@@ -158,38 +158,3 @@ Type Get_Req(Type SBPR_Fmsy, // value for SBPR fmsy
   return Req;
 }
 
-template<class Type>
-// Function to compute likelihood for dirichlet-multinomial (follows linear parameterization of
-// Thorson et al. 2017)
-// @param obs = Observed vector (in numbers)
-// @param pred = Predicted vector (in proportions)
-// @param Input_N = Input sample size
-// @param ln_theta = parameter for DM
-// @param give_log = whether or not to compute log of likelihood
-Type ddirmult( vector<Type> obs, 
-               vector<Type> pred, 
-               Type Input_N, 
-               Type ln_theta, 
-               int do_log = 1){
-  
-  // Pre-processing
-  int n_a = obs.size(); // Number of age-classes/bins
-  vector<Type> p_pred = pred; // Predicted vector in proportions
-  Type beta = exp(ln_theta) * Input_N; // Dirichlet beta Parameters
-  
-  // dirichlet-multinomial
-  Type logLike = lgamma(beta) - lgamma(Input_N + beta);
-  for(int a = 0; a < n_a; a++){
-    logLike += lgamma(obs(a) + (beta * p_pred(a)));
-    logLike -= lgamma(beta * p_pred(a));
-  } // end a loop
- 
-  // Type N = obs.sum();
-  // vector<Type> alpha = exp(ln_theta) * Input_N * p_pred;
-  // Type phi = sum(alpha);
-  // Type logLike = lgamma(N + 1.0) + lgamma(phi) - lgamma(N + phi);
-  // for(int a = 0; a < n_a; a++) logLike += -lgamma(obs(a) + 1.0) + lgamma(obs(a) + alpha(a)) - lgamma(alpha(a));
-  // 
-
-  if(do_log == 1) return logLike; else return exp(logLike);
-} // end function

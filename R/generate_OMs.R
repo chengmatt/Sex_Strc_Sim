@@ -100,7 +100,7 @@ for(i in 1:nrow(oms_exp2)) {
 # Read in OMs for experiment 3 (Varying Neff and looking at impact of simulating proportions within vs. across)
 oms_exp3 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp3")
 
-for(i in 1:nrow(oms_exp3)) {
+for(i in 7:nrow(oms_exp3)) {
   
   # Create file directory to save model outputs
   om_path = here("output", "Experiment 3", oms_exp3$OM_Name[i])

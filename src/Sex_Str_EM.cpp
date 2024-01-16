@@ -51,7 +51,7 @@ Type objective_function<Type>::operator() ()
   DATA_MATRIX(WAA); // Array for weight-at-age relationship (n_ages, n_sexes)
   DATA_VECTOR(MatAA); // Vector of maturity-at-age
   DATA_ARRAY(age_len_transition); // Array for age length transition matrix (n_ages, n_lens, n_sexes)
-
+  
   // Data Indicators -------------------------------
   
   // Indicator 0 == not fitting, 1 == fit
@@ -84,8 +84,8 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(sexRatio_al_or_y); // whether sex ratios are fitted by age or year (within each age or summed to each year) (0 = within age length and year), (1 = within year only)
   DATA_INTEGER(share_M_sex) // whether to share M (0 = sex-specific), (1 = shared
     
-  // PARAMETER SECTION ---------------------
-  PARAMETER(logit_init_sexRatio); // sex ratio for initial age-at-recruitment (females, males are offset from this) 
+    // PARAMETER SECTION ---------------------
+    PARAMETER(logit_init_sexRatio); // sex ratio for initial age-at-recruitment (females, males are offset from this) 
   // Biological Parameters -----------------
   PARAMETER_VECTOR(ln_M); // Log Natural Mortality; n_sexes
   PARAMETER_VECTOR(ln_InitDevs); // Log Deviations from initial equilibrium age-structure; n_ages - 1
@@ -101,7 +101,7 @@ Type objective_function<Type>::operator() ()
   PARAMETER_MATRIX(ln_Fy); // Fishing Mortality Parameters; n_years x n_fish_fleets
   PARAMETER_ARRAY(ln_fish_selpars); // Fishery Selectivity Parameters; n_sexes x n_fish_fleets x n_fish_selpars (2; ln_a50 and ln_k)
   PARAMETER_ARRAY(ln_srv_selpars); // Fishery Selectivity Parameters; n_sexes x n_fish_fleets x n_srv_selpars (2; ln_a50 and ln_k)
-
+  
   // PARAMETER TRANSFORMATIONS --------------------
   vector<Type> M(n_sexes); // vector to store M values
   if(share_M_sex == 1) M = exp(ln_M); // if we are sharing M
@@ -109,7 +109,7 @@ Type objective_function<Type>::operator() ()
     M(0) = exp(ln_M(0)); // female M
     M(1) = M(0) * exp(ln_M(1)); // Male M
   } // if we are not sharing M 
-      
+  
   Type sigmaRec = exp(ln_sigmaRec); // Recruiment sd in normal space
   Type sigmaRec2 = pow(sigmaRec, 2); // Recruitment Variability in normal Space
   vector<Type> q_fish = exp(ln_q_fish); // Fishery catchability in normal space
@@ -237,7 +237,7 @@ Type objective_function<Type>::operator() ()
     for(int a = 0; a < n_ages; a++) {
       for(int s = 0; s < n_sexes; s++) {
         for(int f = 0; f < n_fish_fleets; f++) {
-                  
+          
           // Compute Fishery Selectivity (age-based)
           if(selex_type == 1) {
             vector <Type> tmp_fish_selpars = ln_fish_selpars.transpose().col(s).col(f);
@@ -266,7 +266,7 @@ Type objective_function<Type>::operator() ()
       
       if(a == 0) Total_Rec(0) += NAA(0, 0, s); // Get total recruitment - increment to get total recruitment
       Total_Biom(0) += NAA(0, a, s) * WAA(a,s); // Get total biomass
-
+      
       // Calculate starting SSB
       if(s == 0 && n_sexes > 1) SSB(0) += NAA(0, a, 0) * MatAA(a) * WAA(a,0); // sex-specific assessment
       if(s == 0 && n_sexes == 1) SSB(0) += (NAA(0, a, 0) * MatAA(a) * WAA(a,0)) * 0.5; // sex-aggregated assessment
@@ -282,7 +282,7 @@ Type objective_function<Type>::operator() ()
     if(a > n_ages - 1) SBPR_SSB0(a) = SBPR_N(a) * MatAA(n_ages - 1) * WAA(n_ages - 1,0); // larger than plus group
   } // end a loop
   Type ssb0 = SBPR_SSB0.sum() * exp(RecPars(0)); // Get Virgin Equilibrium SSB here
- 
+  
   // Project population forward -------------
   for(int y = 1; y < n_years; y++){
     for(int s = 0; s < n_sexes; s++) {
@@ -299,10 +299,10 @@ Type objective_function<Type>::operator() ()
         } // not plus group
         if(a == n_ages-1)  {
           NAA(y,n_ages-1,s) = (NAA(y-1,n_ages-1,s) * SAA(y-1,n_ages-1,s)) + // plus group decrement
-                              (NAA(y-1,n_ages-2,s) * SAA(y-1,n_ages-2,s)); // increment into plus-group
+            (NAA(y-1,n_ages-2,s) * SAA(y-1,n_ages-2,s)); // increment into plus-group
         } // plus group
       } // end age loop
-
+      
       // Do residual calculations (total biomass and SSB)
       for(int a = 0; a < n_ages; a++) {
         Total_Biom(y) += NAA(y, a, s) * WAA(a,s);
@@ -321,7 +321,7 @@ Type objective_function<Type>::operator() ()
         for(int a = 0; a < n_ages; a++) {
           // Baranov's Catch Equation - catch at age
           CAA(y,a,s,f) = NAA(y,a,s) * (Type(1.0) - exp(-ZAA(y,a,s))) * 
-                        (FAA(y,a,s,f) / ZAA(y,a,s));
+            (FAA(y,a,s,f) / ZAA(y,a,s));
           
           // Get predicted catch quantities
           pred_catch_agg(y,f) += CAA(y,a,s,f) * WAA(a,s); // Get aggregated catch (sum for both sexes)
@@ -341,7 +341,7 @@ Type objective_function<Type>::operator() ()
         for(int a = 0; a < n_ages; a++) {
           // Increment to get total index, conditional on fishery selectivity
           pred_fish_index(y,f) += exp(ln_q_fish(f)) * NAA(y,a,s) * 
-                                  WAA(a,s) * Fish_Slx(y,a,s,f);
+            WAA(a,s) * Fish_Slx(y,a,s,f);
         } // a loop
       } // y loop
     } // s loop
@@ -426,7 +426,7 @@ Type objective_function<Type>::operator() ()
         
         // Pull out vector for lengths
         vector<Type> fish_lens_tmp = CAL.col(f).col(s).transpose().col(y).vec();
-         
+        
         // Computing Length Compositions
         for(int l = 0; l < n_lens; l++) {
           // Get predicted comps here for catch-at-length (prior to normalization)
@@ -512,14 +512,14 @@ Type objective_function<Type>::operator() ()
             for(int s = 0; s < n_sexes; s++) {
               for(int l = 0; l < n_lens; l ++) {
                 pred_srv_len_comps(y,l,s,sf) /= Total_srvLen_as_tmp;
-                } // l loop
-              } // s loop
-            } // if l == n_lens - 1, s == n_sexes - 1, and proportions across sexes
+              } // l loop
+            } // s loop
+          } // if l == n_lens - 1, s == n_sexes - 1, and proportions across sexes
           
-          } // l loop
-        } // sex loop
-      } // survey fleet loop
-    } // year loop
+        } // l loop
+      } // sex loop
+    } // survey fleet loop
+  } // year loop
   
   // LIKELIHOOD SECTION --------------------
   // Catch Likelihood ----------------------
@@ -541,7 +541,7 @@ Type objective_function<Type>::operator() ()
                     log(pred_catch_sexsp(y,s,f)) - catch_bias_oe, catch_sd(f), true);
         } // end s loop
       } // if sex-specific catch
-
+      
     } // year loop
   } // fish fleet loop
   
@@ -552,7 +552,7 @@ Type objective_function<Type>::operator() ()
     for(int y = 0 ; y < n_years; y++) {
       // Get likelihood here
       fish_index_nLL(y,f) -= use_fish_index(y,f) * dnorm(log(obs_fish_index(y, f)), 
-                             log(pred_fish_index(y, f)) - fish_idx_bias_oe, fish_index_sd(f), true);
+                     log(pred_fish_index(y, f)) - fish_idx_bias_oe, fish_index_sd(f), true);
     } // y loop
   } // f loop
   
@@ -563,10 +563,184 @@ Type objective_function<Type>::operator() ()
     for(int y = 0 ; y < n_years; y++) {
       // Get likelihood here
       srv_index_nLL(y,sf) -= use_srv_index(y,sf) * dnorm(log(obs_srv_index(y, sf)),
-                             log(pred_srv_index(y, sf)) - srv_idx_bias_oe, srv_index_sd(sf), true);
+                    log(pred_srv_index(y, sf)) - srv_idx_bias_oe, srv_index_sd(sf), true);
     } // y loop
   } // sf loop 
- 
+  
+  // Fishery Composition Likelihoods -----
+  // storage containers for aggregate fishery age comps
+  vector<Type> obs_fish_age_agg(n_ages); 
+  vector<Type> pred_fish_age_agg(n_ages); 
+  
+  // Fishery Age Compositions
+  for(int f = 0; f < n_fish_fleets; f++) {
+    for(int y = 0 ; y < n_years; y++) {
+      
+      // Age-Compositions Proportions across sex
+      if(p_ow_sex_fish_age == 1) {
+        vector<Type> obs_fish_age_as = obs_fish_age_comps.col(f).transpose().col(y).transpose().vec(); // Pull out observed vector
+        vector<Type> pred_fish_age_as = pred_fish_age_comps.col(f).transpose().col(y).transpose().vec(); // Pull out observed vector
+        fish_age_comp_nLL(y,0,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_as, pred_fish_age_as, true); // Get likelihood here
+      } // if proportions across sex for fishery ages
+      
+      if(p_ow_sex_fish_age == 0) {
+        for(int s = 0; s < n_sexes; s++) {
+          
+          // Sex-specific comps
+          if(agg_sex_fish_age == 0) {
+            vector<Type> obs_fish_age_ws = obs_fish_age_comps.col(f).col(s).transpose().col(y); // Pull out observed vector
+            vector<Type> pred_fish_age_ws = pred_fish_age_comps.col(f).col(s).transpose().col(y); // Pull out predicted vector
+            fish_age_comp_nLL(y,s,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_ws, pred_fish_age_ws, true); // Get likelihood here
+          } // if sex-specific comps
+        } // s loop
+        
+        // Sex-aggregated comps
+        if(agg_sex_fish_age == 1) {
+          obs_fish_age_agg.setZero(); // set zero storage containers for aggregated comps
+          pred_fish_age_agg.setZero();// set zero storage containers for aggregated comps
+          matrix<Type> obs_fish_age_mat = obs_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+          matrix<Type> pred_fish_age_mat = pred_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+          obs_fish_age_agg = obs_fish_age_mat.rowwise().sum(); // Sum across rows
+          pred_fish_age_agg = pred_fish_age_mat.rowwise().sum(); // Sum across rows
+          pred_fish_age_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
+          fish_age_comp_nLL(y,0,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_agg, pred_fish_age_agg, true); // Get likelihood here
+        } // Aggregated comps
+        
+      } // if proportions within sex for fishery ages
+      
+    } // y loop
+  } // f loop
+  
+  // Fishery length compositions
+  // storage containers for fishery length comps
+  vector<Type> obs_fish_len_agg(n_ages); 
+  vector<Type> pred_fish_len_agg(n_ages);
+  
+  for(int f = 0; f < n_fish_fleets; f++) {
+    for(int y = 0 ; y < n_years; y++) {
+      
+      // Length-Compositions Proportions across sex
+      if(p_ow_sex_fish_len == 1) {
+        vector<Type> obs_fish_len_as = obs_fish_len_comps.col(f).transpose().col(y).transpose().vec(); // Pull out observed vector
+        vector<Type> pred_fish_len_as = pred_fish_len_comps.col(f).transpose().col(y).transpose().vec(); // Pull out observed vector
+        fish_len_comp_nLL(y,0,f) -= use_fish_len_comps(y,f) * dmultinom(obs_fish_len_as, pred_fish_len_as, true); // Get likelihood here
+      } // if proportions across sex for fishery lengths
+      
+      // Proportions within sexes for fishery ages or lengths
+      if(p_ow_sex_fish_len == 0) {
+        
+        // if sex-specific length comps for fishery
+        if(agg_sex_fish_len == 0) {
+          for(int s = 0; s < n_sexes; s++) {
+            vector<Type> obs_fish_len_ws = obs_fish_len_comps.col(f).col(s).transpose().col(y); // Pull out observed vector
+            vector<Type> pred_fish_len_ws = pred_fish_len_comps.col(f).col(s).transpose().col(y); // Pull out predicted vector
+            fish_len_comp_nLL(y,s,f) -= use_fish_len_comps(y,f) * dmultinom(obs_fish_len_ws, pred_fish_len_ws, true);
+          } // sex loop
+        } // end if for sex-specific len comps
+        
+        // Sex-aggregated len comps (fishery)
+        if(agg_sex_fish_len == 1) {
+          obs_fish_len_agg.setZero(); // set zero storage containers for aggregated comps
+          pred_fish_len_agg.setZero(); // set zero storage containers for aggregated comps
+          matrix<Type> obs_fish_len_mat = obs_fish_len_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_lens x n_sexes
+          matrix<Type> pred_fish_len_mat = pred_fish_len_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_lens x n_sexes
+          obs_fish_len_agg = obs_fish_len_mat.rowwise().sum(); // Sum across rows
+          pred_fish_len_agg = pred_fish_len_mat.rowwise().sum(); // Sum across rows
+          pred_fish_len_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
+          fish_len_comp_nLL(y,0,f) -= use_fish_len_comps(y,f) * dmultinom(obs_fish_len_agg, pred_fish_len_agg, true); // Get likelihood here
+        } // Aggregated length comps
+        
+      } // if proportions within sex for fishery lengths
+      
+    } // y loop
+  } // f loop
+  
+  // Survey Composition Likelihoods ------
+  // Survey Age Compositions
+  // storage containers for survey age comps
+  vector<Type> obs_srv_age_agg(n_ages); 
+  vector<Type> pred_srv_age_agg(n_ages); 
+  
+  for(int sf = 0; sf < n_srv_fleets; sf++) {
+    for(int y = 0 ; y < n_years; y++) {
+      
+      // Age-Compositions Proportions across sexes
+      if(p_ow_sex_srv_age == 1) {
+        vector<Type> obs_srv_age_as = obs_srv_age_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
+        vector<Type> pred_srv_age_as = pred_srv_age_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
+        srv_age_comp_nLL(y,0,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_as, pred_srv_age_as, true); // Get likelihood here
+      } // if proportions across sex for fishery ages
+      
+      if(p_ow_sex_srv_age == 0) {
+        for(int s = 0; s < n_sexes; s++) {
+          // Sex-specific comps
+          if(agg_sex_srv_age == 0) {
+            vector<Type> obs_srv_age_ws = obs_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
+            vector<Type> pred_srv_age_ws = pred_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
+            srv_age_comp_nLL(y,s,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_ws, pred_srv_age_ws, true); // Get likelihood here
+          } // end if for sex-specific comps
+        } // s loop
+        
+        if(agg_sex_srv_age == 1) { // aggregated compositions
+          obs_srv_age_agg.setZero(); // set zero storage containers for aggregated comps
+          pred_srv_age_agg.setZero(); // set zero storage containers for aggregated comps
+          // Extract out quantities
+          matrix<Type> obs_srv_age_mat = obs_srv_age_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+          matrix<Type> pred_srv_age_mat = pred_srv_age_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+          obs_srv_age_agg = obs_srv_age_mat.rowwise().sum(); // Sum across rows
+          pred_srv_age_agg = pred_srv_age_mat.rowwise().sum(); // Sum across rows
+          pred_srv_age_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
+          srv_age_comp_nLL(y,0,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_agg, pred_srv_age_agg, true); // Get likelihood here
+        } // Aggregated comps
+        
+      } // if proportions within sex for fishery ages
+      
+    } // y loop
+  } // sf loop
+  
+  // Survey length compositions
+  // storage containers for survey length comps
+  vector<Type> obs_srv_len_agg(n_ages); 
+  vector<Type> pred_srv_len_agg(n_ages);
+  
+  for(int sf = 0; sf < n_srv_fleets; sf++) {
+    for(int y = 0 ; y < n_years; y++) {
+      
+      // Length-Compositions Proportions across sexes
+      if(p_ow_sex_srv_len == 1) {
+        vector<Type> obs_srv_len_as = obs_srv_len_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
+        vector<Type> pred_srv_len_as = pred_srv_len_comps.col(sf).transpose().col(y).transpose().vec(); // Pull out observed vector
+        srv_len_comp_nLL(y,0,sf) -= use_srv_len_comps(y,sf) * dmultinom(obs_srv_len_as, pred_srv_len_as, true); // Get likelihood here
+      } // if proportions across sex for fishery lengths
+      
+      if(p_ow_sex_srv_len == 0) {
+        
+        // If sex-specific length comps for survey
+        if(agg_sex_srv_len == 0) {
+          for(int s = 0; s < n_sexes; s++) {
+            vector<Type> obs_srv_len_ws = obs_srv_len_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
+            vector<Type> pred_srv_len_ws = pred_srv_len_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
+            srv_len_comp_nLL(y,s,sf) -= use_srv_len_comps(y,sf) * dmultinom(obs_srv_len_ws, pred_srv_len_ws, true);
+          } // s loop
+        } // end if for sex-specific length comp
+        
+        // aggregating length comps for survey
+        if(agg_sex_srv_len == 1) { 
+          obs_srv_len_agg.setZero(); // set zero storage containers for aggregated comps
+          pred_srv_len_agg.setZero(); // set zero storage containers for aggregated comps
+          // Extract out quantities
+          matrix<Type> obs_srv_len_mat = obs_srv_len_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+          matrix<Type> pred_srv_len_mat = pred_srv_len_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
+          obs_srv_len_agg = obs_srv_len_mat.rowwise().sum(); // Sum across rows
+          pred_srv_len_agg = pred_srv_len_mat.rowwise().sum(); // Sum across rows
+          pred_srv_len_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
+          srv_len_comp_nLL(y,0,sf) -= use_srv_len_comps(y,sf) * dmultinom(obs_srv_len_agg, pred_srv_len_agg, true); // Get likelihood here
+        } // Aggregated length comps
+      } // if proportions within sex for survey lengths
+      
+    } // y loop
+  } // sf loop
+  
   // Penalty for Population Initialization
   for(int a = 0; a < ln_InitDevs.size(); a++) {
     rec_nLL -= dnorm(ln_InitDevs(a), -sigmaRec2/Type(2), sigmaRec, true);
@@ -624,7 +798,7 @@ Type objective_function<Type>::operator() ()
           pred_fem_sexRatio_fishage(y,0,f) = pred_fish_fem.sum() / pred_fish_all.sum();
           // // evaluate sex ratios as a binomial likelihood
           sexRatio_fishage_nLL(y,0,f) -= use_fish_sexRatio(y,f) * dbinom(obs_fish_fem.sum(),
-                                         obs_fish_all.sum(), pred_fem_sexRatio_fishage(y,0,f), true);
+                               obs_fish_all.sum(), pred_fem_sexRatio_fishage(y,0,f), true);
         } // end f loop
         
         for(int sf = 0; sf < n_srv_fleets; sf++) { // survey sex-ratios by year
@@ -638,7 +812,7 @@ Type objective_function<Type>::operator() ()
           pred_fem_sexRatio_srvage(y,0,sf) = pred_srv_fem.sum() / pred_srv_all.sum();
           // // evaluate sex ratios as a binomial likelihood
           sexRatio_srvage_nLL(y,0,sf) -= use_srv_sexRatio(y,sf) * dbinom(obs_srv_fem.sum(),
-                                         obs_srv_all.sum(), pred_fem_sexRatio_srvage(y,0,sf), true);
+                              obs_srv_all.sum(), pred_fem_sexRatio_srvage(y,0,sf), true);
         } // end sf loop
       } // end if for fitting sex ratio by year only
       
@@ -693,7 +867,7 @@ Type objective_function<Type>::operator() ()
           pred_fem_sexRatio_fishlen(y,0,f) = pred_fish_fem.sum() / pred_fish_all.sum();
           // // evaluate sex ratios as a binomial likelihood
           sexRatio_fishlen_nLL(y,0,f) -= use_fish_sexRatio(y,f) * dbinom(obs_fish_fem.sum(),
-                                         obs_fish_all.sum(), pred_fem_sexRatio_fishlen(y,0,f), true);
+                               obs_fish_all.sum(), pred_fem_sexRatio_fishlen(y,0,f), true);
         } // end f loop
         
         for(int sf = 0; sf < n_srv_fleets; sf++) { // survey sex-ratios by year
@@ -714,142 +888,11 @@ Type objective_function<Type>::operator() ()
     } // end y loop
   } // if more than 1 sex
   
-  // Fishery Composition Likelihoods -----
-  // storage containers for aggregate fishery age comps
-  vector<Type> obs_fish_age_agg(n_ages); 
-  vector<Type> pred_fish_age_agg(n_ages); 
-  
-  // Fishery Age Compositions
-  for(int f = 0; f < n_fish_fleets; f++) {
-    for(int y = 0 ; y < n_years; y++) {
-      
-      // Sex-specific comps
-      if(agg_sex_fish_age == 0) {
-        for(int s = 0; s < n_sexes; s++) {
-          vector<Type> obs_fish_age_ws = obs_fish_age_comps.col(f).col(s).transpose().col(y); // Pull out observed vector
-          vector<Type> pred_fish_age_ws = pred_fish_age_comps.col(f).col(s).transpose().col(y); // Pull out predicted vector
-          fish_age_comp_nLL(y,s,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_ws, pred_fish_age_ws, true); // Get likelihood here
-        } // if sex-specific comps
-      } // s loop
-      
-      // Sex-aggregated comps
-      if(agg_sex_fish_age == 1) {
-        obs_fish_age_agg.setZero(); // set zero storage containers for aggregated comps
-        pred_fish_age_agg.setZero();// set zero storage containers for aggregated comps
-        matrix<Type> obs_fish_age_mat = obs_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-        matrix<Type> pred_fish_age_mat = pred_fish_age_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-        obs_fish_age_agg = obs_fish_age_mat.rowwise().sum(); // Sum across rows
-        pred_fish_age_agg = pred_fish_age_mat.rowwise().sum(); // Sum across rows
-        pred_fish_age_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
-        fish_age_comp_nLL(y,0,f) -= use_fish_age_comps(y,f) * dmultinom(obs_fish_age_agg, pred_fish_age_agg, true); // Get likelihood here
-      } // Aggregated comps
-      
-    } // y loop
-  } // f loop
-  
-  // Fishery length compositions
-  // storage containers for fishery length comps
-  vector<Type> obs_fish_len_agg(n_ages); 
-  vector<Type> pred_fish_len_agg(n_ages);
-  
-  for(int f = 0; f < n_fish_fleets; f++) {
-    for(int y = 0 ; y < n_years; y++) {
-      
-      // if sex-specific length comps for fishery
-      if(agg_sex_fish_len == 0) {
-        for(int s = 0; s < n_sexes; s++) {
-          vector<Type> obs_fish_len_ws = obs_fish_len_comps.col(f).col(s).transpose().col(y); // Pull out observed vector
-          vector<Type> pred_fish_len_ws = pred_fish_len_comps.col(f).col(s).transpose().col(y); // Pull out predicted vector
-          fish_len_comp_nLL(y,s,f) -= use_fish_len_comps(y,f) * dmultinom(obs_fish_len_ws, pred_fish_len_ws, true);
-        } // sex loop
-      } // end if for sex-specific len comps
-      
-      // Sex-aggregated len comps (fishery)
-      if(agg_sex_fish_len == 1) {
-        obs_fish_len_agg.setZero(); // set zero storage containers for aggregated comps
-        pred_fish_len_agg.setZero(); // set zero storage containers for aggregated comps
-        matrix<Type> obs_fish_len_mat = obs_fish_len_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_lens x n_sexes
-        matrix<Type> pred_fish_len_mat = pred_fish_len_comps.col(f).transpose().col(y).transpose().matrix(); // dim = n_lens x n_sexes
-        obs_fish_len_agg = obs_fish_len_mat.rowwise().sum(); // Sum across rows
-        pred_fish_len_agg = pred_fish_len_mat.rowwise().sum(); // Sum across rows
-        pred_fish_len_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
-        fish_len_comp_nLL(y,0,f) -= use_fish_len_comps(y,f) * dmultinom(obs_fish_len_agg, pred_fish_len_agg, true); // Get likelihood here
-      } // Aggregated length comps
-      
-    } // y loop
-  } // f loop
-  
-  // Survey Composition Likelihoods ------
-  // Survey Age Compositions
-  // storage containers for survey age comps
-  vector<Type> obs_srv_age_agg(n_ages); 
-  vector<Type> pred_srv_age_agg(n_ages); 
-  
-  for(int sf = 0; sf < n_srv_fleets; sf++) {
-    for(int y = 0 ; y < n_years; y++) {
-      
-      // Sex-specific comps
-      if(agg_sex_srv_age == 0) {
-        for(int s = 0; s < n_sexes; s++) {
-          vector<Type> obs_srv_age_ws = obs_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
-          vector<Type> pred_srv_age_ws = pred_srv_age_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
-          srv_age_comp_nLL(y,s,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_ws, pred_srv_age_ws, true); // Get likelihood here
-        } // end if for sex-specific comps
-      } // s loop
-      
-      if(agg_sex_srv_age == 1) { // aggregated compositions
-        obs_srv_age_agg.setZero(); // set zero storage containers for aggregated comps
-        pred_srv_age_agg.setZero(); // set zero storage containers for aggregated comps
-        // Extract out quantities
-        matrix<Type> obs_srv_age_mat = obs_srv_age_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-        matrix<Type> pred_srv_age_mat = pred_srv_age_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-        obs_srv_age_agg = obs_srv_age_mat.rowwise().sum(); // Sum across rows
-        pred_srv_age_agg = pred_srv_age_mat.rowwise().sum(); // Sum across rows
-        pred_srv_age_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
-        srv_age_comp_nLL(y,0,sf) -= use_srv_age_comps(y,sf) * dmultinom(obs_srv_age_agg, pred_srv_age_agg, true); // Get likelihood here
-      } // Aggregated comps
-      
-    } // y loop
-  } // sf loop
-  
-  // Survey length compositions
-  // storage containers for survey length comps
-  vector<Type> obs_srv_len_agg(n_ages); 
-  vector<Type> pred_srv_len_agg(n_ages);
-  
-  for(int sf = 0; sf < n_srv_fleets; sf++) {
-    for(int y = 0 ; y < n_years; y++) {
-      
-      // If sex-specific length comps for survey
-      if(agg_sex_srv_len == 0) {
-        for(int s = 0; s < n_sexes; s++) {
-          vector<Type> obs_srv_len_ws = obs_srv_len_comps.col(sf).col(s).transpose().col(y); // Pull out observed vector
-          vector<Type> pred_srv_len_ws = pred_srv_len_comps.col(sf).col(s).transpose().col(y); // Pull out predicted vector
-          srv_len_comp_nLL(y,s,sf) -= use_srv_len_comps(y,sf) * dmultinom(obs_srv_len_ws, pred_srv_len_ws, true);
-        } // s loop
-      } // end if for sex-specific length comp
-      
-      // aggregating length comps for survey
-      if(agg_sex_srv_len == 1) { 
-        obs_srv_len_agg.setZero(); // set zero storage containers for aggregated comps
-        pred_srv_len_agg.setZero(); // set zero storage containers for aggregated comps
-        // Extract out quantities
-        matrix<Type> obs_srv_len_mat = obs_srv_len_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-        matrix<Type> pred_srv_len_mat = pred_srv_len_comps.col(sf).transpose().col(y).transpose().matrix(); // dim = n_ages x n_sexes
-        obs_srv_len_agg = obs_srv_len_mat.rowwise().sum(); // Sum across rows
-        pred_srv_len_agg = pred_srv_len_mat.rowwise().sum(); // Sum across rows
-        pred_srv_len_agg /= n_sexes; // divide by the number of sexes (i.e., take the average of the 2 sexes) in proportions
-        srv_len_comp_nLL(y,0,sf) -= use_srv_len_comps(y,sf) * dmultinom(obs_srv_len_agg, pred_srv_len_agg, true); // Get likelihood here
-      } // Aggregated length comps
-      
-    } // y loop
-  } // sf loop
-
   // Compute joint likelihood
   jnLL = rec_nLL + sum(catch_nLL) + sum(fish_index_nLL) + sum(fish_age_comp_nLL) +
-         sum(fish_len_comp_nLL) + sum(srv_index_nLL) + sum(srv_age_comp_nLL) +
-         sum(srv_len_comp_nLL) + sum(sexRatio_fishage_nLL) + sum(sexRatio_srvage_nLL) +
-         sum(sexRatio_fishlen_nLL) + sum(sexRatio_srvlen_nLL);
+    sum(fish_len_comp_nLL) + sum(srv_index_nLL) + sum(srv_age_comp_nLL) +
+    sum(srv_len_comp_nLL) + sum(sexRatio_fishage_nLL) + sum(sexRatio_srvage_nLL) +
+    sum(sexRatio_fishlen_nLL) + sum(sexRatio_srvlen_nLL);
   
   // REPORT SECTION ------------------------
   REPORT(NAA);
@@ -875,7 +918,7 @@ Type objective_function<Type>::operator() ()
   REPORT(Total_Biom);
   REPORT(init_sexRatios); 
   REPORT(M);
-
+  
   // likelihoods
   REPORT(jnLL);
   REPORT(rec_nLL);
@@ -890,10 +933,9 @@ Type objective_function<Type>::operator() ()
   REPORT(sexRatio_srvage_nLL);
   REPORT(sexRatio_fishlen_nLL);
   REPORT(sexRatio_srvlen_nLL);
-
+  
   return(jnLL);
 } // end objective function
 
 
-  
 

@@ -1364,3 +1364,303 @@ ggplot(ts_exp2_sum %>% filter(str_detect(EM, "Fix"), !str_detect(OM, "No")),
 
 dev.off()
 
+# Experiment 3 ------------------------------------------------------------
+
+# Read in files
+exp3_conv = data.table::fread(here("output", "Experiment_3_Convergence.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_selex_df = data.table::fread(here("output", "Experiment_3_Selex.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_growth_df = data.table::fread(here("output", "Experiment_3_Growth.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_param_df = data.table::fread(here("output", "Experiment_3_Param.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_ts_df = data.table::fread(here("output", "Experiment_3_TimeSeries.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_sr_df = data.table::fread(here("output", "Experiment_3_SexRatio.csv")) %>% filter(!str_detect(EM, "Magg"))
+
+##### Convergence summary -----------------------------------------------------
+exp3_conv = exp3_conv %>% 
+  mutate(convergence = 
+           case_when( # munging gradient stuff
+             (pdHess == TRUE & 
+                gradient <= 0.001 &
+                sdNA == FALSE &
+                convergence == "Not Converged") ~ "Converged",
+             (pdHess == TRUE & 
+                gradient <= 0.001 &
+                sdNA == FALSE &
+                convergence == "Converged") ~ "Converged",
+             (pdHess == FALSE |
+                gradient > 0.001 |
+                sdNA == TRUE) ~ "Not Converged"
+           ))
+
+# Convergence summary
+conv_df = exp3_conv %>% 
+  filter(convergence == "Converged") %>% 
+  group_by(OM, EM) %>% 
+  summarize(sum = n())
+
+# Plot convergence
+pdf(here("figs", "Experiment 3", "Convergence.pdf"), height = 10, width = 15)
+ggplot(conv_df, aes(x = OM, y = sum, group = 1)) +
+  geom_point(size = 3) +
+  geom_line() +
+  facet_wrap(~EM) +
+  theme_tj() +
+  scale_x_discrete(guide = guide_axis(angle = 90)) +
+  labs(x = "Operating Models", y = "Convergence") 
+dev.off()
+
+
+### Selectivity Summary -----------------------------------------------------
+# summarize relative error
+exp3_selex_sum = exp3_selex_df %>% 
+  select(-Convergence) %>% 
+  left_join(exp3_conv %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
+  filter(convergence == "Converged") %>% 
+  mutate(RE = (Pred - True) / True) %>% 
+  group_by(OM, EM, Age, Sex, Type) %>% 
+  summarize(Median = median(RE),
+            lwr_95 = quantile(RE, 0.025),
+            upr_95 = quantile(RE, 0.975))
+
+# Fishery Selectivity with Age EM
+pdf(here("figs", "Experiment 3", "RE_Fish_Selex.pdf"), height = 8, width = 15)
+fish_selex = print(
+  ggplot(exp3_selex_sum %>% filter(Type == "Fishery Selectivity") %>% 
+           mutate(Sex = ifelse(Sex == 1, "Female", "Male")), 
+         aes(x = Age, y = Median, ymin = lwr_95, ymax = upr_95,
+             fill = factor(EM), color = factor(EM), group = factor(EM))) +
+    geom_line(size = 3) +
+    geom_ribbon(alpha = 0.35) +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Age", y = "Relative Error in Fishery Selectivity", color = "Sex", fill = "Sex") +
+    facet_grid(Sex~OM, scales = "free") +
+    theme_tj() +
+    theme(legend.position = "top")
+)
+dev.off()
+
+# Fishery Selectivity with Age EM
+pdf(here("figs", "Experiment 3", "RE_Srv_Selex.pdf"),height = 8, width = 15)
+srv_selex = print(
+  ggplot(exp3_selex_sum %>% filter(Type == "Survey Selectivity") %>% 
+           mutate(Sex = ifelse(Sex == 1, "Female", "Male")), 
+         aes(x = Age, y = Median, ymin = lwr_95, ymax = upr_95,
+             fill = factor(EM), color = factor(EM), group = factor(EM))) +
+    geom_line(size = 3) +
+    geom_ribbon(alpha = 0.35) +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Age", y = "Relative Error in Survey Selectivity", color = "Sex", fill = "Sex") +
+    facet_grid(Sex~OM, scales = "free") +
+    theme_tj() +
+    theme(legend.position = "top")
+)
+dev.off()
+
+### Parameter Summary -------------------------------------------------------
+# summarize re
+exp3_param_sum = exp3_param_df %>% 
+  select(-Convergence) %>% 
+  left_join(exp3_conv %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
+  filter(convergence == "Converged") %>% 
+  mutate(RE = (as.numeric(Pred) - Truth) / Truth) %>% 
+  group_by(OM, EM, Type) %>% 
+  summarize(Median = median(RE),
+            lwr_95 = quantile(RE, 0.025),
+            upr_95 = quantile(RE, 0.975))
+
+
+# Sex ratio estimability
+pdf(here("figs", "Experiment 3", "RE_SexRatio.pdf"), width = 15, height = 10)
+exp3_param_df %>% 
+  filter(Convergence == "Converged",
+         Type == "Female Sex Ratio") %>% 
+  mutate(RE = (as.numeric(Pred) - Truth) / Truth) %>% 
+  ggplot(aes(x = Type, y = RE, fill = EM)) +
+  geom_violin(alpha = 0.5) +
+  geom_boxplot(width = 0.1, outlier.color = NA,
+               position = position_dodge(width = 0.9)) +
+  geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+  labs(x = "Parameter", y = "Relative Error") +
+  theme_tj() +
+  facet_wrap(~OM, scales = "free_y") +
+  theme(legend.position = "top")
+dev.off()
+
+# plot all other parameters and EMs
+pdf(here("figs", "Experiment 3", "RE_ParamAllEMs.pdf"), width = 15, height = 10)
+# Comparing proportions within variants
+print(ggplot(exp3_param_sum %>% 
+               filter(Type != "Male Sex Ratio"), 
+             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95, color = EM)) +
+        geom_pointrange(position = position_dodge2(width = 0.65), 
+                        size = 1, linewidth = 1) +
+        facet_wrap(~OM, scales = "free_y") +
+        geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+        labs(x = "Parameter", y = "Relative Error") +
+        theme_tj() +
+        theme(legend.position = "top") +
+        scale_x_discrete(guide = guide_axis(angle = 90))  )
+dev.off()  
+
+
+### Time Series Summary -----------------------------------------------------
+# time series summary
+ts_exp3_sum = exp3_ts_df %>% 
+  select(-Convergence) %>%
+  left_join(exp3_conv %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>%
+  filter(convergence == "Converged") %>% 
+  mutate(RE = (as.numeric(Pred)-Truth)/Truth) %>% 
+  group_by(Years, Type, OM, EM) %>% 
+  summarize(Median = median(RE),
+            lwr_95 = quantile(RE, 0.025),
+            upr_95 = quantile(RE, 0.975))
+
+# Density plot of across vs.within
+pdf(here("figs", 'Experiment 3', "RE_TSDensity_Acr_vs_With.pdf"), width = 15, height = 12)
+exp3_ts_df %>% 
+  filter(Convergence == "Converged",
+         Type != 'Total Recruitment') %>% 
+  mutate(RE = (as.numeric(Pred)-Truth)/Truth) %>% 
+  ggplot(aes(x = RE, fill = EM)) +
+  geom_density(alpha = 0.5) +
+  facet_grid(Type~OM, scales = "free") +
+  geom_vline(xintercept = 0, lty = 2) +
+  labs(x = "Year", y = "Relative Error") +
+  theme_tj() +
+  theme(legend.position = "top") 
+dev.off()
+
+# plot RE as a time series
+pdf(here("figs", 'Experiment 3', "RE_TS_Acr_vs_With.pdf"), width = 15, height = 10)
+print(
+  ggplot(ts_exp3_sum %>% filter(Type == "Total Biomass"),
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
+    geom_line(size = 1.3) +
+    geom_ribbon(alpha = 0.5) +
+    facet_wrap(~OM, scales = "free") +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Year", y = "Relative Error in Total Biomass") +
+    theme_tj() +
+    theme(legend.position = "top") 
+)
+
+print(
+  ggplot(ts_exp3_sum %>% filter(Type == "Spawning Stock Biomass"),
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
+    geom_line(size = 1.3) +
+    geom_ribbon(alpha = 0.5) +
+    facet_wrap(~OM, scales = "free") +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Year", y = "Relative Error in Spawning Stock Biomass") +
+    theme_tj() +
+    theme(legend.position = "top") 
+  
+)
+
+
+print(ggplot(ts_exp3_sum %>% filter(Type == "Total Fishing Mortality"),
+             aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
+        geom_line(size = 1.3) +
+        geom_ribbon(alpha = 0.5) +
+        facet_wrap(~OM, scales = "free") +
+        geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+        labs(x = "Year", y = "Relative Error in Total Fishing Mortality") +
+        theme_tj() +
+        theme(legend.position = "top") )
+
+print(
+  ggplot(ts_exp3_sum %>% filter(Type == "Total Recruitment"),
+         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95, fill = EM)) +
+    geom_line(size = 1.3) +
+    geom_ribbon(alpha = 0.5) +
+    facet_wrap(~OM, scales = "free") +
+    geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+    labs(x = "Year", y = "Relative Error in Total Recruitment") +
+    theme_tj() +
+    theme(legend.position = "top") 
+)
+
+dev.off()
+
+
+# Time Series CV plot -----------------------------------------------------
+
+# Set up data for an F-test
+exp3_ts_df <- exp3_ts_df %>% 
+  select(-Convergence) %>%
+  left_join(exp3_conv %>% select(OM, EM, convergence, sim), 
+            by = c("OM", "EM", "sim")) %>%
+  filter(convergence == "Converged") %>%
+  mutate(RE = (as.numeric(Pred)-Truth)/Truth) 
+
+# get statistics for f-test
+exp3_f_df <- exp3_ts_df %>% 
+  group_by(Type, OM) %>%
+  summarize(p_val = var.test(RE ~ factor(EM))$p.value,
+            ratio = var.test(RE ~ factor(EM))$estimate)
+
+# plot var
+exp3_var_df <- exp3_ts_df %>% 
+  group_by(Years, Type, OM, EM) %>%
+  summarize(var = var(RE)) %>% 
+  ungroup() %>% 
+  left_join(exp3_f_df, by = c("OM", "Type"))
+
+pdf(here("figs", 'Experiment 3', "Var_RE_TS_Acr_vs_With.pdf"), width = 13)
+
+print(
+  ggplot(exp3_var_df %>% filter(Type == "Spawning Stock Biomass"),
+         aes(x = Years, y = var, color = EM)) +
+    geom_line(size = 1.3, alpha = 0.85) +
+    geom_text(aes(x = 8, y = Inf, label = paste("p = ", round(p_val, 5))), 
+              vjust = 4, color = "black", check_overlap = TRUE) +
+    geom_text(aes(x = 8, y = Inf, label = paste("F-ratio = ", round(ratio, 5))), 
+              vjust = 6, color = "black", check_overlap = TRUE) +
+    facet_wrap(~OM, scales = "free") +
+    labs(x = "Year", y = "Var Relative Error in Spawning Stock Biomass") +
+    theme_tj() +
+    theme(legend.position = "top") 
+)
+
+print(
+  ggplot(exp3_var_df %>% filter(Type == "Total Biomass"),
+         aes(x = Years, y = var, color = EM)) +
+    geom_line(size = 1.3, alpha = 0.85) +
+    geom_text(aes(x = 8, y = Inf, label = paste("p = ", round(p_val, 5))), 
+              vjust = 4, color = "black", check_overlap = TRUE) +
+    geom_text(aes(x = 8, y = Inf, label = paste("F-ratio = ", round(ratio, 5))), 
+              vjust = 6, color = "black", check_overlap = TRUE) +
+    facet_wrap(~OM, scales = "free") +
+    labs(x = "Year", y = "Var Relative Error in Total Biomass") +
+    theme_tj() +
+    theme(legend.position = "top") 
+)
+
+print(
+  ggplot(exp3_var_df %>% filter(Type == "Total Fishing Mortality"),
+         aes(x = Years, y = var, color = EM)) +
+    geom_line(size = 1.3, alpha = 0.85) +
+    geom_text(aes(x = 8, y = Inf, label = paste("p = ", round(p_val, 5))), 
+              vjust = 4, color = "black", check_overlap = TRUE) +
+    geom_text(aes(x = 8, y = Inf, label = paste("F-ratio = ", round(ratio, 5))), 
+              vjust = 6, color = "black", check_overlap = TRUE) +
+    facet_wrap(~OM, scales = "free") +
+    labs(x = "Year", y = "Var Relative Error in Total Fishing Mortality") +
+    theme_tj() +
+    theme(legend.position = "top") 
+)
+
+print(
+  ggplot(exp3_var_df %>% filter(Type == "Total Recruitment"),
+         aes(x = Years, y = var, color = EM)) +
+    geom_line(size = 1.3, alpha = 0.85) +
+    geom_text(aes(x = 8, y = Inf, label = paste("p = ", round(p_val, 5))), 
+              vjust = 4, color = "black", check_overlap = TRUE) +
+    geom_text(aes(x = 8, y = Inf, label = paste("F-ratio = ", round(ratio, 5))), 
+              vjust = 6, color = "black", check_overlap = TRUE) +
+    facet_wrap(~OM, scales = "free") +
+    labs(x = "Year", y = "Var of Relative Error in Total Recruitment") +
+    theme_tj() +
+    theme(legend.position = "top") 
+)
+dev.off()
+

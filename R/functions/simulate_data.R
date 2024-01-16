@@ -47,9 +47,9 @@ simulate_data = function(spreadsheet_path,
   
   # Fishery Containers
   Fish_AgeComps = array(0, dim = c(n_years, n_ages, n_sexes, n_fish_fleets, n_sims)) 
-  Fish_Neff_Age_mat = array(Fish_Neff_Age, dim = c(n_years, n_fish_fleets)) # Age Effective Sample Size
+  Fish_Neff_Age = array(Fish_Neff_Age, dim = c(n_years, n_fish_fleets)) # Age Effective Sample Size
   Fish_LenComps = array(0, dim = c(n_years, length(len_bins), n_sexes, n_fish_fleets, n_sims)) 
-  Fish_Neff_Len_mat = array(Fish_Neff_Len, dim = c(n_years, n_fish_fleets)) # Length Effective Sample Size
+  Fish_Neff_Len= array(Fish_Neff_Len, dim = c(n_years, n_fish_fleets)) # Length Effective Sample Size
   Fish_Index = array(0, dim = c(n_years, n_fish_fleets, n_sims))
   FishAge_Selex = array(0, dim = c(n_ages, n_sexes, n_fish_fleets))
   Fmort = array(0, dim = c(n_years, n_fish_fleets, n_sims)) # fishing mortality container
@@ -57,9 +57,9 @@ simulate_data = function(spreadsheet_path,
 
   # Survey Containers
   Srv_AgeComps = array(0, dim = c(n_years, n_ages, n_sexes, n_srv_fleets, n_sims)) 
-  Srv_Neff_Age_mat = array(Srv_Neff_Age, dim = c(n_years, n_srv_fleets)) # Age Effective Sample Size
+  Srv_Neff_Age = array(Srv_Neff_Age, dim = c(n_years, n_srv_fleets)) # Age Effective Sample Size
   Srv_LenComps = array(0, dim = c(n_years, length(len_bins), n_sexes, n_srv_fleets, n_sims)) 
-  Srv_Neff_Len_mat= array(Srv_Neff_Len, dim = c(n_years, n_srv_fleets)) # Length Effective Sample Size
+  Srv_Neff_Len= array(Srv_Neff_Len, dim = c(n_years, n_srv_fleets)) # Length Effective Sample Size
   Srv_Index = array(0, dim = c(n_years, n_srv_fleets, n_sims))
   SrvAge_Selex = array(0, dim = c(n_ages, n_sexes, n_srv_fleets))
   Srv_LAA = vector("list", length = n_sexes * (n_years-1) * n_srv_fleets) # pre-allocate vector list size
@@ -258,34 +258,30 @@ simulate_data = function(spreadsheet_path,
           if(comp_across_sex == 1) {
             
             # Get sex-ratios (age-comps)
-            p_af = sum(CAA[y-1,,1,f,sim]) / sum(CAA[y-1,,,f,sim]) # Get proportion of females across all sexes
-            pa = rbinom(Fish_Neff_Age_mat[y,f] * n_sexes, 1 ,p_af) # Do a binomial draw to figure out the Neff for a given sex for females
-            
-            # sex ratios (length-comps)
-            p_lf = sum(CAL[y-1,,1,f,sim]) / sum(CAL[y-1,,,f,sim])
-            pl = rbinom(Fish_Neff_Len_mat[y,f] * n_sexes, 1 ,p_lf)
-          
-            Fish_AgeComps[y-1,,1,f,sim] = rmultinom(1, size = sum(pa),  prob = CAA[y-1,,1,f,sim]) # Multinomial draw, conditional on binomial N (random variable)
-            Fish_AgeComps[y-1,,2,f,sim] = rmultinom(1, size = (Fish_Neff_Age_mat[y,f] * n_sexes) - sum(pa), prob = CAA[y-1,,2,f,sim]) # Multinomial draw for males, conditional on binomial N 
+            p_af = sum(CAA[y-1,,1,f,sim]) / sum(CAA[y-1,,,f,sim])
+            pa = rbinom(Fish_Neff_Age[y,f] * n_sexes, 1 ,p_af)
+            Fish_AgeComps[y-1,,1,f,sim] = rmultinom(1, size = sum(pa),  prob = CAA[y-1,,1,f,sim])
+            Fish_AgeComps[y-1,,2,f,sim] = rmultinom(1, size = (Fish_Neff_Age[y,f] * n_sexes) - sum(pa), prob = CAA[y-1,,2,f,sim])
             
             # Fishery Length Compositions
+            p_lf = sum(CAL[y-1,,1,f,sim]) / sum(CAL[y-1,,,f,sim])
+            pl = rbinom(Fish_Neff_Len[y,f] * n_sexes, 1 ,p_lf)
             Fish_LenComps[y-1,,1,f,sim] = rmultinom(1, size = sum(pl),  prob = CAL[y-1,,1,f,sim])
-            Fish_LenComps[y-1,,2,f,sim] = rmultinom(1, size = (Fish_Neff_Len_mat[y,f] * n_sexes) - sum(pl), prob = CAL[y-1,,1,f,sim])
+            Fish_LenComps[y-1,,2,f,sim] = rmultinom(1, size = (Fish_Neff_Len[y,f] * n_sexes) - sum(pl), prob = CAL[y-1,,1,f,sim])
 
           } # if fishery comps are simulated within sexes
 
         ### Simulate Fishery Compositions (Across sexes) ---------------------------------------
         if(comp_across_sex == 0) {
-          # Get probabilities of sampling
-          Prob_FishAge = as.vector(CAA[y-1,,,f,sim]/sum(CAA[y-1,,,f,sim])) # proportions across (simulate draws from a long vector (nsexes * n_ages))
-          Prob_FishLen = as.vector(CAL[y-1,,,f,sim]/sum(CAL[y-1,,,f,sim])) # Get Probability of sampling length bins
-
-          Fish_AgeComps[y-1,,,f,sim] = matrix(rmultinom(1, size = Fish_Neff_Age_mat[y,f] * n_sexes, 
+          Prob_FishAge = as.vector(CAA[y-1,,,f,sim]/sum(CAA[y-1,,,f,sim]))
+          Fish_AgeComps[y-1,,,f,sim] = matrix(rmultinom(1, size = Fish_Neff_Age[y,f] * n_sexes, 
                                                         prob = Prob_FishAge), nrow = n_ages, ncol = n_sexes)
           
           # Fishery Length Compositions
-          Fish_LenComps[y-1,,,f,sim] = matrix(rmultinom(1, size = Fish_Neff_Len_mat[y,f] * n_sexes, 
-                                                          Prob_FishLen), nrow = length(len_bins), ncol = n_sexes)
+          # Get Probability of sampling length bins
+          Prob_FishLen = as.vector(CAL[y-1,,,f,sim]/sum(CAL[y-1,,,f,sim]))
+          Fish_LenComps[y-1,,,f,sim] = matrix(rmultinom(1, size = Fish_Neff_Len[y,f] * n_sexes, 
+                                                        Prob_FishLen), nrow = length(len_bins), ncol = n_sexes)
         } # if fishery comps are simulated across sexes
         
         ### Simulate Fishery Index --------------------------------------------------
@@ -293,50 +289,54 @@ simulate_data = function(spreadsheet_path,
         Fish_Index_sd = sqrt(log(cv_Fish_Index[f]^2+1))
         # Sample Fishery Index with lognormal error
         Fish_Index[y-1,f,sim] = q_Fish[f] * sum(FishAge_Selex[,,f] * NAA[y-1,,,sim] * waa) * 
-                                exp(rnorm(1, -Fish_Index_sd^2/2, Fish_Index_sd))
+          exp(rnorm(1, -Fish_Index_sd^2/2, Fish_Index_sd))
         
         # Get Total Catch
+        # catch_sd =  sqrt(log(1e-3 + 1)) # turn cv to sd
         Total_Catch[y-1,f,sim] = sum(Total_Catch_Sex[y-1,,f,sim]) 
+                                 # exp(rnorm(1, -catch_sd^2/2, sd = catch_sd)) # lognormal multiplicative error
       } # end fish fleet loop
       
       # Observation Model (Survey) ----------------------------------------------
       for(sf in 1:n_srv_fleets) {
         ### Simulate Survey Compositions (Within Sexes) ---------------------------------------
         if(comp_across_sex == 1) {
+          
             # Survey Age Compositions
             p_af = sum(NAA[y-1,,1,sim] * SrvAge_Selex[,1,sf]) / sum((NAA[y-1,,,sim] * SrvAge_Selex[,,sf])) # Get probability of sampling ages
-            pa = rbinom(Srv_Neff_Age_mat[y,sf] * n_sexes, 1 ,p_af)
+            pa = rbinom(Srv_Neff_Age[y,sf] * n_sexes, 1 ,p_af)
             Srv_AgeComps[y-1,,1,sf,sim] = rmultinom(1, size = sum(pa), NAA[y-1,,1,sim] * SrvAge_Selex[,1,sf])
-            Srv_AgeComps[y-1,,2,sf,sim] = rmultinom(1, size = (Srv_Neff_Age_mat[y,sf] * n_sexes) - sum(pa), NAA[y-1,,2,sim] * SrvAge_Selex[,2,sf])
+            Srv_AgeComps[y-1,,2,sf,sim] = rmultinom(1, size = (Srv_Neff_Age[y,sf] * n_sexes) - sum(pa), NAA[y-1,,2,sim] * SrvAge_Selex[,2,sf])
             
             # Survey Length Compositions
             # Get probability of sampling lengths
             Prob_SrvLen_F = (t(al_matrix[,,1]) %*% (NAA[y-1,,1,sim] * SrvAge_Selex[,1,sf])) 
             Prob_SrvLen_M = (t(al_matrix[,,2]) %*% (NAA[y-1,,2,sim] * SrvAge_Selex[,2,sf])) 
             p_lf = sum(Prob_SrvLen_F) / sum(Prob_SrvLen_M, Prob_SrvLen_F)
-            pl = rbinom(Srv_Neff_Len_mat[y,sf] * n_sexes, 1 , p_lf)
+            pl = rbinom(Srv_Neff_Len[y,sf] * n_sexes, 1 , p_lf)
             Srv_LenComps[y-1,,1,sf,sim] = rmultinom(1, size = sum(pl), Prob_SrvLen_F)
-            Srv_LenComps[y-1,,2,sf,sim] = rmultinom(1, size = (Srv_Neff_Len_mat[y,sf] * n_sexes) - sum(pl), Prob_SrvLen_M)
+            Srv_LenComps[y-1,,2,sf,sim] = rmultinom(1, size = (Srv_Neff_Len[y,sf] * n_sexes) - sum(pl), Prob_SrvLen_M)
+            
           } # if survey comps are simulated within sexes
 
         ### Simulate Survey Compositions (Across Sexes) ---------------------------------------
         if(comp_across_sex == 0) {
-            # Survey Age Compositions
-            Prob_SrvAge = (NAA[y-1,,,sim] * SrvAge_Selex[,,sf]) / sum(NAA[y-1,,,sim] * SrvAge_Selex[,,sf]) # Get probability of sampling ages
-            Srv_AgeComps[y-1,,,sf,sim] = matrix(rmultinom(1, size = Srv_Neff_Age_mat[y,sf] * n_sexes,  # sampling 
-                                                          as.vector(Prob_SrvAge)), nrow = n_ages, ncol = n_sexes)
-            
-            # Survey Length Compositions
-            # Get probability of sampling lengths
-            Prob_SrvLen = vector() # re-initialize vector
-            for(s in 1:n_sexes) {
-              Prob_SrvLen_s = (t(al_matrix[,,s]) %*% Prob_SrvAge[,s]) 
-              Prob_SrvLen = rbind(Prob_SrvLen, Prob_SrvLen_s)
-            } # end fifth sex loop
-            
-            Prob_Len = Prob_SrvLen / sum(Prob_SrvLen) # compute prob of len sampling
-            Srv_LenComps[y-1,,,sf,sim] = matrix(rmultinom(1, size = Srv_Neff_Len_mat[y,sf] * n_sexes, # sampling
-                                                          Prob_SrvLen), nrow = length(len_bins), ncol = n_sexes)
+          # Survey Age Compositions
+          Prob_SrvAge = (NAA[y-1,,,sim] * SrvAge_Selex[,,sf]) / sum(NAA[y-1,,,sim] * SrvAge_Selex[,,sf]) # Get probability of sampling ages
+          Srv_AgeComps[y-1,,,sf,sim] = matrix(rmultinom(1, size = Srv_Neff_Age[y,sf] * n_sexes,  # sampling 
+                                                        as.vector(Prob_SrvAge)), nrow = n_ages, ncol = n_sexes)
+          
+          # Survey Length Compositions
+          # Get probability of sampling lengths
+          Prob_SrvLen = vector() # re-initialize vector
+          for(s in 1:n_sexes) {
+            Prob_SrvLen_s = (t(al_matrix[,,s]) %*% Prob_SrvAge[,s]) 
+            Prob_SrvLen = rbind(Prob_SrvLen, Prob_SrvLen_s)
+          } # end fifth sex loop
+          
+          Prob_Len = Prob_SrvLen / sum(Prob_SrvLen) # compute prob of len sampling
+          Srv_LenComps[y-1,,,sf,sim] = matrix(rmultinom(1, size = Srv_Neff_Len[y,sf] * n_sexes, # sampling
+                                                        Prob_SrvLen), nrow = length(len_bins), ncol = n_sexes)
         } # if survey comps are simulated across sexes
         
         ### Simulate Survey Index --------------------------------------------------
@@ -412,17 +412,17 @@ simulate_data = function(spreadsheet_path,
   
   # Fishery Containers
   Fish_AgeComps <<- Fish_AgeComps
-  Fish_Neff_Age_mat <<- Fish_Neff_Age_mat
+  Fish_Neff_Age <<- Fish_Neff_Age
   Fish_LenComps <<- Fish_LenComps
-  Fish_Neff_Len_mat <<- Fish_Neff_Len_mat
+  Fish_Neff_Len <<- Fish_Neff_Len
   Fish_Index <<- Fish_Index
   FishAge_Selex <<- FishAge_Selex
   
   # Survey Containers
   Srv_AgeComps <<- Srv_AgeComps
-  Srv_Neff_Age_mat <<- Srv_Neff_Age_mat
+  Srv_Neff_Age <<- Srv_Neff_Age
   Srv_LenComps <<- Srv_LenComps
-  Srv_Neff_Len_mat <<- Srv_Neff_Len_mat
+  Srv_Neff_Len <<- Srv_Neff_Len
   Srv_Index <<- Srv_Index
   SrvAge_Selex <<- SrvAge_Selex
   
@@ -477,15 +477,15 @@ simulate_data = function(spreadsheet_path,
     InitDevs = InitDevs,
     mat_at_age = mat_at_age,
     Fish_AgeComps = Fish_AgeComps,
-    Fish_Neff_Age_mat = Fish_Neff_Age_mat,
+    Fish_Neff_Age = Fish_Neff_Age,
     Fish_LenComps = Fish_LenComps,
-    Fish_Neff_Len_mat = Fish_Neff_Len_mat,
+    Fish_Neff_Len = Fish_Neff_Len,
     Fish_Index = Fish_Index,
     FishAge_Selex = FishAge_Selex,
     Srv_AgeComps = Srv_AgeComps,
-    Srv_Neff_Age_mat = Srv_Neff_Age_mat,
+    Srv_Neff_Age = Srv_Neff_Age,
     Srv_LenComps = Srv_LenComps,
-    Srv_Neff_Len_mat = Srv_Neff_Len_mat,
+    Srv_Neff_Len = Srv_Neff_Len,
     Srv_Index = Srv_Index,
     SrvAge_Selex = SrvAge_Selex,
     Srv_LAA = Srv_LAA,

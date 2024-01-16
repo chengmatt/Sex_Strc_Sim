@@ -1,4 +1,4 @@
-# Purpose: To run EMs for experiment 3 as a full factorial (comps are simulated as proportions within)
+# Purpose: To run EMs for experiment 3 as a full factorial
 # Creator: Matthew LH. Cheng (UAF-CFOS)
 # Date: 10/19/23
 
@@ -62,13 +62,12 @@ for(n_om in 1:nrow(oms_exp3)) {
     sexRatio_al_or_y_em = ems_exp3$sexRatio_al_or_y[n_em] # if we want to fit sex ratio as within year only or both
     sexRatio_fixed = c(0.5, 0.5) # fixed sex ratio values to mis-specify initial sex-ratios
     em_name = ems_exp3$EM_Name[n_em] # em name
-
+    
     # Run Simulations here ----------------------------------------------------
     
     sim_models <- foreach(sim = 1:n_sims, .packages = c("TMB", "here", "tidyverse")) %dopar% {
       
       TMB::compile("Sex_Str_EM.cpp")
-      # dyn.unload(dynlib("Sex_Str_EM"))
       dyn.load(dynlib('Sex_Str_EM'))
       
       # estimate biological weight at age
@@ -88,8 +87,8 @@ for(n_om in 1:nrow(oms_exp3)) {
                                     fish_age_prop = fish_age_prop_em,
                                     srv_age_prop = srv_age_prop_em,
                                     fish_len_prop = fish_len_prop_em,
-                                    srv_len_prop = srv_len_prop_em, 
-
+                                    srv_len_prop = srv_len_prop_em,
+                                    
                                     # Fixed controls
                                     n_sexes = 2,
                                     sex_specific = TRUE, 
@@ -100,6 +99,8 @@ for(n_om in 1:nrow(oms_exp3)) {
                                     agg_srv_age = FALSE, 
                                     agg_fish_len = FALSE,
                                     agg_srv_len = FALSE,
+                                    use_fish_len_comps = F,
+                                    # use_srv_len_comps = F,
                                     catch_cv = c(0.025),
                                     use_fish_index = FALSE,
                                     # Biologicals
@@ -107,13 +108,13 @@ for(n_om in 1:nrow(oms_exp3)) {
                                     age_len_transition = biologicals$al_matrix_sexsp,
                                     # Parameter fixing
                                     fix_pars = c("h", "ln_sigmaRec", "ln_q_fish"))
-
+      
       # run model here
       model = run_model(data = em_inputs$data, 
                         parameters = em_inputs$parameters, 
                         map = em_inputs$map, silent = TRUE, n.newton = 3)
       
-
+      
       # extract quantities
       quants_df = get_quantities(biologicals = biologicals,
                                  model = model, sim = sim, om_name = om_name,
@@ -172,5 +173,4 @@ for(n_om in 1:nrow(oms_exp3)) {
   cat(crayon::yellow("OM", n_om, "out of", nrow(oms_exp3)))
   
 } # end om loop
-
 

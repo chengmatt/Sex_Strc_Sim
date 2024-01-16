@@ -114,10 +114,9 @@ get_Fmsy_nLL = function(ln_Fmsy, M, selex, waa, mat_at_age, ages) {
   SBPR = get_SBPR(M = M, selex = selex, Trial_F = Fmsy, waa = waa, 
                   mat_at_age = mat_at_age, ages = ages) # get sbpr at fmsy
   YPR = get_YPR(M = M, selex = selex, Trial_F = Fmsy, waa = waa, ages = ages) # get YPR
-  Req = get_Req(SBPR_Fmsy = SBPR$SBPR_sum, waa = waa,
+  Req = get_Req(SBPR_Fmsy = SBPR$SBPR_sum, waa = waa, 
                 mat_at_age = mat_at_age, ages = ages) # get equilibrium recruitment
 
-  
   # set up optimization criteria
   catch_MSY = YPR$YPR_sum * Req 
   nLL = -1 * log(catch_MSY)
@@ -153,40 +152,3 @@ get_Fmsy = function(ln_Fmsy, M, selex, waa, mat_at_age, ages) {
   
   return(list(Fmsy = exp(Fmsy@coef), obj = Fmsy@details$objective))
 } # end function
-
-
-get_SSBe <- function(fmsy, 
-                     equilibrium_at_age,
-                     sel,
-                     natural_mortality, 
-                     waa, 
-                     ages, 
-                     matAA, 
-                     propZ_ssb = 1, 
-                     n_runs,
-                     maxAgePlusGroup) {
-  Fa <- fmsy * sel
-  Za <- Fa + natural_mortality
-  Sa <- exp(-Za)
-  N_equilibrium <- matrix(NA, nrow = length(ages), ncol = n_runs)
-  N_equilibrium[, 1] <- equilibrium_at_age
-  
-  # Run annual cycle
-  for (year_ndx in 2:n_runs) {
-    # Initial recruitment
-    N_equilibrium[1, year_ndx] <- equilibrium_at_age[1]
-    # Ageing + Z
-    for (age_ndx in 2:length(ages)) {
-      N_equilibrium[age_ndx, year_ndx] <- N_equilibrium[age_ndx - 1, year_ndx - 1] * Sa[age_ndx - 1]
-    }
-    if (maxAgePlusGroup == 1) {
-      N_equilibrium[length(ages), year_ndx] <- N_equilibrium[length(ages) - 1, year_ndx - 1] * Sa[length(ages) - 1] +
-        N_equilibrium[length(ages), year_ndx - 1] * Sa[length(ages)]
-    }
-  }
-  
-  # Calculate SSBs by interpolation between the years, starting with the previous year's Partition
-  ssbe <- sum(N_equilibrium[, n_runs] * exp(-Za * propZ_ssb) * matAA * waa)
-  
-  return(ssbe)
-}
