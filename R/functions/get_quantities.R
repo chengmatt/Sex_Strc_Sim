@@ -175,10 +175,26 @@ hcr_catch_df = data.frame(Pred = hcr_catch, Truth = HCR_proj_catch[sim], Type = 
 
 par_df = rbind(init_sr_df, bmsy_df, fmsy_df, r0_df, M_df, hcr_catch_df)
 
+
+# Get SSB Coverage --------------------------------------------------------
+
+# set up coverage dataframe
+coverage_df = data.frame(val = model$sd_rep$value, sd = model$sd_rep$sd,
+           lwr_95 = (model$sd_rep$value - 1.96 * model$sd_rep$sd),
+           upr_95 = (model$sd_rep$value + 1.96 * model$sd_rep$sd),
+           name = names(model$sd_rep$value),
+           Convergence = conv_df$convergence,
+           t = c(total_ssb_df$Truth, total_biomass_df$Truth),
+           year = 1:(length(model$sd_rep$value)/2),
+           sim = sim, EM = em_name, OM = om_name)
+
+# calculate coverage here
+coverage_df$coverage = with(coverage_df, ifelse((t <= upr_95 & t >= lwr_95), 1, 0))
+
   return(
     list(ts_df = ts_df, NAA_sr_female_df = NAA_sr_female_df,
          grwth_df = grwth_df, selex_all_df = selex_all_df,
-         conv_df = conv_df, par_df = par_df
+         conv_df = conv_df, par_df = par_df, coverage_df = coverage_df
          )
   )
 

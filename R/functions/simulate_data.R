@@ -267,7 +267,7 @@ simulate_data = function(spreadsheet_path,
             p_lf = sum(CAL[y-1,,1,f,sim]) / sum(CAL[y-1,,,f,sim])
             pl = rbinom(Fish_Neff_Len[y,f] * n_sexes, 1 ,p_lf)
             Fish_LenComps[y-1,,1,f,sim] = rmultinom(1, size = sum(pl),  prob = CAL[y-1,,1,f,sim])
-            Fish_LenComps[y-1,,2,f,sim] = rmultinom(1, size = (Fish_Neff_Len[y,f] * n_sexes) - sum(pl), prob = CAL[y-1,,1,f,sim])
+            Fish_LenComps[y-1,,2,f,sim] = rmultinom(1, size = (Fish_Neff_Len[y,f] * n_sexes) - sum(pl), prob = CAL[y-1,,2,f,sim])
 
           } # if fishery comps are simulated within sexes
 

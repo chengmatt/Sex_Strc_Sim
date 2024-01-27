@@ -201,9 +201,10 @@ prepare_EM_inputs = function(sim,
   if(sexRatio_al_or_y == "within_year_only")  data$sexRatio_al_or_y = 1 # If sex ratios are fit to as within year only
 
 # Parameters --------------------------------------------------------------
-  parameters$logit_init_sexRatio = 0 # at 0.5 right now
+  parameters$logit_init_sexRatio = log(oms$sexRatio[1] / (1 - oms$sexRatio[1])) # at 0.5 right now
   parameters$ln_M = vector(length = n_sexes)
-  for(s in 1:n_sexes) parameters$ln_M[s] = log(M[s])
+  parameters$ln_M[1] = log(M[1]) # female
+  parameters$ln_M[2] = log(0.85) # female
   if(share_M_sex == TRUE) for(s in 1:n_sexes) parameters$ln_M[s] = mean(log(M[s])) 
   parameters$ln_InitDevs = log(InitDevs[,sim])
   parameters$ln_RecDevs = log(RecDevs[-n_years,sim])
@@ -213,8 +214,8 @@ prepare_EM_inputs = function(sim,
   parameters$ln_q_srv = log(q_Srv) 
   parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
   if(selex_type == "length") {
-    parameters$ln_fish_selpars = array(log(c(0.4, 60)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
-    parameters$ln_srv_selpars = array(log(c(0.5, 50)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
+    parameters$ln_fish_selpars = array(log(c(0.6, 62.5)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
+    parameters$ln_srv_selpars = array(log(c(0.8, 52.5)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
     } # length-based selectivity
   
   if(selex_type == "age") {

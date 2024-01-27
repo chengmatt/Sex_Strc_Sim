@@ -1,7 +1,6 @@
-# Purpose: To run EMs for experiment 1 as a full factorial (growth differences, across vs. within, sex-specific catch, etc)
+# Purpose: To run EMs for experiment 1 as a full factorial (proportions within and across and for different Neffs)
 # Creator: Matthew LH. Cheng (UAF-CFOS)
-# Date: 10/18/23
-
+# Date: 10/19/23
 
 # Set up ------------------------------------------------------------------
 library(here)
@@ -14,6 +13,7 @@ library(parallel)
 # Compile
 # setwd("src")
 TMB::compile("Sex_Str_EM.cpp")
+dyn.unload(dynlib("Sex_Str_EM"))
 dyn.load(dynlib('Sex_Str_EM'))
 
 rm(list=ls()) # remove objects prior to running
@@ -26,17 +26,20 @@ registerDoSNOW(cl)
 fxn_path <- here("R", "functions")
 # Load in all functions from the functions folder
 files <- list.files(fxn_path)
-for(i in 1:length(files)) source(here(fxn_path, files[i]))
+for(f in 1:length(files)) source(here(fxn_path, files[f]))
 
 # Set up paths to OMs
 om_path = here("output", "Experiment 1")
 om_names = list.files(om_path)
 
-# Read in OMs for experiment 1 and set śp
-oms_exp1 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp1", na = "NA")
+# Read in OMs for experiment 3 and set up
+oms_exp1 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp1") 
+
+# read in EM experiments
 ems_exp1 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp1", na = "NA") 
 
 # Run Experiment 1 --------------------------------------------------------
+
 for(n_om in 1:nrow(oms_exp1)) {
   
   # Specify the OM scenario folder
@@ -44,58 +47,40 @@ for(n_om in 1:nrow(oms_exp1)) {
   om_name = oms_exp1$OM_Name[n_om] # om name
   load(here(om_scenario, paste(om_name,".RData",sep = "")))
   list2env(oms,globalenv()) # output into global environment
-
+  
   for(n_em in 1:nrow(ems_exp1)) {
     
-# Set up specifications here -------------------------------------------
-    n_sexes_em = ems_exp1$n_sexes[n_em] # number of sexes to model
-    sex_specific_em = ems_exp1$sex_specific[n_em] # whether this is a sex-specific assessment
-    share_M_sex_em = ems_exp1$share_M_sex[n_em] # whether to share or aggregate M
+    # Set up specifications here -------------------------------------------
     use_fish_sexRatio_em = ems_exp1$use_fish_sexRatio[n_em] # whether to use sex ratio nLL
     use_srv_sexRatio_em = ems_exp1$use_srv_sexRatio[n_em] # whether to use sex ratio nLL
-    fit_sexsp_catch_em = ems_exp1$fit_sexsp_catch[n_em] # whether to fit sex-specific catch
     fish_age_prop_em = ems_exp1$fish_age_prop[n_em] # whether to do proportions across or within
     srv_age_prop_em = ems_exp1$srv_age_prop[n_em] # whether to do proportions across or within
     fish_len_prop_em = ems_exp1$fish_len_prop[n_em] # whether to do proportions across or within
     srv_len_prop_em = ems_exp1$srv_len_prop[n_em] # whether to do proportions across or within
+    est_sexRatio_par_em = ems_exp1$est_sexRatio_par[n_em] # whether to estimate sex Ratios
+    share_M_sex_em = ems_exp1$share_M_sex[n_em] # wether to share M or not
     sexRatio_al_or_y_em = ems_exp1$sexRatio_al_or_y[n_em] # if we want to fit sex ratio as within year only or both
-    selex_type_em = ems_exp1$selex_type[n_em] # selectivity type (age or length based)
+    sexRatio_fixed = c(0.5, 0.5) # fixed sex ratio values to mis-specify initial sex-ratios
     em_name = ems_exp1$EM_Name[n_em] # em name
     
-# Run Simulations here ----------------------------------------------------
-
+    # Run Simulations here ----------------------------------------------------
+    
     sim_models <- foreach(sim = 1:n_sims, .packages = c("TMB", "here", "tidyverse")) %dopar% {
-
+      
       TMB::compile("Sex_Str_EM.cpp")
-      # dyn.unload(dynlib('Sex_Str_EM'))
       dyn.load(dynlib('Sex_Str_EM'))
       
       # estimate biological weight at age
       biologicals = get_biologicals(n_sexes, n_ages, age_bins, len_bins, Srv_LAA, Srv_LW, sim = sim)
-
-      # If single sex model
-      if(n_sexes_em == 1) {
-        waa_em = biologicals$waa_nosex
-        al_matrix_em = biologicals$al_matrix_sexagg
-        sexRatio_em = c(1, 1)
-      } # end if
-      
-      # If multi-sex model
-      if(n_sexes_em == 2) {
-        waa_em = biologicals$waa_sex
-        al_matrix_em = biologicals$al_matrix_sexsp
-        sexRatio_em = c(0.5, 0.5)
-      } # end if
       
       # Prepare EM inputs into assessment
       em_inputs = prepare_EM_inputs(sim = sim,
                                     # EM_Parameterization
-                                    n_sexes = n_sexes_em,
-                                    sex_specific = sex_specific_em, 
-                                    share_M_sex = share_M_sex_em,
                                     use_fish_sexRatio = use_fish_sexRatio_em,
                                     use_srv_sexRatio = use_srv_sexRatio_em,
-                                    fit_sexsp_catch = fit_sexsp_catch_em, 
+                                    est_sexRatio_par = est_sexRatio_par_em,
+                                    sexRatio = sexRatio_fixed,
+                                    share_M_sex = share_M_sex_em, 
                                     sexRatio_al_or_y = sexRatio_al_or_y_em,
                                     
                                     # Proportion treatment
@@ -104,38 +89,39 @@ for(n_om in 1:nrow(oms_exp1)) {
                                     fish_len_prop = fish_len_prop_em,
                                     srv_len_prop = srv_len_prop_em,
                                     
-                                    # Biologicals
-                                    WAA = waa_em,
-                                    age_len_transition = al_matrix_em,
-                                    
                                     # Fixed controls
-                                    selex_type = selex_type_em,
-                                    est_sexRatio_par = FALSE,
-                                    sexRatio = sexRatio_em,
+                                    n_sexes = 2,
+                                    sex_specific = TRUE, 
+                                    fit_sexsp_catch = FALSE,
+                                    selex_type = "length",
                                     # Aggregating comps
                                     agg_fish_age = FALSE,
                                     agg_srv_age = FALSE, 
                                     agg_fish_len = FALSE,
                                     agg_srv_len = FALSE,
-                                    catch_cv = c(0.025), 
+                                    catch_cv = c(0.01),
                                     use_fish_index = FALSE,
+                                    # Biologicals
+                                    WAA = biologicals$waa_sex,
+                                    age_len_transition = biologicals$al_matrix_sexsp,
                                     # Parameter fixing
                                     fix_pars = c("h", "ln_sigmaRec", "ln_q_fish"))
-
+      
       # run model here
       model = run_model(data = em_inputs$data, 
                         parameters = em_inputs$parameters, 
                         map = em_inputs$map, silent = TRUE, n.newton = 3)
       
+      
       # extract quantities
       quants_df = get_quantities(biologicals = biologicals,
                                  model = model, sim = sim, om_name = om_name,
-                                 em_name = em_name, n_sexes_em = n_sexes_em)
+                                 em_name = em_name, n_sexes_em = 2)
       
       # Output this into a list when we're done
       all_obj_list = list(model, quants_df$ts_df, quants_df$NAA_sr_female_df,
                           quants_df$grwth_df, quants_df$selex_all_df,
-                          quants_df$conv_df, quants_df$par_df) 
+                          quants_df$conv_df, quants_df$par_df, quants_df$coverage_df) 
       
     } # end foreach loop
     
@@ -147,6 +133,7 @@ for(n_om in 1:nrow(oms_exp1)) {
     growth_df = data.frame()
     selex_df = data.frame()
     convergence_df = data.frame()
+    coverage = data.frame()
     
     # Save files and output
     for(s in 1:n_sims) {
@@ -157,6 +144,7 @@ for(n_om in 1:nrow(oms_exp1)) {
       selex_df = rbind(selex_df, sim_models[[s]][[5]])
       convergence_df = rbind(convergence_df, sim_models[[s]][[6]])
       params = rbind(params, sim_models[[s]][[7]])
+      coverage = rbind(coverage, sim_models[[s]][[8]])
     } # end s loop
     
     # Now, save our results - create directory to store results first
@@ -171,6 +159,7 @@ for(n_om in 1:nrow(oms_exp1)) {
     write.csv(selex_df, here(em_path_res, 'Selectivity.csv'), row.names = FALSE)
     write.csv(convergence_df, here(em_path_res, 'Convergence.csv'), row.names = FALSE)
     write.csv(params, here(em_path_res, 'Parameters.csv'), row.names = FALSE)
+    write.csv(coverage, here(em_path_res, 'Coverage.csv'), row.names = FALSE)
     
     plot_EMs(time_series = time_series, NAA_sexratio = NAA_sexratio,
              growth_df = growth_df, selex_df = selex_df, params = params,
@@ -180,8 +169,9 @@ for(n_om in 1:nrow(oms_exp1)) {
     cat(crayon::yellow("EM", n_em, "out of", nrow(ems_exp1)))
     
   } # end em loop
-
+  
   # Progress
   cat(crayon::yellow("OM", n_om, "out of", nrow(oms_exp1)))
   
 } # end om loop
+

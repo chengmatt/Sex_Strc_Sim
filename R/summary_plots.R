@@ -24,18 +24,19 @@ theme_tj = function() {
 # Experiment 1 ------------------------------------------------------------
 
 # Read in files
-exp1_selex_df = data.table::fread(here("output", "Experiment_1_Selex.csv")) %>% 
-  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
-exp1_growth_df = data.table::fread(here("output", "Experiment_1_Growth.csv")) %>% 
-  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
-exp1_param_df = data.table::fread(here("output", "Experiment_1_Param.csv")) %>% 
-  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
-exp1_ts_df = data.table::fread(here("output", "Experiment_1_TimeSeries.csv"))  %>% 
-  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
-exp1_conv_df = data.table::fread(here("output", "Experiment_1_Convergence.csv")) %>% 
-  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
-exp1_naa_df = data.table::fread(here("output", "Experiment_1_NAA.csv")) %>% 
-  filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
+exp1_selex_df = data.table::fread(here("output", "Experiment_1_Selex.csv")) 
+  # filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
+exp1_growth_df = data.table::fread(here("output", "Experiment_1_Growth.csv")) 
+  # filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
+exp1_param_df = data.table::fread(here("output", "Experiment_1_Param.csv")) 
+  # filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
+exp1_ts_df = data.table::fread(here("output", "Experiment_1_TimeSeries.csv"))  
+  # filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
+exp1_conv_df = data.table::fread(here("output", "Experiment_1_Convergence.csv")) 
+  # filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
+exp1_naa_df = data.table::fread(here("output", "Experiment_1_NAA.csv")) 
+  # filter(!OM %in% c("Growth_M (15,30)", "Growth_M (30,15)"))
+exp1_naa_df = data.table::fread(here("output", "Experiment_1_Coverage.csv")) 
 
 ### Convergence Summary -----------------------------------------------------
 exp1_conv_df = exp1_conv_df %>% 
@@ -1367,12 +1368,13 @@ dev.off()
 # Experiment 3 ------------------------------------------------------------
 
 # Read in files
-exp3_conv = data.table::fread(here("output", "Experiment_3_Convergence.csv")) %>% filter(!str_detect(EM, "Magg"))
-exp3_selex_df = data.table::fread(here("output", "Experiment_3_Selex.csv")) %>% filter(!str_detect(EM, "Magg"))
-exp3_growth_df = data.table::fread(here("output", "Experiment_3_Growth.csv")) %>% filter(!str_detect(EM, "Magg"))
-exp3_param_df = data.table::fread(here("output", "Experiment_3_Param.csv")) %>% filter(!str_detect(EM, "Magg"))
-exp3_ts_df = data.table::fread(here("output", "Experiment_3_TimeSeries.csv")) %>% filter(!str_detect(EM, "Magg"))
-exp3_sr_df = data.table::fread(here("output", "Experiment_3_SexRatio.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_conv = data.table::fread(here("output", "Experiment_1_Convergence.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_selex_df = data.table::fread(here("output", "Experiment_1_Selex.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_growth_df = data.table::fread(here("output", "Experiment_1_Growth.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_param_df = data.table::fread(here("output", "Experiment_1_Param.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_ts_df = data.table::fread(here("output", "Experiment_1_TimeSeries.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_sr_df = data.table::fread(here("output", "Experiment_1_SexRatio.csv")) %>% filter(!str_detect(EM, "Magg"))
+exp3_cov_df = data.table::fread(here("output", "Experiment_1_Coverage.csv")) 
 
 ##### Convergence summary -----------------------------------------------------
 exp3_conv = exp3_conv %>% 
@@ -1664,3 +1666,14 @@ print(
 )
 dev.off()
 
+# a = exp3_cov_df %>% 
+#   group_by(year, name) %>% 
+#   drop_na() %>% 
+#   summarize(sum = sum(coverage),
+#             prop = sum/(378000/2/35))
+#   
+# a %>% 
+#   ggplot(aes(x = year, y = prop, color = name)) +
+#   geom_point() +
+#   geom_line() +
+#   ylim(0, 1)

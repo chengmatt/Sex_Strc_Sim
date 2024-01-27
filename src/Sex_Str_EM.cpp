@@ -934,6 +934,9 @@ Type objective_function<Type>::operator() ()
   REPORT(sexRatio_fishlen_nLL);
   REPORT(sexRatio_srvlen_nLL);
   
+  ADREPORT(SSB);
+  ADREPORT(Total_Biom);
+  
   return(jnLL);
 } // end objective function
 

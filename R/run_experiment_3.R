@@ -1,4 +1,4 @@
-# Purpose: To run EMs for experiment 3 as a full factorial
+# Purpose: To run EMs for experiment 2 as a full factorial (sex ratio differences)
 # Creator: Matthew LH. Cheng (UAF-CFOS)
 # Date: 10/19/23
 
@@ -32,11 +32,8 @@ for(f in 1:length(files)) source(here(fxn_path, files[f]))
 om_path = here("output", "Experiment 3")
 om_names = list.files(om_path)
 
-# Read in OMs for experiment 3 and set up
+# Read in OMs for experiment 1 and set up
 oms_exp3 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp3") 
-
-# read in EM experiments
-ems_exp3 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp3", na = "NA") 
 
 # Run Experiment 3 --------------------------------------------------------
 
@@ -47,6 +44,12 @@ for(n_om in 1:nrow(oms_exp3)) {
   om_name = oms_exp3$OM_Name[n_om] # om name
   load(here(om_scenario, paste(om_name,".RData",sep = "")))
   list2env(oms,globalenv()) # output into global environment
+  
+  # read in EM experiments
+  ems_exp3 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp3", na = "NA")
+
+  # If these are variants we are testing to understand model behavior
+  if(str_detect(om_name, "No") == TRUE) ems_exp3 = ems_exp3 %>% filter(str_detect(EM_Name, "Fix"))
   
   for(n_em in 1:nrow(ems_exp3)) {
     
@@ -88,7 +91,7 @@ for(n_om in 1:nrow(oms_exp3)) {
                                     srv_age_prop = srv_age_prop_em,
                                     fish_len_prop = fish_len_prop_em,
                                     srv_len_prop = srv_len_prop_em,
-                                    
+
                                     # Fixed controls
                                     n_sexes = 2,
                                     sex_specific = TRUE, 
@@ -99,9 +102,7 @@ for(n_om in 1:nrow(oms_exp3)) {
                                     agg_srv_age = FALSE, 
                                     agg_fish_len = FALSE,
                                     agg_srv_len = FALSE,
-                                    use_fish_len_comps = F,
-                                    # use_srv_len_comps = F,
-                                    catch_cv = c(0.025),
+                                    catch_cv = c(0.01),
                                     use_fish_index = FALSE,
                                     # Biologicals
                                     WAA = biologicals$waa_sex,
@@ -114,7 +115,6 @@ for(n_om in 1:nrow(oms_exp3)) {
                         parameters = em_inputs$parameters, 
                         map = em_inputs$map, silent = TRUE, n.newton = 3)
       
-      
       # extract quantities
       quants_df = get_quantities(biologicals = biologicals,
                                  model = model, sim = sim, om_name = om_name,
@@ -123,7 +123,7 @@ for(n_om in 1:nrow(oms_exp3)) {
       # Output this into a list when we're done
       all_obj_list = list(model, quants_df$ts_df, quants_df$NAA_sr_female_df,
                           quants_df$grwth_df, quants_df$selex_all_df,
-                          quants_df$conv_df, quants_df$par_df) 
+                          quants_df$conv_df, quants_df$par_df, quants_df$coverage_df) 
       
     } # end foreach loop
     
@@ -135,6 +135,7 @@ for(n_om in 1:nrow(oms_exp3)) {
     growth_df = data.frame()
     selex_df = data.frame()
     convergence_df = data.frame()
+    coverage = data.frame()
     
     # Save files and output
     for(s in 1:n_sims) {
@@ -145,6 +146,7 @@ for(n_om in 1:nrow(oms_exp3)) {
       selex_df = rbind(selex_df, sim_models[[s]][[5]])
       convergence_df = rbind(convergence_df, sim_models[[s]][[6]])
       params = rbind(params, sim_models[[s]][[7]])
+      coverage = rbind(coverage, sim_models[[s]][[8]])
     } # end s loop
     
     # Now, save our results - create directory to store results first
@@ -156,12 +158,13 @@ for(n_om in 1:nrow(oms_exp3)) {
     write.csv(time_series, here(em_path_res, 'Time_Series.csv'), row.names = FALSE)
     write.csv(NAA_sexratio, here(em_path_res, 'NAA_SexRatios.csv'), row.names = FALSE)
     write.csv(growth_df, here(em_path_res, 'Growth.csv'), row.names = FALSE)
-    write.csv(selex_df, here(em_path_res, 'Selectivity.csv'), row.names = FALSE)
+    write.csv(selex_df %>% drop_na(), here(em_path_res, 'Selectivity.csv'), row.names = FALSE)
     write.csv(convergence_df, here(em_path_res, 'Convergence.csv'), row.names = FALSE)
     write.csv(params, here(em_path_res, 'Parameters.csv'), row.names = FALSE)
+    write.csv(coverage, here(em_path_res, 'Coverage.csv'), row.names = FALSE)
     
     plot_EMs(time_series = time_series, NAA_sexratio = NAA_sexratio,
-             growth_df = growth_df, selex_df = selex_df, params = params,
+             growth_df = growth_df, selex_df = selex_df %>% drop_na(), params = params,
              path = em_path_res)
     
     # Progress
@@ -171,6 +174,4 @@ for(n_om in 1:nrow(oms_exp3)) {
   
   # Progress
   cat(crayon::yellow("OM", n_om, "out of", nrow(oms_exp3)))
-  
 } # end om loop
-
