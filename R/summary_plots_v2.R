@@ -111,17 +111,23 @@ exp1_param_sum = exp1_param_df %>%
   mutate(RE = (as.numeric(Pred) - Truth) / Truth) %>% 
   group_by(OM, EM, Type) %>% 
   summarize(Median = median(RE),
+            lwr_75 = quantile(RE, 0.125),
+            upr_75 = quantile(RE, 0.875),
             lwr_95 = quantile(RE, 0.025),
             upr_95 = quantile(RE, 0.975))
 
 # plot all other parameters and EMs
 pdf(here("figs", "Experiment 1", "RE_ParamAllEMs.pdf"), width = 15, height = 10)
 # Comparing proportions within variants
-print(ggplot(exp1_param_sum %>% 
-               filter(Type != "Male Sex Ratio"), 
-             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95, color = EM)) +
-        geom_pointrange(position = position_dodge2(width = 0.65), 
-                        size = 1, linewidth = 1) +
+print(ggplot() +
+        geom_pointrange(exp1_param_sum,  # 95% quantiles
+                        mapping = aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95, color = EM),
+                        position = position_dodge2(width = 0.85), 
+                        size = 0, linewidth = 1, alpha = 1) +
+        geom_pointrange(exp1_param_sum,  # 75% quantiles
+                        mapping = aes(x = Type, y = Median, ymin = lwr_75, ymax = upr_75, color = EM),
+                        position = position_dodge2(width = 0.85), 
+                        size = 1.3, linewidth = 2, alpha = 0.8) +
         facet_wrap(~OM, ncol = 4) +
         geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
         labs(x = "Parameter", y = "Relative Error") +
@@ -140,6 +146,8 @@ ts_exp1_sum = exp1_ts_df %>%
   mutate(RE = (as.numeric(Pred)-Truth)/Truth) %>% 
   group_by(Years, Type, OM, EM) %>% 
   summarize(Median = median(RE),
+            lwr_75 = quantile(RE, 0.125),
+            upr_75 = quantile(RE, 0.875),
             lwr_95 = quantile(RE, 0.025),
             upr_95 = quantile(RE, 0.975))
 
@@ -228,7 +236,7 @@ print(
     geom_text(aes(x = 8, y = Inf, label = paste("F-ratio = ", round(ratio, 5))), 
               vjust = 6, color = "black", check_overlap = TRUE) +
     facet_wrap(~OM, ncol = 4) +
-    labs(x = "Year", y = "Var Relative Error in Spawning Stock Biomass") +
+    labs(x = "Year", y = "Variance Relative Error in Spawning Stock Biomass") +
     theme_tj() +
     theme(legend.position = "top") 
 )
@@ -242,7 +250,7 @@ print(
     geom_text(aes(x = 8, y = Inf, label = paste("F-ratio = ", round(ratio, 5))), 
               vjust = 6, color = "black", check_overlap = TRUE) +
     facet_wrap(~OM, ncol = 4) +
-    labs(x = "Year", y = "Var Relative Error in Total Biomass") +
+    labs(x = "Year", y = "Variance Relative Error in Total Biomass") +
     theme_tj() +
     theme(legend.position = "top") 
 )
@@ -256,7 +264,7 @@ print(
     geom_text(aes(x = 8, y = Inf, label = paste("F-ratio = ", round(ratio, 5))), 
               vjust = 6, color = "black", check_overlap = TRUE) +
     facet_wrap(~OM, ncol = 4) +
-    labs(x = "Year", y = "Var Relative Error in Total Fishing Mortality") +
+    labs(x = "Year", y = "Variance Relative Error in Total Fishing Mortality") +
     theme_tj() +
     theme(legend.position = "top") 
 )
@@ -270,7 +278,7 @@ print(
     geom_text(aes(x = 8, y = Inf, label = paste("F-ratio = ", round(ratio, 5))), 
               vjust = 6, color = "black", check_overlap = TRUE) +
     facet_wrap(~OM, ncol = 4) +
-    labs(x = "Year", y = "Var of Relative Error in Total Recruitment") +
+    labs(x = "Year", y = "Variance of Relative Error in Total Recruitment") +
     theme_tj() +
     theme(legend.position = "top") 
 )
@@ -290,22 +298,12 @@ coverage_df = exp1_cov_df %>%
 
 pdf(here("figs", 'Experiment 1', "Coverage.pdf"), width = 13)
 coverage_df %>%
-  filter(name == "SSB") %>% 
   ggplot(aes(x = year, y = prop, color = EM)) +
   geom_point(size = 2) +
   geom_line(size = 1.3) +
-  facet_wrap(~OM, ncol = 4) +
-  labs(x = "Year", y = "Coverage (SSB)") +
-  theme_tj() +
-  theme(legend.position = "top") 
-
-coverage_df %>%
-  filter(name == "Total_Biom") %>% 
-  ggplot(aes(x = year, y = prop, color = EM)) +
-  geom_point(size = 2) +
-  geom_line(size = 1.3) +
-  facet_wrap(~OM, ncol = 4) +
-  labs(x = "Year", y = "Coverage (Total Biomass)") +
+  facet_grid(name~OM) +
+  geom_hline(yintercept = 0.95, lty = 2) +
+  labs(x = "Year", y = "Coverage") +
   theme_tj() +
   theme(legend.position = "top") 
 dev.off()
@@ -321,21 +319,21 @@ exp2_conv_df = data.table::fread(here("output", "Experiment_2_Convergence.csv"))
 exp2_cov_df = data.table::fread(here("output", "Experiment_2_Coverage.csv")) 
 
 ### Convergence Summary -----------------------------------------------------
-exp2_conv_df = exp2_conv_df %>% 
-  mutate(convergence = 
+exp2_conv_df = exp2_conv_df %>%
+  mutate(convergence =
            case_when( # munging gradient stuff
-             (pdHess == TRUE & 
+             (pdHess == TRUE &
                 gradient <= 0.001 &
                 sdNA == FALSE &
                 convergence == "Not Converged") ~ "Converged",
-             (pdHess == TRUE & 
+             (pdHess == TRUE &
                 gradient <= 0.001 &
                 sdNA == FALSE &
                 convergence == "Converged") ~ "Converged",
              (pdHess == FALSE |
                 gradient > 0.001 |
                 sdNA == TRUE) ~ "Not Converged"
-           )) 
+           ))
 # Convergence summary
 conv_df = exp2_conv_df %>% 
   filter(convergence == "Converged") %>% 
@@ -344,7 +342,7 @@ conv_df = exp2_conv_df %>%
 
 # Plot convergence
 pdf(here("figs", "Experiment 2", "Convergence.pdf"), width = 15)
-ggplot(conv_df, aes(x = OM, y = sum/200, group = EM, color = EM)) +
+ggplot(conv_df, aes(x = OM, y = sum/750, group = EM, color = EM)) +
   geom_point(size = 3) +
   geom_line() +
   theme_tj() +
@@ -468,7 +466,7 @@ prop_param_df = exp2_param_df %>%
   select(-Convergence) %>% 
   left_join(exp2_conv_df %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
   filter(convergence == "Converged") %>% 
-  mutate(RE = (Pred - Truth) / Truth)
+  mutate(RE = (as.numeric(Pred) - Truth) / Truth)
 
 ##### Other parameters --------------------------------------------------------
 # summarize re for parameters
@@ -477,17 +475,26 @@ exp2_param_sum = exp2_param_df %>%
   left_join(exp2_conv_df %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
   filter(convergence == "Converged") %>% 
   filter( !str_detect(Type, "Ratio")) %>% 
-  mutate(RE = (Pred - Truth) / Truth) %>% 
+  mutate(RE = (as.numeric(Pred) - Truth) / Truth) %>% 
   group_by(OM, EM, Type) %>% 
   summarize(Median = median(RE),
-            lwr_95 = quantile(RE, 0.025, na.rm = T),
-            upr_95 = quantile(RE, 0.975, na.rm = T))
+            lwr_75 = quantile(RE, 0.125),
+            upr_75 = quantile(RE, 0.875),
+            lwr_95 = quantile(RE, 0.025),
+            upr_95 = quantile(RE, 0.975))
 
 # plot (all EMs)
 pdf(here("figs", "Experiment 2", "RE_Param_allEMs.pdf"), width = 15, height = 13)
 print(ggplot(exp2_param_sum, 
              aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95)) +
-        geom_pointrange(position = position_dodge2(width = 0.65), fatten = 5) +       
+        geom_pointrange(exp2_param_sum,  # 95% quantiles
+                        mapping = aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95),
+                        position = position_dodge2(width = 0.65), 
+                        size = 0, linewidth = 1, alpha = 1) +
+        geom_pointrange(exp2_param_sum,  # 75% quantiles
+                        mapping = aes(x = Type, y = Median, ymin = lwr_75, ymax = upr_75),
+                        position = position_dodge2(width = 0.65), 
+                        size = 1.5, linewidth = 2, alpha = 0.8) +
         facet_grid(OM~EM, scales = "free") +
         geom_hline(yintercept = 0, lty = 2, size = 0.85) + 
         labs(x = "Parameter", y = "Relative Error") +
@@ -506,16 +513,24 @@ ts_exp2_sum = exp2_ts_df %>%
   mutate(RE = (as.numeric(Pred)-Truth)/Truth) %>% 
   group_by(Years, Type, OM, EM) %>% 
   summarize(Median = median(RE),
+            lwr_75 = quantile(RE, 0.125),
+            upr_75 = quantile(RE, 0.875),
             lwr_95 = quantile(RE, 0.025),
-            upr_95 = quantile(RE, 0.95))
+            upr_95 = quantile(RE, 0.975))
 
 # Plot time series EMs
 pdf(here("figs", "Experiment 2", "RE_TS_AllEMs.pdf"), width = 15, height = 13)
 print(
-  ggplot(ts_exp2_sum %>% filter(Type == "Total Biomass"), 
-         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
-    geom_ribbon(alpha = 0.5, fill = "grey4") +
-    geom_point(shape = 21, colour = "black", fill = "white", size = 3, stroke = 1, alpha = 1) +
+  ggplot() +
+    geom_ribbon(ts_exp2_sum %>% filter(Type == "Total Biomass"), # 95% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95),
+                alpha = 1, fill = "grey") +
+    geom_ribbon(ts_exp2_sum %>% filter(Type == "Total Biomass"), # 75% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_75, ymax = upr_75),
+                alpha = 0.35, fill = "grey4") +
+    geom_point(ts_exp2_sum %>% filter(Type == "Total Biomass"), 
+               mapping = aes(x = Years, y = Median), shape = 21, colour = "black", 
+               fill = "white", size = 3, stroke = 1, alpha = 1) +
     facet_grid(OM~EM, scales = "free") +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
     labs(x = "Year", y = "Relative Error in Total Biomass") +
@@ -524,10 +539,16 @@ print(
 )
 
 print(
-  ggplot(ts_exp2_sum %>% filter(Type == "Spawning Stock Biomass"), 
-         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
-    geom_ribbon(alpha = 0.5, fill = "grey4") +
-    geom_point(shape = 21, colour = "black", fill = "white", size = 3, stroke = 1, alpha = 1) +
+  ggplot() +
+    geom_ribbon(ts_exp2_sum %>% filter(Type == "Spawning Stock Biomass"), # 95% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95),
+                alpha = 1, fill = "grey") +
+    geom_ribbon(ts_exp2_sum %>% filter(Type == "Spawning Stock Biomass"), # 75% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_75, ymax = upr_75),
+                alpha = 0.35, fill = "grey4") +
+    geom_point(ts_exp2_sum %>% filter(Type == "Spawning Stock Biomass"), 
+               mapping = aes(x = Years, y = Median), shape = 21, colour = "black", 
+               fill = "white", size = 3, stroke = 1, alpha = 1) +
     facet_grid(OM~EM, scales = "free") +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
     labs(x = "Year", y = "Relative Error in Spawning Stock Biomass") +
@@ -536,10 +557,16 @@ print(
 )
 
 print(
-  ggplot(ts_exp2_sum %>% filter(Type == "Total Fishing Mortality"), 
-         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
-    geom_ribbon(alpha = 0.5, fill = "grey4") +
-    geom_point(shape = 21, colour = "black", fill = "white", size = 3, stroke = 1, alpha = 1) +
+  ggplot() +
+    geom_ribbon(ts_exp2_sum %>% filter(Type == "Total Fishing Mortality"), # 95% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95),
+                alpha = 1, fill = "grey") +
+    geom_ribbon(ts_exp2_sum %>% filter(Type == "Total Fishing Mortality"), # 75% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_75, ymax = upr_75),
+                alpha = 0.35, fill = "grey4") +
+    geom_point(ts_exp2_sum %>% filter(Type == "Total Fishing Mortality"), 
+               mapping = aes(x = Years, y = Median), shape = 21, colour = "black", 
+               fill = "white", size = 3, stroke = 1, alpha = 1) +
     facet_grid(OM~EM, scales = "free") +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
     labs(x = "Year", y = "Relative Error in Total Fishing Mortality") +
@@ -548,31 +575,42 @@ print(
 )
 
 print(
-  ggplot(ts_exp2_sum %>% filter(Type == "Total Recruitment"), 
-         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
-    geom_ribbon(alpha = 0.5, fill = "grey4") +
-    geom_point(shape = 21, colour = "black", fill = "white", size = 3, stroke = 1, alpha = 1) +
+  ggplot() +
+    geom_ribbon(ts_exp2_sum %>% filter(Type == "Total Recruitment"), # 95% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95),
+                alpha = 1, fill = "grey") +
+    geom_ribbon(ts_exp2_sum %>% filter(Type == "Total Recruitment"), # 75% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_75, ymax = upr_75),
+                alpha = 0.35, fill = "grey4") +
+    geom_point(ts_exp2_sum %>% filter(Type == "Total Recruitment"), 
+               mapping = aes(x = Years, y = Median), shape = 21, colour = "black", 
+               fill = "white", size = 3, stroke = 1, alpha = 1) +
     facet_grid(OM~EM, scales = "free") +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
     labs(x = "Year", y = "Relative Error in Total Recruitment") +
     theme_tj() +
-    coord_cartesian(ylim = c(-0.85,0.85)) 
+    coord_cartesian(ylim = c(-1,1)) 
 )
 dev.off()
 
 # Age only EM
 pdf(here("figs", "Experiment 2", "RE_TS_AgeEM.pdf"), width = 15, height = 13)
 print(
-  ggplot(ts_exp2_sum %>% filter(EM == "Age"), 
-         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
-    geom_ribbon(alpha = 0.5, fill = "grey4") +
-    geom_point(shape = 21, colour = "black", fill = "white", size = 3, stroke = 1, alpha = 1) +
+  ggplot() +
+    geom_ribbon(ts_exp2_sum %>% filter(EM == "Age"), # 95% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95),
+                alpha = 1, fill = "grey") +
+    geom_ribbon(ts_exp2_sum %>% filter(EM == "Age"), # 75% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_75, ymax = upr_75),
+                alpha = 0.35, fill = "grey4") +
+    geom_point(ts_exp2_sum %>% filter(EM == "Age"), 
+               mapping = aes(x = Years, y = Median), shape = 21, colour = "black", 
+               fill = "white", size = 3, stroke = 1, alpha = 1) +
     facet_grid(Type~OM, scales = "free") +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
     labs(x = "Year", y = "Relative Error") +
-    theme_tj() +
-    coord_cartesian(ylim = c(-0.85,0.85)) 
-)
+    theme_tj()) 
+
 dev.off()
 
 
@@ -589,22 +627,12 @@ coverage_df = exp2_cov_df %>%
 
 pdf(here("figs", 'Experiment 2', "Coverage.pdf"), width = 15)
 coverage_df %>%
-  filter(name == "SSB") %>% 
   ggplot(aes(x = year, y = prop, color = EM)) +
   geom_point(size = 2) +
   geom_line(size = 1.3) +
-  facet_wrap(~OM, nrow = 1) +
+  facet_grid(name~OM) +
+  geom_hline(yintercept = 0.95, lty = 2) +
   labs(x = "Year", y = "Coverage (SSB)") +
-  theme_tj() +
-  theme(legend.position = "top") 
-
-coverage_df %>%
-  filter(name == "Total_Biom") %>% 
-  ggplot(aes(x = year, y = prop, color = EM)) +
-  geom_point(size = 2) +
-  geom_line(size = 1.3) +
-  facet_wrap(~OM, nrow = 1) +
-  labs(x = "Year", y = "Coverage (Total Biomass)") +
   theme_tj() +
   theme(legend.position = "top") 
 dev.off()
@@ -645,12 +673,13 @@ conv_df = exp3_conv %>%
   summarize(sum = n())
 
 # Plot convergence
-pdf(here("figs", "Experiment 3", "Convergence.pdf"), height = 10, width = 15)
-ggplot(conv_df, aes(x = OM, y = sum/200, color = EM, group = EM)) +
+pdf(here("figs", "Experiment 3", "Convergence.pdf"))
+ggplot(conv_df, aes(x = OM, y = sum/750, color = EM, group = EM)) +
   geom_point(size = 3) +
-  geom_line() +
+  geom_line(size = 1) +
   theme_tj() +
   scale_x_discrete(guide = guide_axis(angle = 90)) +
+  theme(legend.position = "top") +
   labs(x = "Operating Models", y = "Convergence Rate") 
 dev.off()
 
@@ -703,33 +732,62 @@ dev.off()
 
 ### Parameter Summary -------------------------------------------------------
 # summarize re
-exp3_param_sum = exp3_param_df %>% 
+exp3_param_df = exp3_param_df %>% 
   select(-Convergence) %>% 
   left_join(exp3_conv %>% select(OM, EM, convergence, sim), by = c("OM", "EM", "sim")) %>% 
-  filter(convergence == "Converged") %>% 
+  filter(convergence == "Converged") 
+
+exp3_param_sum = exp3_param_df%>% 
   mutate(RE = (as.numeric(Pred) - Truth) / Truth) %>% 
   group_by(OM, EM, Type) %>% 
   summarize(Median = median(RE),
+            lwr_75 = quantile(RE, 0.125),
+            upr_75 = quantile(RE, 0.875),
             lwr_95 = quantile(RE, 0.025),
             upr_95 = quantile(RE, 0.975))
 
 # plot all other parameters and EMs
-pdf(here("figs", "Experiment 3", "RE_ParamAllEMs.pdf"), width = 15, height = 10)
+pdf(here("figs", "Experiment 3", "RE_ParamAllEMs.pdf"), width = 10, height = 10)
 # Comparing proportions within variants
-print(ggplot(exp3_param_sum, 
-             aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95)) +
-        geom_pointrange(position = position_dodge2(width = 0.65), 
-                        size = 1, linewidth = 1) +
+print(ggplot() +
+        geom_pointrange(exp3_param_sum,  # 95% quantiles
+                        mapping = aes(x = Type, y = Median, ymin = lwr_95, ymax = upr_95),
+                        position = position_dodge2(width = 0.65), 
+                        size = 0, linewidth = 1, alpha = 1) +
+        geom_pointrange(exp3_param_sum,  # 75% quantiles
+                        mapping = aes(x = Type, y = Median, ymin = lwr_75, ymax = upr_75),
+                        position = position_dodge2(width = 0.65), 
+                        size = 1.5, linewidth = 2, alpha = 0.8) +
         facet_grid(OM~EM, scales = "free_y") +
-        geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
+        geom_hline(yintercept = 0, lty = 2, size = 1) + 
         labs(x = "Parameter", y = "Relative Error") +
         theme_tj() +
         theme(legend.position = "top") +
         scale_x_discrete(guide = guide_axis(angle = 90))  )
 dev.off()  
 
+# Sex ratio estimability
+pdf(here("figs", "Experiment 3", "RE_SexRatio.pdf"))
+# Comparing proportions within variants
+print(ggplot(exp3_param_df %>% filter(Type == "Female Sex Ratio",
+                                      convergence == "Converged",
+                                      EM == "EstSR"),
+             aes(x = Type, y = (Pred - Truth) / Truth)) +
+        geom_violin(width = 0.5) +
+        geom_boxplot(width = 0.1) +
+        facet_wrap(~OM) +
+        geom_hline(yintercept = 0, lty = 2, lwd = 1) +
+        labs(x = "", y = "Relative Error in Initial Sex Ratio") +
+        theme_tj() +
+        theme(legend.position = "top",
+              axis.text.x = element_blank(),
+              axis.ticks.x = element_blank()) +
+        scale_x_discrete(guide = guide_axis(angle = 90))  )
+dev.off()  
 
-### Time Series Summary -----------------------------------------------------
+
+
+ ### Time Series Summary -----------------------------------------------------
 # time series summary
 ts_exp3_sum = exp3_ts_df %>% 
   select(-Convergence) %>%
@@ -738,6 +796,8 @@ ts_exp3_sum = exp3_ts_df %>%
   mutate(RE = (as.numeric(Pred)-Truth)/Truth) %>% 
   group_by(Years, Type, OM, EM) %>% 
   summarize(Median = median(RE),
+            lwr_75 = quantile(RE, 0.125),
+            upr_75 = quantile(RE, 0.875),
             lwr_95 = quantile(RE, 0.025),
             upr_95 = quantile(RE, 0.975))
 
@@ -758,12 +818,18 @@ print(
 dev.off()
 
 # Only plot RE time series for Fixed EM
-pdf(here("figs", 'Experiment 3', "RE_TS_FixEM.pdf"), width = 13, height = 15)
+pdf(here("figs", 'Experiment 3', "RE_TS_FixEM.pdf"), width = 13, height = 11)
 print(
-  ggplot(ts_exp3_sum %>% filter(str_detect(EM, "Fix")), 
-         aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
-    geom_ribbon(alpha = 0.5, fill = "grey4") +
-    geom_point(shape = 21, colour = "black", fill = "white", size = 3, stroke = 1, alpha = 1) +
+  ggplot() +
+    geom_ribbon(ts_exp3_sum %>% filter(str_detect(EM, "Fix")), # 95% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95),
+                alpha = 1, fill = "grey") +
+    geom_ribbon(ts_exp3_sum %>% filter(str_detect(EM, "Fix")), # 75% simulation intervals
+                mapping = aes(x = Years, y = Median, ymin = lwr_75, ymax = upr_75),
+                alpha = 0.35, fill = "grey4") +
+    geom_point(ts_exp3_sum %>% filter(str_detect(EM, "Fix")), 
+               mapping = aes(x = Years, y = Median), shape = 21, colour = "black", 
+               fill = "white", size = 3, stroke = 1, alpha = 1) +
     facet_grid(Type~OM, scales = "free") +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
     labs(x = "Year", y = "Relative Error") +
@@ -774,7 +840,7 @@ dev.off()
 
 
 
-# Coverage ----------------------------------------------------------------
+ # Coverage ----------------------------------------------------------------
 
 # Compute coverage statistics
 coverage_df = exp3_cov_df %>% 
@@ -785,24 +851,14 @@ coverage_df = exp3_cov_df %>%
             unique_rows = length(unique(sim)),# get length of unique simulations
             prop = sum / unique_rows) # get coverage
 
-pdf(here("figs", 'Experiment 3', "Coverage.pdf"), width = 15)
+pdf(here("figs", 'Experiment 3', "Coverage.pdf"), width = 13)
 coverage_df %>%
-  filter(name == "SSB") %>% 
   ggplot(aes(x = year, y = prop, color = EM)) +
-  geom_point(size = 2) +
-  geom_line(size = 1.3) +
-  facet_wrap(~OM, nrow = 1) +
-  labs(x = "Year", y = "Coverage (SSB)") +
-  theme_tj() +
-  theme(legend.position = "top") 
-
-coverage_df %>%
-  filter(name == "Total_Biom") %>% 
-  ggplot(aes(x = year, y = prop, color = EM)) +
-  geom_point(size = 2) +
-  geom_line(size = 1.3) +
-  facet_wrap(~OM, nrow = 1) +
-  labs(x = "Year", y = "Coverage (Total Biomass)") +
+  geom_point(size = 3) +
+  geom_line(size = 1, alpha = 0.75) +
+  geom_hline(yintercept = 0.95, lty = 2) +
+  facet_grid(name~OM) +
+  labs(x = "Year", y = "Coverage") +
   theme_tj() +
   theme(legend.position = "top") 
 dev.off()

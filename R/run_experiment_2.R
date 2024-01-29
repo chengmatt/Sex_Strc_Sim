@@ -36,7 +36,7 @@ om_names = list.files(om_path)
 oms_exp2 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp2", na = "NA")
 ems_exp2 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp2", na = "NA") 
 
-# Run Experiment 1 --------------------------------------------------------
+# Run Experiment 2 --------------------------------------------------------
 for(n_om in 1:nrow(oms_exp2)) {
   
   # Specify the OM scenario folder
@@ -130,7 +130,7 @@ for(n_om in 1:nrow(oms_exp2)) {
       # extract quantities
       quants_df = get_quantities(biologicals = biologicals,
                                  model = model, sim = sim, om_name = om_name,
-                                 em_name = em_name, n_sexes_em = 2)
+                                 em_name = em_name, n_sexes_em = n_sexes_em)
       
       # Output this into a list when we're done
       all_obj_list = list(model, quants_df$ts_df, quants_df$NAA_sr_female_df,

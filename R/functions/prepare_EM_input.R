@@ -83,16 +83,16 @@ prepare_EM_inputs = function(sim,
   data = list()
   parameters = list()
   map = list()
-
-# Controls ----------------------------------------------------------------
+  
+  # Controls ----------------------------------------------------------------
   data$years = 1:(n_years-1)  
   data$ages = 1:n_ages
   data$len_bins = len_bins
   data$n_sexes = n_sexes
   data$n_fish_fleets = n_fish_fleets
   data$n_srv_fleets = n_srv_fleets
-
-# Fishery Data Inputs -----------------------------------------------------
+  
+  # Fishery Data Inputs -----------------------------------------------------
   # Catch quantities
   catch_sd = sqrt(log(catch_cv^2 + 1)) # cv to sd for catch
   data$obs_catch_agg = as.matrix(Total_Catch[-n_years,,sim], dim = c(n_years-1, n_fish_fleets))
@@ -115,8 +115,8 @@ prepare_EM_inputs = function(sim,
                                                                            dim = c(n_years-1, n_ages, n_sexes, n_fish_fleets))
   if(sex_specific == FALSE & n_sexes == 1) data$obs_fish_len_comps = array(apply(Fish_LenComps[-n_years,,,,sim, drop = FALSE], c(1, 2, 4, 5), sum), 
                                                                            dim = c(n_years-1, length(len_bins), n_sexes, n_fish_fleets))
-
-# Survey Data Inputs ------------------------------------------------------
+  
+  # Survey Data Inputs ------------------------------------------------------
   data$obs_srv_index = array(Srv_Index[-n_years,,sim], dim = c(n_years-1, n_srv_fleets))
   data$srv_age_comps_inputN = array(Srv_Neff_Age[-n_years,], dim = c(n_years-1, n_srv_fleets))
   data$srv_len_comps_inputN = array(Srv_Neff_Len[-n_years,], dim = c(n_years-1, n_srv_fleets))
@@ -128,17 +128,17 @@ prepare_EM_inputs = function(sim,
   
   # Sex-aggregated assessment with sex-aggregated comps
   if(sex_specific == FALSE & n_sexes == 1) data$obs_srv_age_comps = array(apply(Srv_AgeComps[-n_years,,,,sim, drop = FALSE], c(1, 2, 4, 5), sum), 
-                                                                           dim = c(n_years-1, n_ages, n_sexes, n_srv_fleets))
+                                                                          dim = c(n_years-1, n_ages, n_sexes, n_srv_fleets))
   if(sex_specific == FALSE & n_sexes == 1) data$obs_srv_len_comps = array(apply(Srv_LenComps[-n_years,,,,sim, drop = FALSE], c(1, 2, 4, 5), sum), 
-                                                                           dim = c(n_years-1, length(len_bins), n_sexes, n_srv_fleets))
-
-# Biological Inputs -------------------------------------------------------
+                                                                          dim = c(n_years-1, length(len_bins), n_sexes, n_srv_fleets))
+  
+  # Biological Inputs -------------------------------------------------------
   data$sexRatio_dat = sexRatio # data sex Ratio
   data$MatAA = as.vector(mat_at_age[,1])
   data$WAA = WAA
   data$age_len_transition = age_len_transition
-
-# Data Indicators ---------------------------------------------------------
+  
+  # Data Indicators ---------------------------------------------------------
   
   # Fishery
   # fishery catch
@@ -156,7 +156,7 @@ prepare_EM_inputs = function(sim,
   # fishery sex ratios
   if(use_fish_sexRatio == TRUE) data$use_fish_sexRatio = matrix(1, ncol = n_fish_fleets, nrow = n_years - 1)
   else data$use_fish_sexRatio = matrix(0, ncol = n_fish_fleets, nrow = n_years - 1)
-
+  
   if(fish_age_prop == "within") data$p_ow_sex_fish_age = 0 # within sexes
   if(fish_len_prop == "within") data$p_ow_sex_fish_len = 0 # within sexes
   if(fish_age_prop == "across") data$p_ow_sex_fish_age = 1 # across sexes
@@ -199,12 +199,11 @@ prepare_EM_inputs = function(sim,
   if(sexRatio_al_or_y == "None") data$sexRatio_al_or_y = 50 # If this is an NA - specify it at a random value
   if(sexRatio_al_or_y == "within_agelen_and_year")  data$sexRatio_al_or_y = 0 # If sex ratios are fit to as within age or len and year 
   if(sexRatio_al_or_y == "within_year_only")  data$sexRatio_al_or_y = 1 # If sex ratios are fit to as within year only
-
-# Parameters --------------------------------------------------------------
-  parameters$logit_init_sexRatio = log(oms$sexRatio[1] / (1 - oms$sexRatio[1])) # at 0.5 right now
+  
+  # Parameters --------------------------------------------------------------
+  parameters$logit_init_sexRatio = 0 # at 0.5 right now
   parameters$ln_M = vector(length = n_sexes)
-  parameters$ln_M[1] = log(M[1]) # female
-  parameters$ln_M[2] = log(0.85) # female
+  for(s in 1:n_sexes) parameters$ln_M[s] = log(M[s])
   if(share_M_sex == TRUE) for(s in 1:n_sexes) parameters$ln_M[s] = mean(log(M[s])) 
   parameters$ln_InitDevs = log(InitDevs[,sim])
   parameters$ln_RecDevs = log(RecDevs[-n_years,sim])
@@ -214,16 +213,16 @@ prepare_EM_inputs = function(sim,
   parameters$ln_q_srv = log(q_Srv) 
   parameters$ln_Fy = matrix(log(Fmort[-n_years,,sim]), ncol = n_fish_fleets)
   if(selex_type == "length") {
-    parameters$ln_fish_selpars = array(log(c(0.6, 62.5)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
-    parameters$ln_srv_selpars = array(log(c(0.8, 52.5)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
-    } # length-based selectivity
+    parameters$ln_fish_selpars = array(log(c(0.4, 60)), dim = c(n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
+    parameters$ln_srv_selpars = array(log(c(0.5, 50)), dim = c(n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
+  } # length-based selectivity
   
   if(selex_type == "age") {
     parameters$ln_fish_selpars = array(log(2), dim = c(n_sexes, n_fish_fleets, 2)) # only for logistic (last dim = number of selex pars)
     parameters$ln_srv_selpars = array(log(2), dim = c(n_sexes, n_srv_fleets, 2))  # only for logistic (last dim = number of selex pars)
   } # age-based selectivity
   
-# Mapping -----------------------------------------------------------------
+  # Mapping -----------------------------------------------------------------
   # fixing steepness
   if(sum(fix_pars %in% c("h")) == 1) {
     map$RecPars <- factor(c(1, NA))
@@ -249,6 +248,6 @@ prepare_EM_inputs = function(sim,
   
   # map out sex ratio parameter if we are not estimating it (if age structured assessment)
   if(est_sexRatio_par == FALSE | n_sexes == 1) map$logit_init_sexRatio = factor(NA)
-
+  
   return(list(data = data, parameters = parameters, map = map))
 } # end function
