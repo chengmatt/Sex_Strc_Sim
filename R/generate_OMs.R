@@ -47,14 +47,19 @@ for(i in 1:nrow(oms_exp1)) { # make sure to change sims to 750
                       sexRatio = c(0.5, 0.5), # keeping sex ratio at 50:50 here
                       growth_control = "chg_males_rel_females",
                       natmort_control = "chg_males_rel_females",
-                      growth_control_fct = oms_exp1$growth_control_fct[i], # holding constant at 15% difference 
-                      natmort_control_fct = oms_exp1$natmort_control_fct[i], # holding constant at 15% difference 
+                      growth_control_fct = oms_exp1$growth_control_fct[i], # holding constant at 17.5% difference 
+                      natmort_control_fct = oms_exp1$natmort_control_fct[i], # holding constant at 17.5% difference 
                       force_grwth_same_yng = TRUE)  # force minimum age to be similar
   
   # Save as RData file - ifelse for sensitivity tests
   save(oms, file = here(om_path, paste(oms_exp1$OM_Name[i], ".RData", sep = "")))
   plot_OMs(oms, path = om_path)
-
+  
+  # plot(oms$SrvAge_Selex[,1,1], ylim = c(0,1))
+  # lines(oms$SrvAge_Selex[,2,1])
+  # lines(oms$FishAge_Selex[,1,1])
+  # lines(oms$FishAge_Selex[,2,1])
+  
 } # end i loop
 
 
@@ -126,8 +131,8 @@ for(i in 1:nrow(oms_exp3)) {
                       sexRatio = sr, 
                       growth_control = "chg_males_rel_females",
                       natmort_control = "chg_males_rel_females",
-                      growth_control_fct = oms_exp3$growth_control_fct[i], # holding constant at 15% difference 
-                      natmort_control_fct = oms_exp3$natmort_control_fct[i], # holding constant at 15% difference 
+                      growth_control_fct = oms_exp3$growth_control_fct[i], # holding constant at 17.5% difference 
+                      natmort_control_fct = oms_exp3$natmort_control_fct[i], # holding constant at 17.5% difference 
                       force_grwth_same_yng = TRUE)  # force minimum age to be similar
   
   # Save as RData file - ifelse for sensitivity tests

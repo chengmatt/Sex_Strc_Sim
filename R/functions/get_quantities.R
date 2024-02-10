@@ -17,9 +17,10 @@ get_quantities = function(biologicals, model, sim, om_name, em_name, n_sexes_em)
 gradient = max(abs(model$sd_rep$gradient.fixed))
 pdHess = model$sd_rep$pdHess
 sd_val = summary(model$sd_rep)
+sd_val = sd_val[!rownames(sd_val) %in% c("Total_Rec", "SSB", "Total_Biom"),] # remove these derived variables
 sd_val = sum(sd_val[,2] >= 100)
 n_nans = sum(is.nan(model$sd_rep$cov.fixed))
-if(gradient <= 0.001 & pdHess == TRUE & n_nans == 0 & sd_val == 0) conv = "Converged"
+if(gradient <= 0.01 & pdHess == TRUE & n_nans == 0 & sd_val == 0) conv = "Converged"
 else conv = "Not Converged"
 
 # Put into dataframe to output
@@ -147,10 +148,13 @@ fmsy_df = data.frame(Pred = fmsy_est, Truth = fmsy, Type = "Fmsy", Convergence =
 # Get bmsy
 SBPR_MSY_est = get_SBPR(M = M_df$Pred[1], selex = selex_all[,1], Trial_F = fmsy_est, # first get sbpr msy
                         waa = waa_ref_use[,1], mat_at_age = mat_at_age[,1], ages = age_bins)$SBPR_sum
+
 # Get req
 Req_est = get_Req(SBPR_Fmsy = SBPR_MSY_est, waa = waa_ref_use[,1], mat_at_age = mat_at_age[,1], ages = age_bins)
 bmsy_est = SBPR_MSY_est * Req_est # get bmsy here
 bmsy_df = data.frame(Pred = bmsy_est, Truth = bmsy, Type = "Bmsy", Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name)
+sbprmsy_df = data.frame(Pred = SBPR_MSY_est, Truth = SBPR_MSY, Type = "SBPR_Bmsy", Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name)
+req_df = data.frame(Pred = Req_est, Truth = Req, Type = "Req", Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name)
 
 # Get initial sex ratio information
 init_sr_est = model$rep$init_sexRatios
@@ -173,7 +177,7 @@ hcr_catch = get_proj_catch(fmsy_val = fmsy_est,
 hcr_catch_df = data.frame(Pred = hcr_catch, Truth = HCR_proj_catch[sim], Type = c("Tier 3 HCR Catch"), 
                         Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name)
 
-par_df = rbind(init_sr_df, bmsy_df, fmsy_df, r0_df, M_df, hcr_catch_df)
+par_df = rbind(init_sr_df, bmsy_df, sbprmsy_df, req_df, fmsy_df, r0_df, M_df, hcr_catch_df)
 
 
 # Get SSB Coverage --------------------------------------------------------
@@ -184,8 +188,8 @@ coverage_df = data.frame(val = model$sd_rep$value, sd = model$sd_rep$sd,
            upr_95 = (model$sd_rep$value + 1.96 * model$sd_rep$sd),
            name = names(model$sd_rep$value),
            Convergence = conv_df$convergence,
-           t = c(total_ssb_df$Truth, total_biomass_df$Truth),
-           year = 1:(length(model$sd_rep$value)/2),
+           t = c(total_ssb_df$Truth, total_biomass_df$Truth, total_rec_df$Truth),
+           year = 1:(length(model$sd_rep$value)/3),
            sim = sim, EM = em_name, OM = om_name)
 
 # calculate coverage here

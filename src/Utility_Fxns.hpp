@@ -158,3 +158,5 @@ Type Get_Req(Type SBPR_Fmsy, // value for SBPR fmsy
   return Req;
 }
 
+//  Function to getting square
+template <class Type> Type square(Type x){return x*x;}

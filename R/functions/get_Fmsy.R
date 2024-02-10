@@ -30,7 +30,7 @@ get_SBPR = function(M, selex, Trial_F, waa, mat_at_age, ages) {
       Na[a] = Na[a-1] * Srva[length(ages)]
       SBPR[a] = Na[a] * waa[length(ages)] * mat_at_age[length(ages)]
     } else{
-      Na[a] = Na[a-1] * Srva[a]
+      Na[a] = Na[a-1] * Srva[a] 
       SBPR[a] = Na[a] * waa[a] * mat_at_age[a]
     } # end if else
   } # end a loop

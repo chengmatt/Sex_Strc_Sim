@@ -99,7 +99,7 @@ for(n_om in 1:nrow(oms_exp1)) {
                                     agg_srv_age = FALSE, 
                                     agg_fish_len = FALSE,
                                     agg_srv_len = FALSE,
-                                    catch_cv = c(0.01),
+                                    catch_cv = c(0.025), 
                                     use_fish_index = FALSE,
                                     # Biologicals
                                     WAA = biologicals$waa_sex,

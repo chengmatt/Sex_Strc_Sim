@@ -60,11 +60,12 @@ for(n_om in 1:nrow(oms_exp2)) {
     srv_len_prop_em = ems_exp2$srv_len_prop[n_em] # whether to do proportions across or within
     sexRatio_al_or_y_em = ems_exp2$sexRatio_al_or_y[n_em] # if we want to fit sex ratio as within year only or both
     selex_type_em = ems_exp2$selex_type[n_em] # selectivity type (age or length based)
+    agg_age = ems_exp2$agg_age[n_em] # whether to aggregate age comps
     em_name = ems_exp2$EM_Name[n_em] # em name
     
 # Run Simulations here ----------------------------------------------------
 
-    sim_models <- foreach(sim = 1:n_sims, .packages = c("TMB", "here", "tidyverse")) %dopar% {
+    sim_models <- foreach(sim = 1:100, .packages = c("TMB", "here", "tidyverse")) %dopar% {
 
       TMB::compile("Sex_Str_EM.cpp")
       # dyn.unload(dynlib('Sex_Str_EM'))
@@ -113,11 +114,11 @@ for(n_om in 1:nrow(oms_exp2)) {
                                     est_sexRatio_par = FALSE,
                                     sexRatio = sexRatio_em,
                                     # Aggregating comps
-                                    agg_fish_age = FALSE,
-                                    agg_srv_age = FALSE, 
+                                    agg_fish_age = agg_age,
+                                    agg_srv_age = agg_age, 
                                     agg_fish_len = FALSE,
                                     agg_srv_len = FALSE,
-                                    catch_cv = c(0.01), 
+                                    catch_cv = c(0.025), 
                                     use_fish_index = FALSE,
                                     # Parameter fixing
                                     fix_pars = c("h", "ln_sigmaRec", "ln_q_fish"))

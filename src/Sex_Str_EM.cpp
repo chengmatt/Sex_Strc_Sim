@@ -98,7 +98,8 @@ Type objective_function<Type>::operator() ()
   PARAMETER_VECTOR(ln_q_srv); // Vector of survey catchability coefficients; n_srv_fleets
   
   // Selectivity and Removal Parameters -----
-  PARAMETER_MATRIX(ln_Fy); // Fishing Mortality Parameters; n_years x n_fish_fleets
+  PARAMETER_VECTOR(ln_meanF); // Fishing Mortality mean; n_fish_fleets
+  PARAMETER_MATRIX(ln_Fy); // Fishing Mortality Dev Parameters; n_years x n_fish_fleets
   PARAMETER_ARRAY(ln_fish_selpars); // Fishery Selectivity Parameters; n_sexes x n_fish_fleets x n_fish_selpars (2; ln_a50 and ln_k)
   PARAMETER_ARRAY(ln_srv_selpars); // Fishery Selectivity Parameters; n_sexes x n_fish_fleets x n_srv_selpars (2; ln_a50 and ln_k)
   
@@ -181,6 +182,7 @@ Type objective_function<Type>::operator() ()
   array<Type> sexRatio_srvlen_nLL(n_years, n_ages, n_srv_fleets); // Sex-Ratio likelihood penalty survey obs lens
   
   Type rec_nLL = 0; // Recruitment likelihood penalty 
+  Type Fpen_nLL = 0; // Fishing mortality deviations penalty
   Type jnLL = 0; // Joint Negative log Likelihood
   
   // Set containers to zeros
@@ -245,7 +247,7 @@ Type objective_function<Type>::operator() ()
           } // age-based selectivity
           
           // Calculate fishing mortality-at-age
-          FAA(y,a,s,f) = exp(ln_Fy(y,f)) * Fish_Slx(y,a,s,f);
+          FAA(y,a,s,f) = (exp(ln_Fy(y,f))) * Fish_Slx(y,a,s,f);
           Total_FAA(y,a,s) += FAA(y,a,s,f);
           
         } // end fish fleet loop
@@ -744,11 +746,21 @@ Type objective_function<Type>::operator() ()
   // Penalty for Population Initialization
   for(int a = 0; a < ln_InitDevs.size(); a++) {
     rec_nLL -= dnorm(ln_InitDevs(a), -sigmaRec2/Type(2), sigmaRec, true);
-  }        
+  } // end a        
+  
   // Penalty for recruitment deviates
   for(int a = 0; a < ln_RecDevs.size(); a++) {
     rec_nLL -= dnorm(ln_RecDevs(a), -sigmaRec2/Type(2), sigmaRec, true);
-  } 
+  } // end a
+  
+  // Fishing mortality penalty (high penalty to let if "freely" estimate),
+  // such that we don't penalize it too much to zero and have negative bias in F
+  Type sigmaF = 10; // f penalty
+  for(int y = 0; y < n_years; y ++) {
+    for(int f = 0; f < n_fish_fleets; f++) {
+      Fpen_nLL -= dnorm(ln_Fy(y,f), ln_meanF(f) - Type(pow(sigmaF,2)/2), sigmaF, true);
+    } // end f
+  } // end y
   
   // Calculate likelihoods for sex-ratios ages (fishery and survey)
   if(n_sexes > 1) {
@@ -889,7 +901,7 @@ Type objective_function<Type>::operator() ()
   } // if more than 1 sex
   
   // Compute joint likelihood
-  jnLL = rec_nLL + sum(catch_nLL) + sum(fish_index_nLL) + sum(fish_age_comp_nLL) +
+  jnLL = rec_nLL + Fpen_nLL + sum(catch_nLL) + sum(fish_index_nLL) + sum(fish_age_comp_nLL) +
     sum(fish_len_comp_nLL) + sum(srv_index_nLL) + sum(srv_age_comp_nLL) +
     sum(srv_len_comp_nLL) + sum(sexRatio_fishage_nLL) + sum(sexRatio_srvage_nLL) +
     sum(sexRatio_fishlen_nLL) + sum(sexRatio_srvlen_nLL);
@@ -936,6 +948,7 @@ Type objective_function<Type>::operator() ()
   
   ADREPORT(SSB);
   ADREPORT(Total_Biom);
+  ADREPORT(Total_Rec);
   
   return(jnLL);
 } // end objective function
