@@ -12,7 +12,7 @@ library(doSNOW)
 library(parallel)
 
 # Compile
-# setwd("src")
+setwd("src")
 TMB::compile("Sex_Str_EM.cpp")
 dyn.load(dynlib('Sex_Str_EM'))
 
@@ -65,7 +65,7 @@ for(n_om in 1:nrow(oms_exp2)) {
     
 # Run Simulations here ----------------------------------------------------
 
-    sim_models <- foreach(sim = 1:100, .packages = c("TMB", "here", "tidyverse")) %dopar% {
+    sim_models <- foreach(sim = 1:n_sims, .packages = c("TMB", "here", "tidyverse")) %dopar% {
 
       TMB::compile("Sex_Str_EM.cpp")
       # dyn.unload(dynlib('Sex_Str_EM'))
@@ -122,7 +122,7 @@ for(n_om in 1:nrow(oms_exp2)) {
                                     use_fish_index = FALSE,
                                     # Parameter fixing
                                     fix_pars = c("h", "ln_sigmaRec", "ln_q_fish"))
-
+      
       # run model here
       model = run_model(data = em_inputs$data, 
                         parameters = em_inputs$parameters, 
