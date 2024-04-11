@@ -308,6 +308,8 @@ exp2_param_df = data.table::fread(here("output", "Experiment_2_Param.csv")) %>% 
 exp2_ts_df = data.table::fread(here("output", "Experiment_2_TimeSeries.csv"))  %>% filter(!str_detect(OM, "Growth_M"))
 exp2_conv_df = data.table::fread(here("output", "Experiment_2_Convergence.csv")) %>% filter(!str_detect(OM, "Growth_M"))
 exp2_cov_df = data.table::fread(here("output", "Experiment_2_Coverage.csv")) %>% filter(!str_detect(OM, "Growth_M"))
+exp2_naa_df = data.table::fread(here("output", "Experiment_2_NAA.csv")) %>% filter(!str_detect(OM, "Growth_M"))
+exp2_ssbcv_df = data.table::fread(here("output", "Experiment_2_SSBCV.csv")) %>% filter(!str_detect(OM, "Growth_M"))
 
 ### Convergence Summary -----------------------------------------------------
 
@@ -668,6 +670,68 @@ coverage_df %>%
   labs(x = "Year", y = "Coverage (SSB)") +
   theme_tj() +
   theme(legend.position = "top") 
+dev.off()
+
+
+# Numbers at Age ----------------------------------------------------------
+
+# Left join convergence info
+exp2_naa_df <- exp2_naa_df %>% left_join(exp2_conv_df, by = c("OM", "EM", "Sim" = "sim"))
+
+# Summarize to get relative error
+exp2_naa_sum <- exp2_naa_df %>% mutate(RE = (Pred - Truth)/Truth) %>% 
+  filter(convergence == "Converged") %>% 
+  group_by(Year, Age, Sex, OM, EM) %>% 
+  summarize(median = median(RE),
+            lwr_95 = quantile(RE, 0.025),
+            upr_95 = quantile(RE, 0.975))
+
+# Get unique EMs here
+unique_ems <- unique(exp2_naa_sum$EM)
+
+# Plot bias in NAA
+pdf(here("figs", 'Experiment 2', "NAA_Bias.pdf"), width = 10, height = 13)
+for(n_em in 1:length(unique_ems)) {
+print(
+  ggplot(exp2_naa_sum %>% filter(EM == unique_ems[n_em],
+                                 Age %in% seq(1,25, 5)), 
+         aes(x = Year, y = median, ymin = lwr_95, ymax = upr_95, color = factor(Sex), fill = factor(Sex))) +
+    geom_line() +
+    geom_hline(yintercept = 0, lty = 2) +
+    geom_ribbon(alpha = 0.3, color = NA) +
+    labs(x = "Year", y = "Relative Error", title = unique_ems[n_em]) +
+    facet_grid(OM~Age, scales = "free") +
+    theme_tj()
+)
+} # end n_em
+dev.off()
+
+
+# CV difference in SSB for cases w/o sex-structure ---------------------------------------------------------------
+exp2_ssbcv_df <- data.table::fread(here("output", "Experiment_2_SSBCV.csv")) %>% filter(!str_detect(OM, "Growth_M"))
+# Left join convergence info
+exp2_ssbcv_df <- exp2_ssbcv_df %>% left_join(exp2_conv_df, by = c("OM", "EM", "Sim" = "sim"))
+
+# summarize CV
+exp2_ssbcv_sum <- exp2_ssbcv_df %>% 
+  filter(convergence == "Converged") %>% 
+  group_by(Year, OM, EM) %>% 
+  summarize(median = median(CV),
+            lwr_95 = quantile(CV, 0.025),
+            upr_95 = quantile(CV, 0.975)) 
+
+
+pdf(here("figs", 'Experiment 2', "SSBCV.pdf"), width = 10, height = 10)
+ggplot(exp2_ssbcv_sum %>% 
+         filter(!str_detect(EM, "AgeAgg")), 
+       aes(x = Year, y = median, ymin = lwr_95, ymax = upr_95, color = EM, fill = EM)) +
+  geom_line(size = 2) +
+  geom_ribbon(alpha = 0.25, color = NA) +
+  ggthemes::scale_color_colorblind() +
+  ggthemes::scale_fill_colorblind() +
+  labs(x = "Year", y = "Median CV in SSB") +
+  facet_grid(OM~EM, scales = "free") +
+  theme_tj()
 dev.off()
 
 

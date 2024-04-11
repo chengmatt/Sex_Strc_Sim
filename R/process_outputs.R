@@ -189,6 +189,104 @@ data.table::fwrite(data.table::rbindlist(conv_all_list), file = here("output", "
 data.table::fwrite(data.table::rbindlist(coverage_all_list), file = here("output", "Experiment_2_Coverage.csv"))
 
 
+# Experiment 2 (Numbers at Age and SSB CV) ------------------------------------
+
+### Numbers at Age ----------------------------------------------------------
+om_list <- list()
+for(i in 1:length(exp2_oms)) {
+  
+  # Go into a given OM folder
+  om_folder = here(exp2_path, exp2_oms[i])
+  em_folders = list.files(om_folder) # list out em folders
+  em_folders = em_folders[!str_detect(em_folders, "RData|pdf")] # remove these
+  load(here(om_folder, paste(exp2_oms[i], ".RData", sep = ""))) # load in OMs
+  em_list <- list()
+  
+  for(n_em in 1:length(em_folders)) {
+    
+    em_path <- here(om_folder, em_folders[n_em]) # list out ems
+    load(here(em_path, paste(em_folders[n_em], ".RData", sep = ""))) # load in EMs
+    
+    # if age-structured only models, then append dataframe for females and calculate it assuming 0.5
+    if(em_folders[n_em] %in% c("Age (AgeSel)", "Age (LenSel)")) {
+      # Get NAA from simulations
+      naa_em <- lapply(model_list, function(x) reshape2::melt(x$rep$NAA)) # EM NAA
+      naa_em_df <- data.table::rbindlist(naa_em, idcol = "Var4") # Turn estimated NAA into dataframes 
+      naa_em_df$value <- naa_em_df$value * 0.5 # apportion half of these to females
+      naa_em_df <- rbind(naa_em_df, naa_em_df %>% mutate(Var3 = 2)) # now rbind! 
+    } else{ # if these are not age-structured models
+      # Get NAA from simulations
+      naa_em <- lapply(model_list, function(x) reshape2::melt(x$rep$NAA)) # EM NAA
+      naa_em_df <- data.table::rbindlist(naa_em, idcol = "Var4") # Turn estimated NAA into dataframes 
+    } # end else
+    
+    # Residual munging
+    naa_om <- reshape2::melt(oms$NAA[-dim(oms$NAA)[1],,,]) # OM NAA (remove last year)
+    naa_em_df <- naa_em_df %>% mutate(EM = em_folders[n_em], OM = exp2_oms[i]) %>% rename(Pred = value)
+    naa_em_df <- naa_em_df %>% left_join(naa_om %>% rename(Truth = value), by = c('Var4', "Var3", "Var2", "Var1"))
+    naa_em_df <- naa_em_df %>% rename(Year = Var1, Age = Var2, Sex = Var3, Sim = Var4) # rename variables
+    em_list[[n_em]] <- naa_em_df
+  } # end n_em
+  
+  em_df <- data.table::rbindlist(em_list) # output as dataframe here
+  om_list[[i]] <- em_df # input into om list
+  print(i)
+  
+} # end i loop
+
+# Turn OM list into dataframe
+om_df <- data.table::rbindlist(om_list)
+data.table::fwrite(om_df, file = here("output", "Experiment_2_NAA.csv"))
+
+
+### CV in SSB ---------------------------------------------------------------
+om_list <- list()
+for(i in 1:length(exp2_oms)) {
+  
+  # Go into a given OM folder
+  om_folder = here(exp2_path, exp2_oms[i])
+  em_folders = list.files(om_folder) # list out em folders
+  em_folders = em_folders[!str_detect(em_folders, "RData|pdf")] # remove these
+  load(here(om_folder, paste(exp2_oms[i], ".RData", sep = ""))) # load in OMs
+  em_list <- list()
+  
+  for(n_em in 1:length(em_folders)) {
+    
+    em_path <- here(om_folder, em_folders[n_em]) # list out ems
+    load(here(em_path, paste(em_folders[n_em], ".RData", sep = ""))) # load in EMs
+
+    # Get ssb estimates
+    ssb_est <- lapply(model_list, function(x) {
+      est <- x$sd_rep$value[names(x$sd_rep$value) == "SSB"]
+      data.frame(Year = 1:length(est), Estimate = est)}) # EM SSB
+    
+    # get SE
+    ssb_se <- lapply(model_list, function(x) {
+      se <- x$sd_rep$sd[names(x$sd_rep$value) == "SSB"] 
+      data.frame(Year = 1:length(se), SE = se)
+    }) # EM SSB SE
+    
+    # Output to dataframe
+    ssb_df <- data.table::rbindlist(ssb_est, idcol = "Sim")
+    se_df <- data.table::rbindlist(ssb_se, idcol = "Sim")
+    
+    # Residual munging and naming
+    ssb_em_df <- ssb_df %>% left_join(se_df, by = c("Year", "Sim")) %>% 
+      mutate(EM = em_folders[n_em], OM = exp2_oms[i], CV = SE/Estimate)
+
+    em_list[[n_em]] <- ssb_em_df
+  } # end n_em
+  
+  em_df <- data.table::rbindlist(em_list) # output as dataframe here
+  om_list[[i]] <- em_df # input into om list
+  print(i)
+  
+} # end i loop
+
+# Turn OM list into dataframe
+om_df <- data.table::rbindlist(om_list)
+data.table::fwrite(om_df, file = here("output", "Experiment_2_SSBCV.csv"))
+
 # Exp 3 -------------------------------------------------------------------
 
 exp3_path = here("output", "Experiment 3")
