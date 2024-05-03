@@ -39,8 +39,8 @@ ts_exp1_sum <- exp1_ts_df %>%
             upr_75 = quantile(RE, 0.875),
             lwr_95 = quantile(RE, 0.025),
             upr_95 = quantile(RE, 0.975)) %>% 
-  filter(str_detect(OM, "_50")) %>%  # ISS summed for both sexes = 50
-  mutate(OM = str_remove(OM, "_50"))
+  filter(str_detect(OM, "_150")) %>%  # ISS summed for both sexes = 50
+  mutate(OM = str_remove(OM, "_150"))
 
 # summarize re
 exp1_param_sum <- exp1_param_df %>% 
@@ -52,9 +52,9 @@ exp1_param_sum <- exp1_param_df %>%
             upr_75 = quantile(RE, 0.875),
             lwr_95 = quantile(RE, 0.025),
             upr_95 = quantile(RE, 0.975)) %>% 
-  filter(str_detect(OM, "_50"),
+  filter(str_detect(OM, "_150"),
          Type %in% c("Bmsy", "M_F", "M_M", "R0", "Tier 3 HCR Catch")) %>%  # ISS summed for both sexes = 50
-  mutate(OM = str_remove(OM, "_50"),
+  mutate(OM = str_remove(OM, "_150"),
          Type = case_when(
          Type == "Bmsy" ~ "BMSY",
          Type == "M_F" ~ "F NatMort",
@@ -103,7 +103,7 @@ exp1_param_plot <- ggplot() +
   scale_x_discrete(guide = guide_axis(angle = 90))
 
 pdf(here("figs", "ms_figs", "Fig2_Exp1_AcrWith.pdf"), width = 10, height = 10)
-exp1_ts_re/exp1_param_plot + plot_annotation(tag_levels = 'A') & 
+exp1_ts_plot/exp1_param_plot + plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 23, face = "bold"))
 dev.off()
 
@@ -335,3 +335,4 @@ pdf(here("figs", "ms_figs", "Fig6_Exp2_FSel_Age.pdf"), width = 13, height = 10)
 (exp2_fplot & exp2_selex_plot) + plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 23, face = "bold"))
 dev.off()
+

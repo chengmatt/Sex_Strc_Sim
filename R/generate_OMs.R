@@ -76,10 +76,10 @@ for(i in 1:nrow(oms_exp2)) {
   
   # simulate data
   oms = simulate_data(spreadsheet_path = here("input", "Sablefish_Inputs.xlsx"),
-                      Fish_Neff_Age = 50, # 50*2
-                      Fish_Neff_Len = 50,
-                      Srv_Neff_Age = 50,
-                      Srv_Neff_Len = 50,
+                      Fish_Neff_Age = 75, # 75*2
+                      Fish_Neff_Len = 75,
+                      Srv_Neff_Age = 75,
+                      Srv_Neff_Len = 75,
                       F_pattern = "Contrast",
                       comp_across_sex = "within",
                       selex_type = "length",
@@ -117,10 +117,10 @@ for(i in 1:nrow(oms_exp3)) {
   
   # simulate data
   oms = simulate_data(spreadsheet_path = here("input", "Sablefish_Inputs.xlsx"),
-                      Fish_Neff_Age = 50, # 50 * 2
-                      Fish_Neff_Len = 50,
-                      Srv_Neff_Age = 50,
-                      Srv_Neff_Len = 50,
+                      Fish_Neff_Age = 75, # z * 2
+                      Fish_Neff_Len = 75,
+                      Srv_Neff_Age = 75,
+                      Srv_Neff_Len = 75,
                       F_pattern = "Contrast",
                       comp_across_sex = "within",
                       selex_type = "length",

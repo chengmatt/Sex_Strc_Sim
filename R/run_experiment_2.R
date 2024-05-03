@@ -12,7 +12,7 @@ library(doSNOW)
 library(parallel)
 
 # Compile
-setwd("src")
+# setwd("src")
 TMB::compile("Sex_Str_EM.cpp")
 dyn.load(dynlib('Sex_Str_EM'))
 

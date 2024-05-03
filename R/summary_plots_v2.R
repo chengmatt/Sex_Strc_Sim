@@ -532,6 +532,69 @@ ggplot(param_correlations, aes(x = M_F, y = Fmsy, color = log(Bmsy))) +
 dev.off()
 
 ### Time Series Summary -----------------------------------------------------
+
+fmsy_df <- exp2_param_df %>% filter(Type == "Fmsy")
+bmsy_df <- exp2_param_df %>% filter(Type == "Bmsy")
+
+ssb_df <- exp2_ts_df %>% filter(Convergence == "Converged", Type == "Spawning Stock Biomass") %>% 
+  filter(Convergence == "Converged") %>%
+  filter(!str_detect(EM, "AgeSel|AgeAgg")) %>% 
+  left_join(bmsy_df, by = c("sim", "EM", "OM")) %>% 
+  mutate(Pred_Rel_B = Pred.x / Pred.y,
+         Truth_Rel_B = Truth.x/Truth.y) %>% 
+  group_by(OM, EM, Years) %>% 
+  summarize(median_Pred = median(Pred_Rel_B))
+
+f_df <- exp2_ts_df %>% filter(Convergence == "Converged", Type == "Total Fishing Mortality") %>% 
+  filter(!str_detect(EM, "AgeSel|AgeAgg")) %>% 
+  filter(Convergence == "Converged") %>%
+  left_join(fmsy_df, by = c("sim", "EM", "OM")) %>% 
+  mutate(Pred_Rel_B = Pred.x / Pred.y,
+         Truth_Rel_B = Truth.x/Truth.y) %>% 
+  group_by(OM, EM, Years) %>% 
+  summarize(median_Pred_F = median(Pred_Rel_B)) 
+
+traj_df <- ssb_df %>% 
+  left_join(f_df, by = c("OM", "EM", "Years")) 
+  # mutate(RE_B = )
+
+ssb_df <- exp2_ts_df %>% filter(Convergence == "Converged", Type == "Spawning Stock Biomass") %>% 
+  filter(!str_detect(EM, "AgeSel|AgeAgg"),
+         EM == "Age (LenSel)") %>% 
+  left_join(bmsy_df, by = c("sim", "EM", "OM")) %>% 
+  mutate(Pred_Rel_B = Pred.x / Pred.y,
+         Truth_Rel_B = Truth.x/Truth.y) %>% 
+  group_by(OM, Years) %>% 
+  summarize(median_Truth = median(Truth_Rel_B))
+
+f_df <- exp2_ts_df %>% filter(Convergence == "Converged", Type == "Total Fishing Mortality") %>% 
+  filter(!str_detect(EM, "AgeSel|AgeAgg"),
+         EM == "Age (LenSel)") %>% 
+  left_join(fmsy_df, by = c("sim", "EM", "OM")) %>% 
+  mutate(Pred_Rel_B = Pred.x / Pred.y,
+         Truth_Rel_B = Truth.x/Truth.y) %>% 
+  group_by(OM, Years) %>% 
+  summarize(median_Truth_F = median(Truth_Rel_B)) 
+
+traj_OM_df <- ssb_df %>% 
+  left_join(f_df, by = c("OM", "Years")) 
+
+scale_color_colorblind7 = function(.ColorList = c(2:4,6:8), ...){
+  scale_color_discrete(..., type = ggthemes::colorblind_pal()(8)[.ColorList])
+}
+ggplot() +
+  annotate(geom = "rect", xmin = -Inf, xmax = 1, ymin = -Inf, ymax = 1, fill = "yellow", alpha = 0.5) +
+  annotate(geom = "rect", xmin = -Inf, xmax = 1, ymin = 1, ymax = Inf, fill = "red", alpha = 0.5) +
+  annotate(geom = "rect", xmin = 1, xmax = Inf, ymin = -Inf, ymax = 1, fill = "green", alpha = 0.5) +
+  annotate(geom = "rect", xmin = 1, xmax = Inf, ymin = 1, ymax = Inf, fill = "yellow", alpha = 0.5) +
+  geom_path(traj_df, mapping = aes(x = median_Pred, y = median_Pred_F, color = EM), arrow = arrow(), size = 1.3) +
+  geom_path(traj_OM_df, mapping = aes(x = median_Truth, y = median_Truth_F), arrow = arrow(), lty = 2, size = 1.5) +
+  facet_wrap(~OM) +
+  scale_color_colorblind7() +
+  coord_cartesian(ylim = c(0,NA), xlim = c(0,2)) +
+  theme_classic()
+
+
 ###### Relative error all EMs --------------------------------------------------
 # time series summary in relative error
 ts_exp2_sum = exp2_ts_df %>% 
@@ -721,7 +784,7 @@ exp2_ssbcv_sum <- exp2_ssbcv_df %>%
             upr_95 = quantile(CV, 0.975)) 
 
 
-pdf(here("figs", 'Experiment 2', "SSBCV.pdf"), width = 10, height = 10)
+pdf(here("figs", 'Experiment 2', "SSBCV.pdf"), width = 20, height = 10)
 ggplot(exp2_ssbcv_sum %>% 
          filter(!str_detect(EM, "AgeAgg")), 
        aes(x = Year, y = median, ymin = lwr_95, ymax = upr_95, color = EM, fill = EM)) +
