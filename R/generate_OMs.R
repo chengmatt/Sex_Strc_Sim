@@ -28,8 +28,8 @@ for(i in 1:nrow(oms_exp1)) { # make sure to change sims to 750
   dir.create(om_path)
   
   # Get specified effective sample size (constant for survey and fishery)
-  Neff = oms_exp1$Neff[i] 
-  comp_across_sex = oms_exp1$comp_across_sex[i] # composition parameterization
+  Neff <- oms_exp1$Neff[i] 
+  comp_across_sex <- oms_exp1$comp_across_sex[i] # composition parameterization
   
   # simulate data
   oms = simulate_data(spreadsheet_path = here("input", "Sablefish_Inputs.xlsx"),
@@ -55,11 +55,6 @@ for(i in 1:nrow(oms_exp1)) { # make sure to change sims to 750
   save(oms, file = here(om_path, paste(oms_exp1$OM_Name[i], ".RData", sep = "")))
   plot_OMs(oms, path = om_path)
   
-  # plot(oms$SrvAge_Selex[,1,1], ylim = c(0,1))
-  # lines(oms$SrvAge_Selex[,2,1])
-  # lines(oms$FishAge_Selex[,1,1])
-  # lines(oms$FishAge_Selex[,2,1])
-  
 } # end i loop
 
 
@@ -76,12 +71,12 @@ for(i in 1:nrow(oms_exp2)) {
   
   # simulate data
   oms = simulate_data(spreadsheet_path = here("input", "Sablefish_Inputs.xlsx"),
-                      Fish_Neff_Age = 75, # 75*2
-                      Fish_Neff_Len = 75,
-                      Srv_Neff_Age = 75,
-                      Srv_Neff_Len = 75,
+                      Fish_Neff_Age = 50, # 50*2
+                      Fish_Neff_Len = 50,
+                      Srv_Neff_Age = 50,
+                      Srv_Neff_Len = 50,
                       F_pattern = "Contrast",
-                      comp_across_sex = "within",
+                      comp_across_sex = "across",
                       selex_type = "length",
                       q_Fish = 0.025,
                       cv_Fish_Index = 0.25,
@@ -117,12 +112,12 @@ for(i in 1:nrow(oms_exp3)) {
   
   # simulate data
   oms = simulate_data(spreadsheet_path = here("input", "Sablefish_Inputs.xlsx"),
-                      Fish_Neff_Age = 75, # z * 2
-                      Fish_Neff_Len = 75,
-                      Srv_Neff_Age = 75,
-                      Srv_Neff_Len = 75,
+                      Fish_Neff_Age = 50, # 50 * 2
+                      Fish_Neff_Len = 50,
+                      Srv_Neff_Age = 50,
+                      Srv_Neff_Len = 50,
                       F_pattern = "Contrast",
-                      comp_across_sex = "within",
+                      comp_across_sex = "across",
                       selex_type = "length",
                       q_Fish = 0.025,
                       cv_Fish_Index = 0.25,

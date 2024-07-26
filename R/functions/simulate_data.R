@@ -15,6 +15,7 @@ simulate_data = function(spreadsheet_path,
                          q_Srv = 0.05,
                          selex_type,
                          cv_Srv_Index = 0.25,
+                         catch_cv = 0.025,
                          growth_control = NA,
                          natmort_control = NA,
                          growth_control_fct = 1,
@@ -290,11 +291,9 @@ simulate_data = function(spreadsheet_path,
         # Sample Fishery Index with lognormal error
         Fish_Index[y-1,f,sim] = q_Fish[f] * sum(FishAge_Selex[,,f] * NAA[y-1,,,sim] * waa) * 
           exp(rnorm(1, -Fish_Index_sd^2/2, Fish_Index_sd))
-        
-        # Get Total Catch
-        # catch_sd =  sqrt(log(1e-3 + 1)) # turn cv to sd
-        Total_Catch[y-1,f,sim] = sum(Total_Catch_Sex[y-1,,f,sim]) 
-                                 # exp(rnorm(1, -catch_sd^2/2, sd = catch_sd)) # lognormal multiplicative error
+
+        # Sum up sex specification catches and then add error
+        Total_Catch[y-1,f,sim] = sum(Total_Catch_Sex[y-1,,f,sim])
       } # end fish fleet loop
       
       # Observation Model (Survey) ----------------------------------------------
@@ -392,7 +391,7 @@ simulate_data = function(spreadsheet_path,
       } # get HCR catch
       
     } # end year loop
-
+    
     print(sim)
   } # end sim loop
   

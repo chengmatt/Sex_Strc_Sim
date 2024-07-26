@@ -39,7 +39,6 @@
 #'
 #' @examples
 prepare_EM_inputs = function(sim,
-                             catch_cv,
                              WAA,
                              sexRatio,
                              n_sexes,
@@ -94,12 +93,8 @@ prepare_EM_inputs = function(sim,
   
   # Fishery Data Inputs -----------------------------------------------------
   # Catch quantities
-  catch_sd = sqrt(log(catch_cv^2 + 1)) # cv to sd for catch
   data$obs_catch_agg = as.matrix(Total_Catch[-n_years,,sim], dim = c(n_years-1, n_fish_fleets))
   data$obs_catch_sexsp = array(Total_Catch_Sex[-n_years,,,sim], dim = c(n_years-1, n_sexes, n_fish_fleets))
-  # Add random variability corresponding to input catch CV here
-  data$obs_catch_agg = data$obs_catch_agg * exp(rnorm(prod(dim(data$obs_catch_agg)), -catch_sd^2/2, catch_sd))
-  data$obs_catch_sexsp = data$obs_catch_sexsp * exp(rnorm(prod(dim(data$obs_catch_sexsp)), -catch_sd^2/2, catch_sd))
   data$obs_fish_index = array(Fish_Index[-n_years,,sim], dim = c(n_years-1, n_fish_fleets))
   data$fish_age_comps_inputN = array(Fish_Neff_Age[-n_years,], dim = c(n_years-1, n_fish_fleets))
   data$fish_len_comps_inputN = array(Fish_Neff_Len[-n_years,], dim = c(n_years-1, n_fish_fleets))

@@ -117,6 +117,12 @@ for(i in 1:length(experiment_1_files)) {
 
 } # end i loop
 
+waa_all %>% 
+  filter(OM == "Across_100") %>% 
+  mutate(Sex = ifelse(Sex == 1, "Female", 'Male')) %>% 
+  pivot_wider(names_from = "Sex", values_from = "Value") %>% 
+  mutate(Female/Male) %>% view()
+
 
 # Plot! -------------------------------------------------------------------
 
@@ -151,7 +157,7 @@ catch_plot = ggplot(catch_sex_all_sum %>%
            ymin = lwr_95, ymax = upr_95)) +
   geom_line(size = 1.5) +
   geom_ribbon(alpha = 0.35, color = NA) +
-  labs(x = "Years", y = "", color = "Sex", fill = "Sex", title = "Catch") +
+  labs(x = "Year", y = "", color = "Sex", fill = "Sex", title = "Catch") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -167,7 +173,7 @@ ssb_sum = ssbs_all %>%
                     aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
   geom_line(size = 1.5) +
   geom_ribbon(alpha = 0.35, color = NA) +
-  labs(x = "Years", y = "", color = "Sex", fill = "Sex", title = "Spawning Stock Biomass") +
+  labs(x = "Year", y = "", color = "Sex", fill = "Sex", title = "Spawning Stock Biomass") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5)))
 
@@ -175,7 +181,7 @@ natmort_plot = ggplot(M_all %>%
                         filter(OM == "Across_100"), 
                       aes(x = year, y = M, color = factor(sex))) +
   geom_line(size = 1.5) +
-  labs(x = "Years", y = "", color = "Sex", fill = "Sex",
+  labs(x = "Year", y = "", color = "Sex", fill = "Sex",
        title = "Natural Mortality") +
   theme_tj() +
   ylim(0.05, 0.15) +
@@ -200,14 +206,13 @@ prop_across = naa_store_all %>%
 prop_df <- rbind(prop_within, prop_across)
 prop_plot <- ggplot(prop_df, aes(x = Age, y = Prop, color = factor(Sex))) +
   geom_line(size = 2, alpha = 0.85) +
-  labs(x = "Age", y = "Proportion", color = "Sex", fill = "Sex",
-       title = "Exp 1 (Treatment of Proportions)") +
+  labs(x = "Age", y = "Proportion", color = "Sex", fill = "Sex", title = "Exp1: Parameterization of Sex-Composition Data") +
   scale_color_manual(labels = c("Female", "Male"), 
                      values = c("#DC3220", "#005AB5")) +
   facet_wrap(~Type) +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5),
-        legend.position = c(0.1, 0.8))
+        legend.position = c(0.875, 0.5))
 
 # plot sex ratios changing over time
 sr_sum = sr_store_all %>% 
@@ -223,15 +228,14 @@ sr_sum_plot = ggplot(sr_sum %>% filter(!str_detect(OM, "No")) %>%
                          ymin = lwr_95, ymax = upr_95)) +
   geom_line(size = 1.5) +
   geom_ribbon(alpha = 0.35, color = NA) +
-  labs(x = "Years", y = "", color = "Sex", fill = "Sex", title = "Population Sex Ratio") +
+  labs(x = "Year", y = "", color = "Sex", fill = "Sex", title = "Population Sex Ratio") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
 
 pdf(here("figs", "OM_Exp1.pdf"), width = 20, height = 12)
 ggarrange(waa_plot, fishageselex_plot, 
-          natmort_plot ,prop_within_plot,
-          sr_sum_plot, catch_plot, ssb_plot,  prop_across_plot, nrow = 2, ncol = 4)
+          natmort_plot, sr_sum_plot, catch_plot, ssb_plot, nrow = 2, ncol = 3)
 dev.off()
 
 
@@ -241,6 +245,7 @@ dev.off()
 exp2_path = here("output", "Experiment 2")
 # Read in scenarios
 experiment_2_files = list.files(exp2_path)
+experiment_2_files <- experiment_2_files[!str_detect(experiment_2_files, "LargErr")]
 
 # Storage containers
 fishageselex_all = data.frame()
@@ -325,6 +330,18 @@ for(i in 1:length(experiment_2_files)) {
   
 } # end i loop
 
+# length at age plot
+laa_plot = ggplot(vonB_all %>% 
+                    filter(!str_detect(OM, "No")) %>% 
+                    mutate(Sex = ifelse(Sex == 1, "Female", 'Male')), 
+                  aes(x = Age, y = Value, color = factor(Sex))) +
+  geom_line(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("#DC3220", "#005AB5")) +
+  facet_wrap(~OM, ncol = 1) +
+  labs(x = "Age", y = "Length-at-age (cm)", color = "Sex", title = "") +
+  theme_tj() +
+  theme(plot.title = element_text(hjust = 0.5))
+
 # weight at age plot
 waa_plot = ggplot(waa_all %>% 
                     filter(!str_detect(OM, "No")) %>% 
@@ -333,7 +350,7 @@ waa_plot = ggplot(waa_all %>%
   geom_line(size = 2, alpha = 0.8) +
   scale_color_manual(values = c("#DC3220", "#005AB5")) +
   facet_wrap(~OM, ncol = 1) +
-  labs(x = "Age", y = "Weight-at-age", color = "Sex", title = "") +
+  labs(x = "Age", y = "Weight-at-age (g)", color = "Sex", title = "") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -346,7 +363,7 @@ fishageselex_plot = ggplot(fishageselex_all %>%
   scale_color_manual(values = c("#DC3220", "#005AB5")) +
   facet_wrap(~OM, ncol = 1) +
   labs(x = "Age", y = "Fishery Selectivity", color = "Sex", 
-       title = "Exp 2 (Sex Dimorphism & Sex-Specific Catch)") +
+       title = "") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -367,7 +384,7 @@ catch_plot = ggplot(catch_sex_all_sum %>%
   geom_ribbon(alpha = 0.35) +
   scale_color_manual(values = c("#DC3220", "#005AB5")) +
   facet_wrap(~ OM, ncol = 1) +
-  labs(x = "Years", y = "", color = "Sex", fill = "Sex", title = "Catch") +
+  labs(x = "Year", y = "", color = "Sex", fill = "Sex", title = "Catch") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -387,7 +404,7 @@ ssb_sum = ssbs_all %>%
     geom_ribbon(alpha = 0.35) +
     scale_color_manual(values = c("#DC3220", "#005AB5")) +
     facet_wrap(~OM, ncol = 1) +
-    labs(x = "Years", y = "", color = "Sex", fill = "Sex", title = "Spawning Stock Biomass") +
+    labs(x = "Year", y = "", color = "Sex", fill = "Sex", title = "Spawning Stock Biomass") +
     theme_tj() +
     theme(plot.title = element_text(hjust = 0.5)))
 
@@ -406,7 +423,7 @@ sr_sum_plot = ggplot(sr_sum %>% filter(!str_detect(OM, "No")),
   geom_ribbon(alpha = 0.35, color = NA) +
   scale_color_manual(values = c("#DC3220", "#005AB5")) +
   facet_wrap(~OM, ncol = 1) +
-  labs(x = "Years", y = "", color = "Sex", fill = "Sex", title = "Population Sex Ratio") +
+  labs(x = "Year", y = "", color = "Sex", fill = "Sex", title = "Population Sex Ratio") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -414,7 +431,7 @@ natmort_plot = ggplot(M_all,
                       aes(x = year, y = M, color = factor(sex))) +
   geom_line(size = 1.5) +
   facet_wrap(~OM, ncol = 1) +
-  labs(x = "Years", y = "Natural Mortality", color = "Sex", fill = "Sex",
+  labs(x = "Year", y = "Natural Mortality", color = "Sex", fill = "Sex",
        title = "") +
   theme_tj() +
   scale_color_manual(values = c("#DC3220", "#005AB5")) +
@@ -427,8 +444,130 @@ ggarrange(waa_plot, fishageselex_plot, natmort_plot,
 dev.off()
 
 # Make experiment 2 plots
-exp2_plots <- (waa_plot | fishageselex_plot | natmort_plot) +
-  theme(plot.title = element_text(hjust = .5, size = 16))
+exp2_plots <- ggarrange(laa_plot, waa_plot, fishageselex_plot, 
+                        natmort_plot, nrow = 1)
+exp2_plots <- annotate_figure(exp2_plots, 
+                              top = text_grob("Exp2: Sexual Dimorphism and Sex-Specific Catch", 
+                                              size = 13, hjust = 0.4, vjust = 2.75))
+
+# Base OM Scenario --------------------------------------------------------
+
+# length at age plot
+laa_base <- ggplot(vonB_all %>% 
+                     filter(!str_detect(OM, "No"),
+                            str_detect(OM, "Grwth15_Mort15")) %>% 
+                     mutate(Sex = ifelse(Sex == 1, "Female", 'Male')), 
+                   aes(x = Age, y = Value, color = factor(Sex))) +
+  geom_line(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("#DC3220", "#005AB5")) +
+  labs(x = "Age", y = "Length-at-age (cm)", color = "Sex", title = "") +
+  theme_tj() +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = c(0.8, 0.2))
+
+# weight at age plot
+waa_base <- ggplot(waa_all %>% 
+                     filter(!str_detect(OM, "No"),
+                            str_detect(OM, "Grwth15_Mort15")) %>% 
+                     mutate(Sex = ifelse(Sex == 1, "Female", 'Male')), 
+                   aes(x = Age, y = Value, color = factor(Sex))) +
+  geom_line(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("#DC3220", "#005AB5")) +
+  labs(x = "Age", y = "Weight-at-age (g)", color = "Sex", title = "General Sex-Structured Dynamics") +
+  theme_tj() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# fishery selex age plot
+fishageselex_base <- ggplot(fishageselex_all %>% 
+                              filter(!str_detect(OM, "No"),
+                                     str_detect(OM, "Grwth15_Mort15")) %>% 
+                              mutate(Sex = ifelse(Sex == 1, "Female", 'Male')), 
+                            aes(x = Age, y = Value, color = factor(Sex))) +
+  geom_line(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("#DC3220", "#005AB5")) +
+  labs(x = "Age", y = "Fishery Selectivity", color = "Sex", 
+       title = "") +
+  theme_tj() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# sumamrize catch
+catch_sex_all_sum = catch_sex_all %>% 
+  filter(Catch != 0) %>% 
+  group_by(Years, Sex, OM) %>% 
+  summarize(Median = median(Catch),
+            lwr_95 = quantile(Catch, 0.025),
+            upr_95 = quantile(Catch, 0.975))
+
+# catch plot
+catch_base <- ggplot(catch_sex_all_sum %>% 
+                       filter(!str_detect(OM, "No"),
+                              str_detect(OM, "Grwth15_Mort15")),
+                     aes(x = Years, y = Median, color = factor(Sex), fill = factor(Sex),
+                         ymin = lwr_95, ymax = upr_95)) +
+  geom_line(size = 1.5) +
+  geom_ribbon(alpha = 0.35, color = NA) +
+  scale_color_manual(values = c("#DC3220", "#005AB5")) +
+  scale_fill_manual(values = c("#DC3220", "#005AB5")) +
+  labs(x = "Year", y = "Catch", color = "Sex", fill = "Sex") +
+  theme_tj() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# summarize ssb
+ssb_sum = ssbs_all %>% 
+  filter(Years != max(Years)) %>% 
+  group_by(Years, OM) %>% 
+  summarize(Median = median(SSB),
+            lwr_95 = quantile(SSB, 0.025),
+            upr_95 = quantile(SSB, 0.975))
+
+# ssb plot
+(ssb_base = ggplot(ssb_sum %>% 
+                     filter(!str_detect(OM, "No"),
+                            str_detect(OM, "Grwth15_Mort15")),
+                   aes(x = Years, y = Median, ymin = lwr_95, ymax = upr_95)) +
+    geom_line(size = 1.5) +
+    geom_ribbon(alpha = 0.35) +
+    scale_color_manual(values = c("#DC3220", "#005AB5")) +
+    labs(x = "Year", y = "Spawning Stock Biomass", color = "Sex", fill = "Sex") +
+    theme_tj() +
+    theme(plot.title = element_text(hjust = 0.5)))
+
+# plot sex ratios changing over time
+sr_sum = sr_store_all %>% 
+  group_by(Years, Sex, OM) %>% 
+  summarize(median = median(Total_Sex),
+            lwr_95 = quantile(Total_Sex, 0.025),
+            upr_95 = quantile(Total_Sex, 0.975))
+
+# sex ratio across time summary
+sr_sum_base <- ggplot(sr_sum %>% filter(!str_detect(OM, "No"),
+                                        str_detect(OM, "Grwth15_Mort15")), 
+                      aes(x = Years, y = median, color = factor(Sex), fill = factor(Sex), 
+                          ymin = lwr_95, ymax = upr_95)) +
+  geom_line(size = 1.5) +
+  geom_ribbon(alpha = 0.35, color = NA) +
+  scale_color_manual(values = c("#DC3220", "#005AB5")) +
+  scale_fill_manual(values = c("#DC3220", "#005AB5")) +
+  labs(x = "Year", y = "Population Sex Ratio", color = "Sex", fill = "Sex") +
+  theme_tj() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+natmort_base <- ggplot(M_all %>% 
+                         filter(str_detect(OM, "Grwth15_Mort15")), 
+                       aes(x = year, y = M, color = factor(sex))) +
+  geom_line(size = 1.5) +
+  labs(x = "Year", y = "Natural Mortality", color = "Sex", fill = "Sex",
+       title = "") +
+  theme_tj() +
+  scale_color_manual(values = c("#DC3220", "#005AB5")) +
+  ylim(0.05, 0.15) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+base_plots1 <- ggarrange(laa_base, waa_base, fishageselex_base, nrow = 1)
+base_plots2 <- ggarrange(natmort_base, sr_sum_base, catch_base, ssb_base, 
+                         nrow = 1, align = "hv")
+base_plots3 <- ggarrange(base_plots1, base_plots2, ncol = 1)
+ggsave(plot = base_plots3, filename = here("figs", "ms_figs", "Fig1_GeneralOM.png"), width = 17, height = 10)
 
 # Experiment 3 ------------------------------------------------------------
 
@@ -569,7 +708,7 @@ catch_plot = ggplot(catch_sex_all_sum %>%
   geom_line(size = 1.5) +
   geom_ribbon(alpha = 0.35, color = NA) +
   facet_wrap(~ OM, ncol = 1) +
-  labs(x = "Years", y = "", color = "Sex", fill = "Sex", title = "Catch") +
+  labs(x = "Year", y = "", color = "Sex", fill = "Sex", title = "Catch") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -588,7 +727,7 @@ ssb_sum = ssbs_all %>%
     geom_line(size = 1.5) +
     geom_ribbon(alpha = 0.35, color = NA) +
     facet_wrap(~OM, ncol = 1) +
-    labs(x = "Years", y = "", color = "Sex", fill = "Sex", title = "Spawning Stock Biomass") +
+    labs(x = "Year", y = "", color = "Sex", fill = "Sex", title = "Spawning Stock Biomass") +
     theme_tj() +
     theme(plot.title = element_text(hjust = 0.5)))
 
@@ -607,7 +746,7 @@ total_biom_sum = total_biom_all %>%
     geom_line(size = 1.5) +
     geom_ribbon(alpha = 0.35, color = NA) +
     facet_wrap(~OM, ncol = 1) +
-    labs(x = "Years", y = "", color = "Sex", fill = "Sex", 
+    labs(x = "Year", y = "", color = "Sex", fill = "Sex", 
          title = "Total Biomass") +
     theme_tj() +
     theme(plot.title = element_text(hjust = 0.5)))
@@ -630,7 +769,7 @@ naa_plot = ggplot(naa_sum %>%
   geom_line(size = 1.5) +
   geom_ribbon(alpha = 0.35, color = NA) +
   facet_wrap(~OM, ncol = 1) +
-  labs(x = "Years", y = "", color = "Sex", fill = "Sex", 
+  labs(x = "Year", y = "", color = "Sex", fill = "Sex", 
        title = "Total Numbers") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
@@ -650,7 +789,7 @@ sr_sum_plot = ggplot(sr_sum %>% filter(!str_detect(OM, "No")),
   geom_line(size = 1.5) +
   geom_ribbon(alpha = 0.35, color = NA) +
   facet_wrap(~OM, ncol = 1) +
-  labs(x = "Years", y = "", color = "Sex", fill = "Sex", title = "Population Sex Ratio") +
+  labs(x = "Year", y = "", color = "Sex", fill = "Sex", title = "Population Sex Ratio") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -665,7 +804,7 @@ natmort_plot = ggplot(M_all %>% filter(!str_detect(OM, "No")),
                       aes(x = year, y = M, color = factor(sex))) +
   geom_line(size = 1.5) +
   facet_wrap(~OM, ncol = 1) +
-  labs(x = "Years", y = "", color = "Sex", fill = "Sex",
+  labs(x = "Year", y = "", color = "Sex", fill = "Sex",
        title = "Natural Mortality") +
   theme_tj() +
   ylim(0.05, 0.15) +
@@ -676,7 +815,7 @@ ggarrange(vonB_plot, waa_plot, fishageselex_plot, natmort_plot, nrow = 1, ncol =
 ggarrange(sr_sum_plot, naa_plot, catch_plot, ssb_plot, nrow = 1, ncol = 4)
 dev.off()
 
-exp3_sr_plot <- ggplot(sr_sum %>% filter(!str_detect(OM, "No")), 
+exp3_sr_plot <- ggplot(sr_sum %>% filter(OM %in% c("Fem40_Mal60", "Fem50_Mal50", "Fem60_Mal40")), 
        aes(x = Years, y = median, color = factor(Sex), fill = factor(Sex), 
            ymin = lwr_95, ymax = upr_95)) +
   geom_line(size = 1.5) +
@@ -684,19 +823,20 @@ exp3_sr_plot <- ggplot(sr_sum %>% filter(!str_detect(OM, "No")),
   scale_fill_manual(values = c("#DC3220", "#005AB5")) +
   geom_ribbon(alpha = 0.35, color = NA) +
   facet_wrap(~OM, ncol = 1) +
-  labs(x = "Years", y = "Population Sex Ratio", color = "Sex", 
-       fill = "Sex", title = "Exp 3 (Sex Ratio Estimation and Misspecification)") +
+  labs(x = "Year", y = "Population Sex Ratio", color = "Sex", 
+       fill = "Sex", title = "Exp3: Sex-Ratio Misspecification") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
 # Combine OM plot ---------------------------------------------------------
 
-om_plots <- ggarrange(prop_plot, exp2_plots, 
+# first panel
+om_plots_1 <- ggarrange(prop_plot, exp2_plots, 
                       widths = c(0.5, 0.5), ncol = 1, heights = c(0.3, 0.7),
                       labels = c("A", "B"), font.label = list(size = 25))
-
-pdf(here("figs", "ms_figs", "Fig1_OMScenarios.pdf"), width = 20, height = 13)
-ggarrange(om_plots, exp3_sr_plot, widths = c(0.65, 0.35), 
+# second panel combined
+om_plots_2 <- ggarrange(om_plots_1, exp3_sr_plot, widths = c(0.65, 0.35),
           labels = c("", "C"), font.label = list(size = 25))
-dev.off()
+
+ggsave(plot = om_plots_2, filename = here("figs", "ms_figs", "Fig2_OMScenarios.png"), width = 15, height = 12)
 

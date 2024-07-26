@@ -62,7 +62,8 @@ get_proj_catch <- function(fmsy_val,
   bmsy_val_ratio = proj_SSB / bmsy_val # get b/bmsy_val
   if(bmsy_val_ratio < 1) Fval = ((proj_SSB / bmsy_val  - 0.05) / (1 - 0.05)) * fmsy_val
   if(bmsy_val_ratio >= 1) Fval = fmsy_val
-
+  if(bmsy_val_ratio <= 0.1) Fval = fmsy_val
+  
   # Get f projections for age and sex here 
   for(a in 1:n_ages) {
     for(s in 1:n_sexes) {

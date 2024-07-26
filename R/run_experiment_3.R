@@ -35,6 +35,10 @@ om_names = list.files(om_path)
 # Read in OMs for experiment 1 and set up
 oms_exp3 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp3") 
 
+# Specify CV
+catch_cv <- 0.025
+catch_sd <- sqrt(log(catch_cv^2 + 1))
+
 # Run Experiment 3 --------------------------------------------------------
 
 for(n_om in 1:nrow(oms_exp3)) {
@@ -45,6 +49,10 @@ for(n_om in 1:nrow(oms_exp3)) {
   load(here(om_scenario, paste(om_name,".RData",sep = "")))
   list2env(oms,globalenv()) # output into global environment
   
+  # Add observation error to catch common to a run
+  oms$Total_Catch <- oms$Total_Catch * exp(rnorm(prod(dim(oms$Total_Catch)), -catch_sd^2/2, catch_sd ))
+  oms$Total_Catch_Sex <- oms$Total_Catch_Sex * exp(rnorm(prod(dim(oms$Total_Catch_Sex)), -catch_sd^2/2, catch_sd ))
+  
   # read in EM experiments
   ems_exp3 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp3", na = "NA")
 
@@ -54,6 +62,9 @@ for(n_om in 1:nrow(oms_exp3)) {
   for(n_em in 1:nrow(ems_exp3)) {
     
     # Set up specifications here -------------------------------------------
+    n_sexes_em = ems_exp3$n_sexes[n_em] # number of sexes to model
+    sex_specific_em = ems_exp3$sex_specific[n_em] # whether this is a sex-specific assessment
+    share_M_sex_em = ems_exp3$share_M_sex[n_em] # wether to share M or not
     use_fish_sexRatio_em = ems_exp3$use_fish_sexRatio[n_em] # whether to use sex ratio nLL
     use_srv_sexRatio_em = ems_exp3$use_srv_sexRatio[n_em] # whether to use sex ratio nLL
     fish_age_prop_em = ems_exp3$fish_age_prop[n_em] # whether to do proportions across or within
@@ -61,13 +72,10 @@ for(n_om in 1:nrow(oms_exp3)) {
     fish_len_prop_em = ems_exp3$fish_len_prop[n_em] # whether to do proportions across or within
     srv_len_prop_em = ems_exp3$srv_len_prop[n_em] # whether to do proportions across or within
     est_sexRatio_par_em = ems_exp3$est_sexRatio_par[n_em] # whether to estimate sex Ratios
-    share_M_sex_em = ems_exp3$share_M_sex[n_em] # wether to share M or not
     sexRatio_al_or_y_em = ems_exp3$sexRatio_al_or_y[n_em] # if we want to fit sex ratio as within year only or both
-    sexRatio_fixed = c(0.5, 0.5) # fixed sex ratio values to mis-specify initial sex-ratios
     em_name = ems_exp3$EM_Name[n_em] # em name
-    
+
     # Run Simulations here ----------------------------------------------------
-    
     sim_models <- foreach(sim = 1:n_sims, .packages = c("TMB", "here", "tidyverse")) %dopar% {
       
       TMB::compile("Sex_Str_EM.cpp")
@@ -76,14 +84,28 @@ for(n_om in 1:nrow(oms_exp3)) {
       # estimate biological weight at age
       biologicals = get_biologicals(n_sexes, n_ages, age_bins, len_bins, Srv_LAA, Srv_LW, sim = sim)
       
+      # If single sex model
+      if(n_sexes_em == 1) {
+        waa_em = biologicals$waa_nosex
+        al_matrix_em = biologicals$al_matrix_sexagg
+        sexRatio_em = c(1, 1)
+      } # end if
+      
+      # If multi-sex model
+      if(n_sexes_em == 2) {
+        waa_em = biologicals$waa_sex
+        al_matrix_em = biologicals$al_matrix_sexsp
+        sexRatio_em = c(0.5, 0.5)
+      } # end if  
+      
       # Prepare EM inputs into assessment
       em_inputs = prepare_EM_inputs(sim = sim,
                                     # EM_Parameterization
+                                    n_sexes = n_sexes_em,
+                                    sex_specific = sex_specific_em, 
+                                    share_M_sex = share_M_sex_em,
                                     use_fish_sexRatio = use_fish_sexRatio_em,
                                     use_srv_sexRatio = use_srv_sexRatio_em,
-                                    est_sexRatio_par = est_sexRatio_par_em,
-                                    sexRatio = sexRatio_fixed,
-                                    share_M_sex = share_M_sex_em, 
                                     sexRatio_al_or_y = sexRatio_al_or_y_em,
                                     
                                     # Proportion treatment
@@ -91,22 +113,22 @@ for(n_om in 1:nrow(oms_exp3)) {
                                     srv_age_prop = srv_age_prop_em,
                                     fish_len_prop = fish_len_prop_em,
                                     srv_len_prop = srv_len_prop_em,
-
+                                    
+                                    # Biologicals
+                                    WAA = waa_em,
+                                    age_len_transition = al_matrix_em,
+                                    
                                     # Fixed controls
-                                    n_sexes = 2,
-                                    sex_specific = TRUE, 
-                                    fit_sexsp_catch = FALSE,
                                     selex_type = "length",
+                                    est_sexRatio_par = est_sexRatio_par_em,
+                                    sexRatio = sexRatio_em,
+                                    fit_sexsp_catch = FALSE, 
                                     # Aggregating comps
                                     agg_fish_age = FALSE,
                                     agg_srv_age = FALSE, 
                                     agg_fish_len = FALSE,
                                     agg_srv_len = FALSE,
-                                    catch_cv = c(0.025), 
                                     use_fish_index = FALSE,
-                                    # Biologicals
-                                    WAA = biologicals$waa_sex,
-                                    age_len_transition = biologicals$al_matrix_sexsp,
                                     # Parameter fixing
                                     fix_pars = c("h", "ln_sigmaRec", "ln_q_fish"))
       
@@ -118,7 +140,7 @@ for(n_om in 1:nrow(oms_exp3)) {
       # extract quantities
       quants_df = get_quantities(biologicals = biologicals,
                                  model = model, sim = sim, om_name = om_name,
-                                 em_name = em_name, n_sexes_em = 2)
+                                 em_name = em_name, n_sexes_em = n_sexes_em)
       
       # Output this into a list when we're done
       all_obj_list = list(model, quants_df$ts_df, quants_df$NAA_sr_female_df,

@@ -24,7 +24,7 @@ f_pattern_scenarios = function(F_pattern, n_years, fmsy) {
   } # end contrast fishing mortality pattern
   
   if(F_pattern == "Increase") {
-    Fmort = seq(fmsy * 0.1, fmsy, length.out = n_years)
+    Fmort = seq(fmsy * 0.05, fmsy * 2, length.out = n_years)
   } # end contrast fishing mortality pattern
   return(Fmort)
 }

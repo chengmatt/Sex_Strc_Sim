@@ -36,6 +36,10 @@ om_names = list.files(om_path)
 oms_exp2 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp2", na = "NA")
 ems_exp2 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp2", na = "NA") 
 
+# Specify CV
+catch_cv <- 0.025
+catch_sd <- sqrt(log(catch_cv^2 + 1))
+
 # Run Experiment 2 --------------------------------------------------------
 for(n_om in 1:nrow(oms_exp2)) {
   
@@ -44,7 +48,11 @@ for(n_om in 1:nrow(oms_exp2)) {
   om_name = oms_exp2$OM_Name[n_om] # om name
   load(here(om_scenario, paste(om_name,".RData",sep = "")))
   list2env(oms,globalenv()) # output into global environment
-
+  
+  # Add observation error to catch common to a run
+  oms$Total_Catch <- oms$Total_Catch * exp(rnorm(prod(dim(oms$Total_Catch)), -catch_sd^2/2, catch_sd ))
+  oms$Total_Catch_Sex <- oms$Total_Catch_Sex * exp(rnorm(prod(dim(oms$Total_Catch_Sex)), -catch_sd^2/2, catch_sd ))
+  
   for(n_em in 1:nrow(ems_exp2)) {
     
 # Set up specifications here -------------------------------------------
@@ -62,9 +70,8 @@ for(n_om in 1:nrow(oms_exp2)) {
     selex_type_em = ems_exp2$selex_type[n_em] # selectivity type (age or length based)
     agg_age = ems_exp2$agg_age[n_em] # whether to aggregate age comps
     em_name = ems_exp2$EM_Name[n_em] # em name
-    
-# Run Simulations here ----------------------------------------------------
 
+# Run Simulations here ----------------------------------------------------
     sim_models <- foreach(sim = 1:n_sims, .packages = c("TMB", "here", "tidyverse")) %dopar% {
 
       TMB::compile("Sex_Str_EM.cpp")
@@ -118,7 +125,6 @@ for(n_om in 1:nrow(oms_exp2)) {
                                     agg_srv_age = agg_age, 
                                     agg_fish_len = FALSE,
                                     agg_srv_len = FALSE,
-                                    catch_cv = c(0.025), 
                                     use_fish_index = FALSE,
                                     # Parameter fixing
                                     fix_pars = c("h", "ln_sigmaRec", "ln_q_fish"))

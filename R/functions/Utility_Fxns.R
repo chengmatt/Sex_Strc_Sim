@@ -122,9 +122,12 @@ get_biologicals = function(n_sexes, n_ages, age_bins, len_bins, LAA, LW, sim) {
   # Get WAA values from data
   waa_sex = matrix(0, ncol = n_sexes, nrow = n_ages)
   waa_nosex = matrix(0, ncol = 1, nrow = n_ages)
+  laa_sex = matrix(0, ncol = n_sexes, nrow = n_ages)
+  laa_nosex = matrix(0, ncol = 1, nrow = n_ages)
   al_matrix_sexsp = array(0, dim = c(c(length(age_bins), length(len_bins), n_sexes)))
   al_matrix_sexagg = array(0, dim = c(c(length(age_bins), length(len_bins), 1)))
   iter = sim
+  
   for(s in 1:n_sexes) {
     
     LAA_obs = LAA[LAA$sim == iter & LAA$sex == s, ]
@@ -138,6 +141,7 @@ get_biologicals = function(n_sexes, n_ages, age_bins, len_bins, LAA, LW, sim) {
                          ages = age_bins)
     
     waa_sex[,s] = waa_sex_sp[[1]] # waa
+    laa_sex[,s] = waa_sex_sp[[2]] # laa
     al_matrix_sexsp[,,s] = get_al_trans_matrix(age_bins, len_bins, waa_sex_sp[[2]], waa_sex_sp[[6]]) # get al transition matrix
     
     if(s == n_sexes) { # sex-aggregated waa
@@ -149,13 +153,17 @@ get_biologicals = function(n_sexes, n_ages, age_bins, len_bins, LAA, LW, sim) {
                             WL_obs_wt = WL_obs$wts,
                             ages = age_bins)
       waa_nosex[,1] = waa_sex_agg[[1]] # get waa
+      laa_nosex[,1] = waa_sex_agg[[2]] # laa
       al_matrix_sexagg[,,1] = get_al_trans_matrix(age_bins, len_bins, waa_sex_agg[[2]], waa_sex_agg[[6]])
     } # if sex-aggregated waa
   } # end s loop
   
   return(list(waa_nosex = waa_nosex, al_matrix_sexagg = al_matrix_sexagg, 
               waa_sex = waa_sex, al_matrix_sexsp = al_matrix_sexsp,
-              sd_waa_sex_agg =  waa_sex_agg[[6]], sd_waa_sex_sp_m =  waa_sex_sp[[6]]))
+              laa_sex = laa_sex, laa_nosex = laa_nosex,
+              sd_waa_sex_agg =  waa_sex_agg[[6]], 
+              sd_waa_sex_sp_m =  waa_sex_sp[[6]]))
+  
 } # end function
 
 #' Title Take additional newton steps with TMB model

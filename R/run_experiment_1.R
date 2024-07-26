@@ -38,6 +38,10 @@ oms_exp1 <- read_xlsx(here("input", "generate_OMs.xlsx"), sheet = "OM_Exp1")
 # read in EM experiments
 ems_exp1 <- read_xlsx(here("input", "run_EMs.xlsx"), sheet = "EM_Exp1", na = "NA") 
 
+# Specify CV
+catch_cv <- 0.025
+catch_sd <- sqrt(log(catch_cv^2 + 1))
+
 # Run Experiment 1 --------------------------------------------------------
 
 for(n_om in 1:nrow(oms_exp1)) {
@@ -47,6 +51,10 @@ for(n_om in 1:nrow(oms_exp1)) {
   om_name = oms_exp1$OM_Name[n_om] # om name
   load(here(om_scenario, paste(om_name,".RData",sep = "")))
   list2env(oms,globalenv()) # output into global environment
+  
+  # Add observation error to catch common to a run
+  oms$Total_Catch <- oms$Total_Catch * exp(rnorm(prod(dim(oms$Total_Catch)), -catch_sd^2/2, catch_sd ))
+  oms$Total_Catch_Sex <- oms$Total_Catch_Sex * exp(rnorm(prod(dim(oms$Total_Catch_Sex)), -catch_sd^2/2, catch_sd ))
   
   for(n_em in 1:nrow(ems_exp1)) {
     
@@ -99,7 +107,6 @@ for(n_om in 1:nrow(oms_exp1)) {
                                     agg_srv_age = FALSE, 
                                     agg_fish_len = FALSE,
                                     agg_srv_len = FALSE,
-                                    catch_cv = c(0.025), 
                                     use_fish_index = FALSE,
                                     # Biologicals
                                     WAA = biologicals$waa_sex,

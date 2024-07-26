@@ -64,13 +64,23 @@ NAA_sr_female_df = true_NAA_female_sr %>% left_join(pred_NAA_female_sr, by = c("
 # Biological Quantities + Selectivity -----------------------------------------------
 if(n_sexes_em == 1) {
   # Get growth estimates
-  pred_grwth = reshape2::melt(biologicals$waa_nosex)[-2]
-  names(pred_grwth) = c("Age", "Pred")
-  true_grwth = reshape2::melt(waa)
-  names(true_grwth) = c("Age", "Sex", "True")
-  grwth_df = true_grwth %>% left_join(pred_grwth, by = "Age") # left join 
-  grwth_df = grwth_df %>% mutate(Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name,
+  pred_waa = reshape2::melt(biologicals$waa_nosex)[-2]
+  names(pred_waa) = c("Age", "Pred")
+  true_waa = reshape2::melt(waa)
+  names(true_waa) = c("Age", "Sex", "True")
+  waa_df = true_waa %>% left_join(pred_waa, by = "Age") # left join 
+  waa_df = waa_df %>% mutate(Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name,
                                  Type = "Weight at age")
+  
+  # Get growth estimates
+  pred_laa = reshape2::melt(biologicals$laa_nosex)[-2]
+  names(pred_laa) = c("Age", "Pred")
+  true_laa = reshape2::melt(vonB)
+  names(true_laa) = c("Age", "Sex", "True")
+  laa_df = true_laa %>% left_join(pred_laa, by = "Age") # left join 
+  laa_df <- laa_df %>% mutate(Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name,
+                      Type = "Length at age")
+  grwth_df = rbind(laa_df, waa_df)
   
   # Get fishery selectivity estimates
   fish_pred_selex = reshape2::melt(as.matrix(model$rep$Fish_Slx[1,,,1]))[-2]
@@ -93,13 +103,23 @@ if(n_sexes_em == 1) {
   
 } else{
   # Get growth estimates
-  pred_grwth = reshape2::melt(biologicals$waa_sex)
-  names(pred_grwth) = c("Age", "Sex", "Pred")
-  true_grwth = reshape2::melt(waa)
-  names(true_grwth) = c("Age", "Sex", "True")
-  grwth_df = true_grwth %>% left_join(pred_grwth, by = c("Age", "Sex")) # left join 
-  grwth_df = grwth_df %>% mutate(Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name,
-                                 Type = "Weight at age")
+  pred_waa = reshape2::melt(biologicals$waa_sex)
+  names(pred_waa) = c("Age", "Sex", "Pred")
+  true_waa = reshape2::melt(waa)
+  names(true_waa) = c("Age", "Sex", "True")
+  waa_df = true_waa %>% left_join(pred_waa, by = c("Age", "Sex")) # left join 
+  waa_df = waa_df %>% mutate(Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name,
+                             Type = "Weight at age")
+  
+  # Get growth estimates
+  pred_laa = reshape2::melt(biologicals$laa_sex)
+  names(pred_laa) = c("Age", "Sex", "Pred")
+  true_laa = reshape2::melt(vonB)
+  names(true_laa) = c("Age", "Sex", "True")
+  laa_df = true_laa %>% left_join(pred_laa, by = c("Age", "Sex")) # left join 
+  laa_df <- laa_df %>% mutate(Convergence = conv_df$convergence, sim = sim, EM = em_name, OM = om_name,
+                              Type = "Length at age")
+  grwth_df = rbind(laa_df, waa_df)
   
   # Get fishery selectivity estimates
   fish_pred_selex = reshape2::melt(as.matrix(model$rep$Fish_Slx[1,,,1]))

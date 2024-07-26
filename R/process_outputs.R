@@ -374,3 +374,39 @@ data.table::fwrite(data.table::rbindlist(sr_all_list), file = here("output", "Ex
 data.table::fwrite(data.table::rbindlist(conv_all_list), file = here("output", "Experiment_3_Convergence.csv"))
 data.table::fwrite(data.table::rbindlist(coverage_all_list), file = here("output", "Experiment_3_Coverage.csv"))
 
+### Numbers at Age ----------------------------------------------------------
+om_list <- list()
+for(i in 1:length(exp3_oms)) {
+  
+  # Go into a given OM folder
+  om_folder = here(exp3_path, exp3_oms[i])
+  em_folders = list.files(om_folder) # list out em folders
+  em_folders = em_folders[!str_detect(em_folders, "RData|pdf")] # remove these
+  load(here(om_folder, paste(exp3_oms[i], ".RData", sep = ""))) # load in OMs
+  em_list <- list()
+  
+  for(n_em in 1:length(em_folders)) {
+    
+    em_path <- here(om_folder, em_folders[n_em]) # list out ems
+    load(here(em_path, paste(em_folders[n_em], ".RData", sep = ""))) # load in EMs
+    
+    naa_em <- lapply(model_list, function(x) reshape2::melt(x$rep$NAA)) # EM NAA
+    naa_em_df <- data.table::rbindlist(naa_em, idcol = "Var4") # Turn estimated NAA into dataframes 
+
+    # Residual munging
+    naa_om <- reshape2::melt(oms$NAA[-dim(oms$NAA)[1],,,]) # OM NAA (remove last year)
+    naa_em_df <- naa_em_df %>% mutate(EM = em_folders[n_em], OM = exp3_oms[i]) %>% rename(Pred = value)
+    naa_em_df <- naa_em_df %>% left_join(naa_om %>% rename(Truth = value), by = c('Var4', "Var3", "Var2", "Var1"))
+    naa_em_df <- naa_em_df %>% rename(Year = Var1, Age = Var2, Sex = Var3, Sim = Var4) # rename variables
+    em_list[[n_em]] <- naa_em_df
+  } # end n_em
+  
+  em_df <- data.table::rbindlist(em_list) # output as dataframe here
+  om_list[[i]] <- em_df # input into om list
+  print(i)
+  
+} # end i loop
+
+# Turn OM list into dataframe
+om_df <- data.table::rbindlist(om_list)
+data.table::fwrite(om_df, file = here("output", "Experiment_3_NAA.csv"))

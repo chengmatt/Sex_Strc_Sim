@@ -62,7 +62,7 @@ conv_df = exp1_conv %>%
 
 # Plot convergence
 pdf(here("figs", "Experiment 1", "Convergence.pdf"), height = 10, width = 15)
-ggplot(conv_df, aes(x = OM, y = sum/750, group = EM, color = EM)) +
+ggplot(conv_df, aes(x = OM, y = sum/500, group = EM, color = EM)) +
   geom_point(size = 5) +
   geom_line(size = 1.3, alpha = 0.5) +
   theme_tj() +
@@ -321,7 +321,7 @@ conv_df = exp2_conv_df %>%
 
 # Plot convergence
 pdf(here("figs", "Experiment 2", "Convergence.pdf"), width = 15)
-ggplot(conv_df, aes(x = OM, y = sum/750, group = EM, color = EM)) +
+ggplot(conv_df, aes(x = OM, y = sum/500, group = EM, color = EM)) +
   geom_point(size = 5) +
   geom_line(size = 1.3) +
   theme_tj() +
@@ -818,7 +818,7 @@ conv_df = exp3_conv %>%
 
 # Plot convergence
 pdf(here("figs", "Experiment 3", "Convergence.pdf"))
-ggplot(conv_df, aes(x = OM, y = sum/750, color = EM, group = EM)) +
+ggplot(conv_df, aes(x = OM, y = sum/500, color = EM, group = EM)) +
   geom_point(size = 3) +
   geom_line(size = 1) +
   theme_tj() +
