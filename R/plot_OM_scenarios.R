@@ -144,6 +144,7 @@ fishageselex_plot = ggplot(fishageselex_all %>%
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
 
+
 catch_sex_all_sum = catch_sex_all %>% 
   filter(Catch != 0) %>% 
   group_by(Years, Sex, OM) %>% 
@@ -193,26 +194,37 @@ prop_within = naa_store_all %>%
   filter(Years == 20, OM == "Across_100", Sim == 1) %>% 
   group_by(Years, Sex) %>% 
   mutate(Prop = Numbers/sum(Numbers),
-         Type = "Within")
+         Type = "Split")
 
 # Get example of proportions within vs across
 prop_across = naa_store_all %>% 
   filter(Years == 20, OM == "Across_100", Sim == 1) %>% 
   group_by(Years) %>% 
   mutate(Prop = Numbers/sum(Numbers),
-         Type = "Across")
+         Type = "Joint")
 
 # bind
 prop_df <- rbind(prop_within, prop_across)
 prop_plot <- ggplot(prop_df, aes(x = Age, y = Prop, color = factor(Sex))) +
   geom_line(size = 2, alpha = 0.85) +
-  labs(x = "Age", y = "Proportion", color = "Sex", fill = "Sex", title = "Exp1: Parameterization of Sex-Composition Data") +
+  labs(x = "Age", y = "Proportion", color = "Sex", fill = "Sex", title = "Exp1: Parameterization of Sex-Composition Likelihoods") +
   scale_color_manual(labels = c("Female", "Male"), 
                      values = c("#DC3220", "#005AB5")) +
   facet_wrap(~Type) +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5),
         legend.position = c(0.875, 0.5))
+
+ggsave(here("figs", "Presentation_Figures", "Exp1.png"),
+       ggplot(prop_df, aes(x = Age, y = Prop, color = factor(Sex))) +
+         geom_line(size = 2, alpha = 0.85) +
+         labs(x = "Age", y = "Proportion", color = "Sex", fill = "Sex", title = "Exp1: Parameterization of Sex-Composition Likelihoods") +
+         scale_color_manual(labels = c("Female", "Male"), 
+                            values = c("#DC3220", "#005AB5")) +
+         facet_wrap(~Type) +
+         theme_tj() +
+         theme(plot.title = element_text(hjust = 0.5),
+               legend.position = c(0.875, 0.3)))
 
 # plot sex ratios changing over time
 sr_sum = sr_store_all %>% 
@@ -446,10 +458,21 @@ dev.off()
 # Make experiment 2 plots
 exp2_plots <- ggarrange(laa_plot, waa_plot, fishageselex_plot, 
                         natmort_plot, nrow = 1)
+exp2_presentation_plots <- ggarrange(waa_plot, natmort_plot, nrow = 1)
 exp2_plots <- annotate_figure(exp2_plots, 
                               top = text_grob("Exp2: Sexual Dimorphism and Sex-Specific Catch", 
                                               size = 13, hjust = 0.4, vjust = 2.75))
 
+ggsave(here("figs", "Presentation_Figures", "Exp2.png"), exp2_presentation_plots)
+ggsave(here("figs", "Presentation_Figures", "Selex_Sex.png"),
+       ggplot(fishageselex_all %>% 
+                filter(OM == "Grwth15_Mort0") %>% 
+                mutate(Sex = ifelse(Sex == 1, "Female", 'Male')), 
+              aes(x = Age, y = Value, color = factor(Sex))) +
+         geom_line(size = 2, alpha = 0.8) +
+         scale_color_manual(values = c("#DC3220", "#005AB5")) +
+         labs(x = "Age", y = "Probability of Capture", color = "Sex", title = "") +
+         theme(legend.position = c(0.5, 0.25)))
 # Base OM Scenario --------------------------------------------------------
 
 # length at age plot
@@ -827,6 +850,20 @@ exp3_sr_plot <- ggplot(sr_sum %>% filter(OM %in% c("Fem40_Mal60", "Fem50_Mal50",
        fill = "Sex", title = "Exp3: Sex-Ratio Misspecification") +
   theme_tj() +
   theme(plot.title = element_text(hjust = 0.5))
+
+ggsave(here("figs", "Presentation_Figures", "Exp3.png"),
+       ggplot(sr_sum %>% filter(OM %in% c("Fem40_Mal60", "Fem50_Mal50", "Fem60_Mal40")), 
+              aes(x = Years, y = median, color = factor(Sex), fill = factor(Sex), 
+                  ymin = lwr_95, ymax = upr_95)) +
+         geom_line(size = 1.5) +
+         scale_color_manual(values = c("#DC3220", "#005AB5")) +
+         scale_fill_manual(values = c("#DC3220", "#005AB5")) +
+         geom_ribbon(alpha = 0.35, color = NA) +
+         facet_wrap(~OM) +
+         labs(x = "Year", y = "Population Sex Ratio", color = "Sex", 
+              fill = "Sex", title = "Exp3: Sex-Ratio Misspecification") +
+         theme_tj() +
+         theme(plot.title = element_text(hjust = 0.5)))
 
 # Combine OM plot ---------------------------------------------------------
 

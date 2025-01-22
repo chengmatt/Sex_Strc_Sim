@@ -61,7 +61,7 @@ list2env(oms,globalenv()) # output OMs into global environment
 
 n_em <- 2 # get EM we want to profile
 set.seed(666)
-sim_num <- sample(conv_df$sim, 75) # sample x simulations to re-run and profile across
+sim_num <- sample(conv_df$sim, 10) # sample x simulations to re-run and profile across
 
 ### Profile R0 --------------------------------------------------------------
 # progress bar

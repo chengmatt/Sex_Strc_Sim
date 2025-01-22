@@ -52,6 +52,34 @@ for(i in 1:length(exp1_oms)) {
     growth_df =  data.table::fread(here(em_path, "Growth.csv")) # read in growth
     param_df =  data.table::fread(here(em_path, "Parameters.csv")) # read in parameters
     ts_df =  data.table::fread(here(em_path, "Time_Series.csv")) # read in time series
+    
+    # Extracting other quantities not previously calculated
+    # Get depletion
+    depletion_df = ts_df %>% filter(Type == "Spawning Stock Biomass") %>% 
+      group_by(OM, EM, sim) %>% 
+      mutate(SSB_Init_True = Truth[which(Years == 1)],
+             SSB_Init_Pred = Pred[which(Years == 1)],
+             Truth = Truth / SSB_Init_True,
+             Pred = Pred / SSB_Init_Pred,
+             Type = "Depletion") %>% 
+      select(names(ts_df)) # only select useful rows
+    
+    # Bind depletion to ts_df
+    ts_df = rbind(ts_df, depletion_df) 
+    
+    # Get SSB_current / SMSY
+    bmsy_df = param_df %>% filter(Type == "Bmsy") %>%  # get bmsy
+      rename(bmsy_true = Truth, bmsy_pred = Pred) %>% 
+      select(-Type)
+    
+    # Left join bmsy info to calculate ssb_current / smsy
+    ssb_cur_msy = ts_df %>% filter(Type == "Spawning Stock Biomass") %>% 
+      filter(Years == max(Years)) %>% left_join(bmsy_df, by = c("sim", "OM", "EM", "Convergence")) %>% 
+      mutate(Pred = Pred / bmsy_pred, Truth = Truth / bmsy_true, Type = "SSBcur / BMSY") %>% 
+      select(names(param_df))
+    
+    param_df = rbind(param_df, ssb_cur_msy) # bind
+
     sr_df = data.table::fread(here(em_path, "NAA_SexRatios.csv")) # read in sex ratio stuff
     conv_df = data.table::fread(here(em_path, "Convergence.csv")) # read in sex ratio stuff
     coverage_df =  data.table::fread(here(em_path, "Coverage.csv")) # read in time series
@@ -139,6 +167,34 @@ for(i in 1:length(exp2_oms)) {
     growth_df =  data.table::fread(here(em_path, "Growth.csv")) # read in growth
     param_df =  data.table::fread(here(em_path, "Parameters.csv")) # read in parameters
     ts_df =  data.table::fread(here(em_path, "Time_Series.csv")) # read in time series
+    
+    # Extracting other quantities not previously calculated
+    # Get depletion
+    depletion_df = ts_df %>% filter(Type == "Spawning Stock Biomass") %>% 
+      group_by(OM, EM, sim) %>% 
+      mutate(SSB_Init_True = Truth[which(Years == 1)],
+             SSB_Init_Pred = Pred[which(Years == 1)],
+             Truth = Truth / SSB_Init_True,
+             Pred = Pred / SSB_Init_Pred,
+             Type = "Depletion") %>% 
+      select(names(ts_df)) # only select useful rows
+    
+    # Bind depletion to ts_df
+    ts_df = rbind(ts_df, depletion_df) 
+    
+    # Get SSB_current / SMSY
+    bmsy_df = param_df %>% filter(Type == "Bmsy") %>%  # get bmsy
+      rename(bmsy_true = Truth, bmsy_pred = Pred) %>% 
+      select(-Type)
+    
+    # Left join bmsy info to calculate ssb_current / smsy
+    ssb_cur_msy = ts_df %>% filter(Type == "Spawning Stock Biomass") %>% 
+      filter(Years == max(Years)) %>% left_join(bmsy_df, by = c("sim", "OM", "EM", "Convergence")) %>% 
+      mutate(Pred = Pred / bmsy_pred, Truth = Truth / bmsy_true, Type = "SSBcur / BMSY") %>% 
+      select(names(param_df))
+    
+    param_df = rbind(param_df, ssb_cur_msy) # bind
+    
     sr_df = data.table::fread(here(em_path, "NAA_SexRatios.csv")) # read in sex ratio stuff
     conv_df = data.table::fread(here(em_path, "Convergence.csv")) # read in sex ratio stuff
     coverage_df =  data.table::fread(here(em_path, "Coverage.csv")) # read in time series
@@ -325,6 +381,34 @@ for(i in 1:length(exp3_oms)) {
     growth_df =  data.table::fread(here(em_path, "Growth.csv")) # read in growth
     param_df =  data.table::fread(here(em_path, "Parameters.csv")) # read in parameters
     ts_df =  data.table::fread(here(em_path, "Time_Series.csv")) # read in time series
+    
+    # Extracting other quantities not previously calculated
+    # Get depletion
+    depletion_df = ts_df %>% filter(Type == "Spawning Stock Biomass") %>% 
+      group_by(OM, EM, sim) %>% 
+      mutate(SSB_Init_True = Truth[which(Years == 1)],
+             SSB_Init_Pred = Pred[which(Years == 1)],
+             Truth = Truth / SSB_Init_True,
+             Pred = Pred / SSB_Init_Pred,
+             Type = "Depletion") %>% 
+      select(names(ts_df)) # only select useful rows
+    
+    # Bind depletion to ts_df
+    ts_df = rbind(ts_df, depletion_df) 
+    
+    # Get SSB_current / SMSY
+    bmsy_df = param_df %>% filter(Type == "Bmsy") %>%  # get bmsy
+      rename(bmsy_true = Truth, bmsy_pred = Pred) %>% 
+      select(-Type)
+    
+    # Left join bmsy info to calculate ssb_current / smsy
+    ssb_cur_msy = ts_df %>% filter(Type == "Spawning Stock Biomass") %>% 
+      filter(Years == max(Years)) %>% left_join(bmsy_df, by = c("sim", "OM", "EM", "Convergence")) %>% 
+      mutate(Pred = Pred / bmsy_pred, Truth = Truth / bmsy_true, Type = "SSBcur / BMSY") %>% 
+      select(names(param_df))
+    
+    param_df = rbind(param_df, ssb_cur_msy) # bind
+    
     sr_df = data.table::fread(here(em_path, "NAA_SexRatios.csv")) # read in sex ratio stuff
     conv_df = data.table::fread(here(em_path, "Convergence.csv")) # read in sex ratio stuff
     coverage_df = data.table::fread(here(em_path, "Coverage.csv")) # read in coverage stuff
