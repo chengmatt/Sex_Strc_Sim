@@ -98,7 +98,7 @@ exp1_ts_plot <- ggplot() +
   coord_cartesian(ylim = c(-0.3, 0.3)) +
   facet_wrap(~OM) +
   geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Year", y = "Relative Error (Spawning Stock Biomass)", color = "Integrated Population Model", fill = "Integrated Population Model") +
+  labs(x = "Year", y = "Relative Error (Spawning Stock Biomass)", color = "Stock Assessment Model", fill = "Stock Assessment Model") +
   theme_tj() +
   theme(legend.position = "top",
         legend.text = element_markdown()) 
@@ -121,7 +121,7 @@ exp1_param_plot <- ggplot() +
   scale_color_manual(values = c("#e69c4c", "#35577b"), labels = c("*Across*", "*Within*")) +
   geom_hline(yintercept = 0, lty = 2, size = 1) + 
   coord_cartesian(ylim = c(-0.85, 0.85)) +
-  labs(x = "", y = "Relative Error (Est & Deriv Pars)", color = "Integrated Population Model", fill = "Integrated Population Model") +
+  labs(x = "", y = "Relative Error (Est & Deriv Pars)", color = "Stock Assessment Model", fill = "Stock Assessment Model") +
   theme_tj() +
   theme(legend.position = "none",
         legend.text = element_markdown()) +
@@ -343,7 +343,7 @@ exp3_ts_plot <- ggplot() +
     facet_wrap(~OM) +
     coord_cartesian(ylim = c(-0.85, 0.85)) +
     geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
-    labs(x = "Year", y = "Relative Error (Spawning Stock Biomass)", color = "Integrated Population Model", fill = "Integrated Population Model") +
+    labs(x = "Year", y = "Relative Error (Spawning Stock Biomass)", color = "Stock Assessment Model", fill = "Stock Assessment Model") +
     theme_tj() +
     theme(legend.position = "top",
           legend.text = element_markdown())  
@@ -366,7 +366,7 @@ exp3_param_plot <- ggplot() +
         scale_color_manual(values = c("#e69c4c", "#35577b"), labels = c("*EstSxRat*", "*FixSxRat*")) +
         geom_hline(yintercept = 0, lty = 2, size = 1) + 
         coord_cartesian(ylim = c(-1.5, 1.5)) +
-        labs(x = "", y = "Relative Error (Est & Deriv Pars)", color = "Integrated Population Model", fill = "Integrated Population Model") +
+        labs(x = "", y = "Relative Error (Est & Deriv Pars)", color = "Stock Assessment Model", fill = "Stock Assessment Model") +
         theme_tj() +
         theme(legend.position = "none",
               legend.text = element_markdown()) +
@@ -510,7 +510,7 @@ exp1_ts_total_biom_plot <- ggplot() +
   coord_cartesian(ylim = c(-0.3, 0.3)) +
   facet_wrap(~OM) +
   geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Year", y = "Relative Error (Total Biomass)", color = "Integrated Population Model", fill = "Integrated Population Model") +
+  labs(x = "Year", y = "Relative Error (Total Biomass)", color = "Stock Assessment Model", fill = "Stock Assessment Model") +
   theme_tj() +
   theme(legend.position = "top",
         legend.text = element_markdown()) 
@@ -535,7 +535,7 @@ exp1_depl_plot <- ggplot() +
   coord_cartesian(ylim = c(-0.3, 0.3)) +
   facet_wrap(~OM) +
   geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Year", y = "Relative Error (Depletion)", color = "Integrated Population Model", fill = "Integrated Population Model") +
+  labs(x = "Year", y = "Relative Error (Depletion)", color = "Stock Assessment Model", fill = "Stock Assessment Model") +
   theme_tj() +
   theme(legend.position = "top",
         legend.text = element_markdown()) 
@@ -701,7 +701,7 @@ exp3_ts_total_biom_plot <- ggplot() +
   facet_wrap(~OM) +
   coord_cartesian(ylim = c(-0.85, 0.85)) +
   geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Year", y = "Relative Error (Total Biomass)", color = "Integrated Population Model", fill = "Integrated Population Model") +
+  labs(x = "Year", y = "Relative Error (Total Biomass)", color = "Stock Assessment Model", fill = "Stock Assessment Model") +
   theme_tj() +
   theme(legend.position = "top",
         legend.text = element_markdown()) 
@@ -726,7 +726,7 @@ exp3_ts_total_biom_plot <- ggplot() +
   facet_wrap(~OM) +
   # coord_cartesian(ylim = c(-0.85, 0.85)) +
   geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Year", y = "Relative Error (Depletion)", color = "Integrated Population Model", fill = "Integrated Population Model") +
+  labs(x = "Year", y = "Relative Error (Depletion)", color = "Stock Assessment Model", fill = "Stock Assessment Model") +
   theme_tj() +
   theme(legend.position = "top",
         legend.text = element_markdown()) 
@@ -751,7 +751,7 @@ exp3_ts_total_f_plot <- ggplot() +
   facet_wrap(~OM) +
   coord_cartesian(ylim = c(-0.85, 0.85)) +
   geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Year", y = "Relative Error (Total Fishing Mortality)", color = "Integrated Population Model", fill = "Integrated Population Model") +
+  labs(x = "Year", y = "Relative Error (Total Fishing Mortality)", color = "Stock Assessment Model", fill = "Stock Assessment Model") +
   theme_tj() +
   theme(legend.position = "top",
         legend.text = element_markdown()) 
@@ -780,7 +780,7 @@ exp3_senstivity_ts_plot <- ggplot() +
   facet_wrap(~OM, nrow = 1) +
   coord_cartesian(ylim = c(-0.85, 0.85)) +
   geom_hline(yintercept = 0, lty = 2, size = 1.3) + 
-  labs(x = "Year", y = "Relative Error", color = "Integrated Population Model", fill = "Integrated Population Model") +
+  labs(x = "Year", y = "Relative Error", color = "Stock Assessment Model", fill = "Stock Assessment Model") +
   theme_tj() +
   theme(legend.position = "top",
         legend.text = element_markdown()) 
@@ -800,7 +800,7 @@ exp3_sensitivity_param_plot <- ggplot() +
   scale_color_manual(values = c("#e69c4c", "#35577b"), labels = c("*EstSxRat*", "*FixSxRat*")) +
   geom_hline(yintercept = 0, lty = 2, size = 1) + 
   coord_cartesian(ylim = c(-1.5, 1.5)) +
-  labs(x = "", y = "Relative Error (Est & Deriv Pars)", color = "Integrated Population Model", fill = "Integrated Population Model") +
+  labs(x = "", y = "Relative Error (Est & Deriv Pars)", color = "Stock Assessment Model", fill = "Stock Assessment Model") +
   theme_tj() +
   theme(legend.position = "none",
         legend.text = element_markdown()) +
